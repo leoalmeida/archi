@@ -8,6 +8,9 @@ import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.PrecisionPoint;
 import org.eclipse.draw2d.geometry.Rectangle;
 
+import com.archimatetool.editor.diagram.figures.AbstractDiagramModelObjectFigure;
+import com.archimatetool.editor.diagram.figures.FigureUtils;
+import com.archimatetool.editor.diagram.figures.IFigureDelegate;
 import com.archimatetool.editor.diagram.figures.IRoundedRectangleFigure;
 
 
@@ -32,23 +35,10 @@ public class RoundedRectangleAnchor extends ChopboxAnchor {
 
 	private static final int BOTTOM = 32;
 
-	private final Dimension dimension;
-	
-	
-	public RoundedRectangleAnchor(final IFigure figure) {
+	public RoundedRectangleAnchor(IFigure figure) {
         super(figure);
-        dimension = null;
     }
-
-	/**
-	 * Rounded Rectangle getCornerDimension should be public #302836 then
-	 * Rounded Rectangle would be sufficient.
-	 */
-	public RoundedRectangleAnchor(final IFigure figure, final Dimension corners) {
-		super(figure);
-		dimension = corners;
-	}
-
+	
 	/**
 	 * Calculates the position with ChopboxAnchor#getLocation() and if the
 	 * anchor is not at the rounded corners, the result is returned. If the
@@ -61,13 +51,23 @@ public class RoundedRectangleAnchor extends ChopboxAnchor {
 	 */
 	@Override
     public Point getLocation(final Point ref) {
-		Dimension corner = dimension;
+	    Dimension corner = new Dimension(0, 0);
+	    
 		if(getOwner() instanceof IRoundedRectangleFigure) {
             corner = ((IRoundedRectangleFigure) getOwner()).getArc();
         }
 		else if (getOwner() instanceof RoundedRectangle) {
 			corner = ((RoundedRectangle) getOwner()).getCornerDimensions();
 		}
+		else if(getOwner() instanceof AbstractDiagramModelObjectFigure) {
+		    IFigureDelegate figureDelegate = ((AbstractDiagramModelObjectFigure)getOwner()).getFigureDelegate();
+		    if(figureDelegate instanceof IRoundedRectangleFigure) {
+		        corner = ((IRoundedRectangleFigure) figureDelegate).getArc();
+		    }
+		}
+		
+		corner = corner.scale(FigureUtils.getFigureScale(getOwner()));
+		
 		final Point location = super.getLocation(ref);
 		final Rectangle r = Rectangle.SINGLETON;
 		r.setBounds(getOwner().getBounds());

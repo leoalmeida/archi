@@ -10,8 +10,10 @@ import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.FontData;
+import org.eclipse.swt.widgets.Display;
 
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.editor.utils.StringUtils;
 
@@ -23,27 +25,23 @@ import com.archimatetool.editor.utils.StringUtils;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public final class FontFactory {
     
-    private static final String DEFAULT_VIEW_FONT_NAME = "defaultViewFont"; //$NON-NLS-1$
+    private static final String DEFAULT_VIEW_FONT_NAME = "defaultViewFont";
     
     /**
      * Font Registry
      */
     private static FontRegistry FontRegistry = new FontRegistry();
 
-    /**
-     * Temporary Font Registry to hold adjusted size fonts on Windows
-     */
-    private static FontRegistry windowsFontRegistry = new FontRegistry();
+    public static Font SystemFontBold = JFaceResources.getFontRegistry().getBold("");
     
-    public static Font SystemFontBold = JFaceResources.getFontRegistry().getBold(""); //$NON-NLS-1$
-    
-    public static Font SystemFontItalic = JFaceResources.getFontRegistry().getItalic(""); //$NON-NLS-1$
+    public static Font SystemFontItalic = JFaceResources.getFontRegistry().getItalic("");
     
     /**
      * @param fontName
-     * @return A FOnt for the fontName or the default user font if null or exception occurs
+     * @return A Font for the fontName or the default user font if null or exception occurs
      */
     public static Font get(String fontName) {
         if(fontName == null) {
@@ -77,7 +75,7 @@ public final class FontFactory {
         // We don't have it
         if(!FontRegistry.hasValueFor(DEFAULT_VIEW_FONT_NAME)) {
             // So check user prefs...
-            String fontDetails = Preferences.getDefaultViewFont();
+            String fontDetails = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.DEFAULT_VIEW_FONT);
             if(StringUtils.isSet(fontDetails)) {
                 try {
                     // Put font details from user prefs
@@ -103,7 +101,7 @@ public final class FontFactory {
         FontRegistry.put(DEFAULT_VIEW_FONT_NAME, new FontData[] { fd });
 
         // Then set value as this will send property change
-        Preferences.setDefaultViewFont(fd.toString());
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.DEFAULT_VIEW_FONT, fd.toString());
     }
     
     /**
@@ -111,19 +109,19 @@ public final class FontFactory {
      */
     public static FontData getDefaultViewOSFontData() {
         // Default
-        FontData fd = new FontData("Sans", 9, SWT.NORMAL); //$NON-NLS-1$
+        FontData fd = new FontData("Sans", 9, SWT.NORMAL);
 
         // Windows
         if(PlatformUtils.isWindows()) {
-            fd = new FontData("Segoe UI", 9, SWT.NORMAL); //$NON-NLS-1$
+            fd = new FontData("Segoe UI", 9, SWT.NORMAL);
         }
         // Linux
         else if(PlatformUtils.isLinux()) {
-            fd = new FontData("Sans", 9, SWT.NORMAL); //$NON-NLS-1$
+            fd = new FontData("Sans", 9, SWT.NORMAL);
         }
         // Mac
         else if(PlatformUtils.isMac()) {
-            fd = new FontData("Lucida Grande", 12, SWT.NORMAL); //$NON-NLS-1$
+            fd = new FontData("Lucida Grande", ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.FONT_SCALING) ? 9 : 12, SWT.NORMAL);
         }
 
         return fd;
@@ -135,26 +133,64 @@ public final class FontFactory {
     }
 
     /**
-     * On Windows OS if the system DPI is not 96 DPI we need to adjust the size
-     * of the font on the diagram View.
-     * @param font
-     * @return The adjusted font
+     * @param fontName
+     * @return A font for the fontName that might be scaled on Mac or Windows
      */
-    public static Font getAdjustedWindowsFont(Font font) {
-        if(font != null && PlatformUtils.isWindows()) {
-            int DPI = font.getDevice().getDPI().y;
-            if(DPI != 96) {
-                FontData[] fd = font.getFontData();
-                String fontName = fd[0].toString();
-                if(!windowsFontRegistry.hasValueFor(fontName)) {
-                    double factor = (double)96 / DPI;
-                    fd[0].height *= factor;
-                    windowsFontRegistry.put(fontName, fd);
-                }
-                font = windowsFontRegistry.get(fontName);
+    public static Font getScaledFont(String fontName) {
+        return get(getScaledFontString(fontName));
+    }
+
+    /**
+     * Return a font string scaled from 96 DPI if the current DPI is not 96.
+     * This can happen on Windows if the DPI is not 96 or we are on Mac.
+     * @return The adjusted font if DPI is not 96, or the same font string if it is 96 DPI
+     */
+    public static String getScaledFontString(String fontDataString) {
+        // Don't check for DPI scaling on Linux or on Mac if preference not set. Always check on Windows.
+        if(PlatformUtils.isLinux() ||
+                (PlatformUtils.isMac() && !ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.FONT_SCALING))) {
+            return fontDataString;
+        }
+        
+        int DPI = Display.getCurrent().getDPI().y;
+        
+        if(DPI != 96) {
+            // Font string is null or empty so use default FontData
+            if(!StringUtils.isSet(fontDataString)) {
+                fontDataString = getDefaultUserViewFontData().toString();
+            }
+            
+            try {
+                FontData fd = new FontData(fontDataString);
+                float factor = (float)96 / DPI;
+                int newHeight = (int)(fd.getHeight() * factor);
+                fd.setHeight(newHeight);
+                fontDataString = fd.toString();
+            }
+            catch(Exception ex) {
             }
         }
-
-        return font;
+        
+        return fontDataString;
+    }
+    
+    /**
+     * @param font
+     * @return The italic variant of the given font
+     */
+    public static Font getItalic(Font font) {
+        String fontName = font.getFontData()[0].toString();
+        get(fontName); // Have to ensure base font is registered
+        return FontRegistry.getItalic(fontName);
+    }
+    
+    /**
+     * @param font
+     * @return The bold variant of the given font
+     */
+    public static Font getBold(Font font) {
+        String fontName = font.getFontData()[0].toString();
+        get(fontName); // Have to ensure base font is registered
+        return FontRegistry.getBold(fontName);
     }
 }

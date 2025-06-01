@@ -7,19 +7,27 @@ package com.archimatetool.model.util;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.EStructuralFeature.Setting;
+import org.eclipse.emf.ecore.util.EcoreUtil.UsageCrossReferencer;
 
-import com.archimatetool.model.FolderType;
-import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IFolder;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IIdentifier;
-import com.archimatetool.model.IRelationship;
+import com.archimatetool.model.IJunction;
+import com.archimatetool.model.IProfile;
+import com.archimatetool.model.IProfiles;
 
 
 
@@ -30,31 +38,71 @@ import com.archimatetool.model.IRelationship;
  */
 public class ArchimateModelUtils {
     
-    /*
-     * Flags for methods
-     */
-    private static final int SOURCE_RELATIONSHIPS = 1;
-    private static final int TARGET_RELATIONSHIPS = 1 << 1;
-    
     /**
-     * Determine if a given relationship type is allowed as a source for an Archimate element
-     * @param sourceElement The source element
+     * Determine if a given relationship type is allowed as a source for an Archimate concept
+     * @param sourceConcept The source concept
      * @param relationshipType The class of relationship to check
-     * @return True if relationshipType is a valid source relationship for sourceElement
+     * @return True if relationshipType is a valid source relationship for sourceComponent
      */
-    public static final boolean isValidRelationshipStart(IArchimateElement sourceElement, EClass relationshipType) {
-        return RelationshipsMatrix.INSTANCE.isValidRelationshipStart(sourceElement, relationshipType);
+    public static final boolean isValidRelationshipStart(IArchimateConcept sourceConcept, EClass relationshipType) {
+        // If the source concept is a Junction check for valid relationships
+        if(sourceConcept instanceof IJunction) {
+            // Has to be the same type of relationship
+            for(IArchimateRelationship rel : getAllRelationshipsForConcept(sourceConcept)) {
+                if(!rel.eClass().equals(relationshipType)) {
+                    return false;
+                }
+            }
+        }
+        
+        return RelationshipsMatrix.INSTANCE.isValidRelationshipStart(sourceConcept.eClass(), relationshipType);
     }
     
     /**
-     * Determine if a given relationship type is allowed between source and target Archimate elements
-     * @param sourceElement The source element
-     * @param targetElement The target element
+     * Determine if a given relationship type is allowed between source and target Archimate components
+     * @param sourceConcept The source concept
+     * @param targetConcept The target concept
      * @param relationshipType The relationship type to check
-     * @return True if relationshipType is an allowed relationship type between sourceElement and targetElement
+     * @return True if relationshipType is an allowed relationship type between sourceComponent and targetComponent
      */
-    public static final boolean isValidRelationship(IArchimateElement sourceElement, IArchimateElement targetElement, EClass relationshipType) {
-        return isValidRelationship(sourceElement.eClass(), targetElement.eClass(), relationshipType);
+    public static final boolean isValidRelationship(IArchimateConcept sourceConcept, IArchimateConcept targetConcept, EClass relationshipType) {
+        if(hasDirectRelationship(sourceConcept, targetConcept)) {
+            return false;
+        }
+        
+        // If the source concept is a Junction check for valid relationships
+        if(sourceConcept instanceof IJunction) {
+            // This is an invalid indirect relationship between a concept connected to the Junction and the target concept
+            for(IArchimateRelationship rel : sourceConcept.getTargetRelationships()) {
+                if(!isValidRelationship(rel.getSource().eClass(), targetConcept.eClass(), relationshipType)) {
+                    return false;
+                }
+            }
+            // Has to be the same type of relationship
+            for(IArchimateRelationship rel : getAllRelationshipsForConcept(sourceConcept)) {
+                if(!rel.eClass().equals(relationshipType)) {
+                    return false;
+                }
+            }
+        }
+        
+        // If the target concept is a Junction check for valid relationships
+        if(targetConcept instanceof IJunction) {
+            // This is an invalid indirect relationship between a concept connected to the Junction and the source concept
+            for(IArchimateRelationship rel : targetConcept.getSourceRelationships()) {
+                if(!isValidRelationship(sourceConcept.eClass(), rel.getTarget().eClass(), relationshipType)) {
+                    return false;
+                }
+            }
+            // Has to be the same type of relationship
+            for(IArchimateRelationship rel : getAllRelationshipsForConcept(targetConcept)) {
+                if(!rel.eClass().equals(relationshipType)) {
+                    return false;
+                }
+            }
+        }
+        
+        return isValidRelationship(sourceConcept.eClass(), targetConcept.eClass(), relationshipType);
     }
 
     /**
@@ -69,13 +117,21 @@ public class ArchimateModelUtils {
     }
     
     /**
-     * Get an array of all valid relationship class types between source and target Archimate elements
-     * @param sourceElement The source element
-     * @param targetElement The target element
+     * Get an array of all valid relationship class types between source and target Archimate components
+     * @param sourceConcept The source concept
+     * @param targetConcept The target concept
      * @return An array of all valid relationship class types between sourceElement and targetElement
      */
-    public static EClass[] getValidRelationships(IArchimateElement sourceElement, IArchimateElement targetElement) {
-        return getValidRelationships(sourceElement.eClass(), targetElement.eClass());
+    public static EClass[] getValidRelationships(IArchimateConcept sourceConcept, IArchimateConcept targetConcept) {
+        List<EClass> list = new ArrayList<EClass>();
+        
+        for(EClass eClass : getRelationsClasses()) {
+            if(isValidRelationship(sourceConcept, targetConcept, eClass)) {
+                list.add(eClass); 
+            }
+        }
+        
+        return list.toArray(new EClass[list.size()]);
     }
     
     /**
@@ -97,68 +153,37 @@ public class ArchimateModelUtils {
     }
     
     /**
-     * @param element The Archimate element to check
-     * @return A list of all relationships that an element has, both as target and as source
+     * @param concept1
+     * @param concept2
+     * @return True if concept1 is a relationship and concept2 already has it as a relationship
+     *         OR 
+     *         True if concept2 is a relationship and concept1 already has it as a relationship
      */
-    public static List<IRelationship> getRelationships(IArchimateElement element) {
-        return __getRelationships(element, SOURCE_RELATIONSHIPS | TARGET_RELATIONSHIPS);
-    }
-    
-    /**
-     * @param element The Archimate element to check
-     * @return A list of all source relationships that an element has
-     */
-    public static List<IRelationship> getSourceRelationships(IArchimateElement element) {
-        return __getRelationships(element, SOURCE_RELATIONSHIPS);
-    }
-    
-    /**
-     * @param element The Archimate element to check
-     * @return A list of all target relationships that an element has
-     */
-    public static List<IRelationship> getTargetRelationships(IArchimateElement element) {
-        return __getRelationships(element, TARGET_RELATIONSHIPS);
-    }
-
-    private static List<IRelationship> __getRelationships(IArchimateElement element, int type) {
-        List<IRelationship> relationships = new ArrayList<IRelationship>();
-        
-        if(element.getArchimateModel() != null) { // An important guard because the element might have been deleted
-            IFolder folder = element.getArchimateModel().getFolder(FolderType.RELATIONS);
-            __getRelationshipsForElement(folder, element, type, relationships);
-            
-            folder = element.getArchimateModel().getFolder(FolderType.DERIVED);
-            __getRelationshipsForElement(folder, element, type, relationships);
-        }
-        
-        return relationships;
-    }
-    
-    private static void __getRelationshipsForElement(IFolder folder, IArchimateElement element, int type, List<IRelationship> relationships) {
-        if(folder == null || element == null) {
-            return;
-        }
-        
-        for(EObject object : folder.getElements()) {
-            if(object instanceof IRelationship) {
-                IRelationship relationship = (IRelationship)object;
-                if((type & SOURCE_RELATIONSHIPS) != 0) {
-                    if(relationship.getSource() == element && !relationships.contains(relationship)) {
-                        relationships.add(relationship);
-                    }
-                }
-                if((type & TARGET_RELATIONSHIPS) != 0) {
-                    if(relationship.getTarget() == element && !relationships.contains(relationship)) {
-                        relationships.add(relationship);
-                    }
-                }
+    public static boolean hasDirectRelationship(IArchimateConcept concept1, IArchimateConcept concept2) {
+        if(concept1 instanceof IArchimateRelationship) {
+            if(getAllRelationshipsForConcept(concept2).contains(concept1)) {
+                return true;
             }
         }
         
-        // Child folders
-        for(IFolder f : folder.getFolders()) {
-            __getRelationshipsForElement(f, element, type, relationships);
+        if(concept2 instanceof IArchimateRelationship) {
+            if(getAllRelationshipsForConcept(concept1).contains(concept2)) {
+                return true;
+            }
         }
+        
+        return false;
+    }
+    
+    /**
+     * @param concept The Archimate concept to get relationships for
+     * @return A list of all relationships that a concept has, both as target and as source
+     */
+    public static List<IArchimateRelationship> getAllRelationshipsForConcept(IArchimateConcept concept) {
+        Set<IArchimateRelationship> set = new HashSet<IArchimateRelationship>();
+        set.addAll(concept.getSourceRelationships());
+        set.addAll(concept.getTargetRelationships());
+        return new ArrayList<>(set);
     }
     
     /**
@@ -186,8 +211,44 @@ public class ArchimateModelUtils {
 
         return null;
     }
-
     
+    /**
+     * Get a map of model object IDs to objects.
+     * @param model The Archimate Model, can be null
+     * @return a map of object IDs to objects, never null but will be empty if model is null
+     */
+    public static Map<String, EObject> getObjectIDMap(IArchimateModel model) {
+        Map<String, EObject> map = new HashMap<>();
+        
+        if(model == null) {
+            return map;
+        }
+        
+        if(model.getId() != null) {
+            map.put(model.getId(), model);
+        }
+        
+        for(Iterator<EObject> iter = model.eAllContents(); iter.hasNext();) {
+            if(iter.next() instanceof IIdentifier object && object.getId() != null) {
+                map.put(object.getId(), object);
+            }
+        }
+        
+        return map;
+    }
+    
+    /**
+     * @return A list of all EClass types in the Strategy layer in preferred order
+     */
+    public static EClass[] getStrategyClasses() {
+        return new EClass[] {
+                IArchimatePackage.eINSTANCE.getResource(),
+                IArchimatePackage.eINSTANCE.getCapability(),
+                IArchimatePackage.eINSTANCE.getValueStream(),
+                IArchimatePackage.eINSTANCE.getCourseOfAction()
+        };
+    }
+
     /**
      * @return A list of all EClass types in the Business layer in preferred order
      */
@@ -197,19 +258,15 @@ public class ArchimateModelUtils {
                 IArchimatePackage.eINSTANCE.getBusinessRole(),
                 IArchimatePackage.eINSTANCE.getBusinessCollaboration(),
                 IArchimatePackage.eINSTANCE.getBusinessInterface(),
-                IArchimatePackage.eINSTANCE.getBusinessFunction(),
                 IArchimatePackage.eINSTANCE.getBusinessProcess(),
-                //IArchimatePackage.eINSTANCE.getBusinessActivity(), // Deprecated in ArchiMate 2.0
-                IArchimatePackage.eINSTANCE.getBusinessEvent(),
+                IArchimatePackage.eINSTANCE.getBusinessFunction(),
                 IArchimatePackage.eINSTANCE.getBusinessInteraction(),
-                IArchimatePackage.eINSTANCE.getProduct(),
-                IArchimatePackage.eINSTANCE.getContract(),
+                IArchimatePackage.eINSTANCE.getBusinessEvent(),
                 IArchimatePackage.eINSTANCE.getBusinessService(),
-                IArchimatePackage.eINSTANCE.getValue(),
-                IArchimatePackage.eINSTANCE.getMeaning(),
-                IArchimatePackage.eINSTANCE.getRepresentation(),
                 IArchimatePackage.eINSTANCE.getBusinessObject(),
-                IArchimatePackage.eINSTANCE.getLocation()
+                IArchimatePackage.eINSTANCE.getContract(),
+                IArchimatePackage.eINSTANCE.getRepresentation(),
+                IArchimatePackage.eINSTANCE.getProduct()
         };
     }
     
@@ -221,9 +278,11 @@ public class ArchimateModelUtils {
                 IArchimatePackage.eINSTANCE.getApplicationComponent(),
                 IArchimatePackage.eINSTANCE.getApplicationCollaboration(),
                 IArchimatePackage.eINSTANCE.getApplicationInterface(),
-                IArchimatePackage.eINSTANCE.getApplicationService(),
                 IArchimatePackage.eINSTANCE.getApplicationFunction(),
                 IArchimatePackage.eINSTANCE.getApplicationInteraction(),
+                IArchimatePackage.eINSTANCE.getApplicationProcess(),
+                IArchimatePackage.eINSTANCE.getApplicationEvent(),
+                IArchimatePackage.eINSTANCE.getApplicationService(),
                 IArchimatePackage.eINSTANCE.getDataObject()
         };
     }
@@ -233,15 +292,31 @@ public class ArchimateModelUtils {
      */
     public static EClass[] getTechnologyClasses() {
         return new EClass[] {
-                IArchimatePackage.eINSTANCE.getArtifact(),
-                IArchimatePackage.eINSTANCE.getCommunicationPath(),
-                IArchimatePackage.eINSTANCE.getNetwork(),
-                IArchimatePackage.eINSTANCE.getInfrastructureInterface(),
-                IArchimatePackage.eINSTANCE.getInfrastructureFunction(),
-                IArchimatePackage.eINSTANCE.getInfrastructureService(),
                 IArchimatePackage.eINSTANCE.getNode(),
+                IArchimatePackage.eINSTANCE.getDevice(),
                 IArchimatePackage.eINSTANCE.getSystemSoftware(),
-                IArchimatePackage.eINSTANCE.getDevice()
+                IArchimatePackage.eINSTANCE.getTechnologyCollaboration(),
+                IArchimatePackage.eINSTANCE.getTechnologyInterface(),
+                IArchimatePackage.eINSTANCE.getPath(),
+                IArchimatePackage.eINSTANCE.getCommunicationNetwork(),
+                IArchimatePackage.eINSTANCE.getTechnologyFunction(),
+                IArchimatePackage.eINSTANCE.getTechnologyProcess(),
+                IArchimatePackage.eINSTANCE.getTechnologyInteraction(),
+                IArchimatePackage.eINSTANCE.getTechnologyEvent(),
+                IArchimatePackage.eINSTANCE.getTechnologyService(),
+                IArchimatePackage.eINSTANCE.getArtifact()
+        };
+    }
+
+    /**
+     * @return A list of all EClass types in the Physical layer in preferred order
+     */
+    public static EClass[] getPhysicalClasses() {
+        return new EClass[] {
+                IArchimatePackage.eINSTANCE.getEquipment(),
+                IArchimatePackage.eINSTANCE.getFacility(),
+                IArchimatePackage.eINSTANCE.getDistributionNetwork(),
+                IArchimatePackage.eINSTANCE.getMaterial()
         };
     }
 
@@ -254,9 +329,12 @@ public class ArchimateModelUtils {
                 IArchimatePackage.eINSTANCE.getDriver(),
                 IArchimatePackage.eINSTANCE.getAssessment(),
                 IArchimatePackage.eINSTANCE.getGoal(),
+                IArchimatePackage.eINSTANCE.getOutcome(),
                 IArchimatePackage.eINSTANCE.getPrinciple(),
                 IArchimatePackage.eINSTANCE.getRequirement(),
-                IArchimatePackage.eINSTANCE.getConstraint()
+                IArchimatePackage.eINSTANCE.getConstraint(),
+                IArchimatePackage.eINSTANCE.getMeaning(),
+                IArchimatePackage.eINSTANCE.getValue()
         };
     }
     
@@ -267,27 +345,19 @@ public class ArchimateModelUtils {
         return new EClass[] {
                 IArchimatePackage.eINSTANCE.getWorkPackage(),
                 IArchimatePackage.eINSTANCE.getDeliverable(),
+                IArchimatePackage.eINSTANCE.getImplementationEvent(),
                 IArchimatePackage.eINSTANCE.getPlateau(),
                 IArchimatePackage.eINSTANCE.getGap()
         };
     }
 
     /**
-     * @return A list of EClass types for Relationships in preferred order
+     * @return A list of all EClass types in the "Other" category in preferred order
      */
-    public static EClass[] getRelationsClasses() {
+    public static EClass[] getOtherClasses() {
         return new EClass[] {
-                IArchimatePackage.eINSTANCE.getSpecialisationRelationship(),
-                IArchimatePackage.eINSTANCE.getCompositionRelationship(),
-                IArchimatePackage.eINSTANCE.getAggregationRelationship(),
-                IArchimatePackage.eINSTANCE.getAssignmentRelationship(),
-                IArchimatePackage.eINSTANCE.getRealisationRelationship(),
-                IArchimatePackage.eINSTANCE.getTriggeringRelationship(),
-                IArchimatePackage.eINSTANCE.getFlowRelationship(),
-                IArchimatePackage.eINSTANCE.getUsedByRelationship(),
-                IArchimatePackage.eINSTANCE.getAccessRelationship(),
-                IArchimatePackage.eINSTANCE.getAssociationRelationship(),
-                IArchimatePackage.eINSTANCE.getInfluenceRelationship(),
+                IArchimatePackage.eINSTANCE.getLocation(),
+                IArchimatePackage.eINSTANCE.getGrouping()
         };
     }
 
@@ -296,22 +366,155 @@ public class ArchimateModelUtils {
      */
     public static EClass[] getConnectorClasses() {
         return new EClass[] {
-                IArchimatePackage.eINSTANCE.getJunction(),
-                IArchimatePackage.eINSTANCE.getAndJunction(),
-                IArchimatePackage.eINSTANCE.getOrJunction()
+                IArchimatePackage.eINSTANCE.getJunction()
         };
     }
     
+    /**
+     * @return A list of EClass types for Relationships in preferred order
+     */
+    public static EClass[] getRelationsClasses() {
+        return new EClass[] {
+                IArchimatePackage.eINSTANCE.getCompositionRelationship(),
+                IArchimatePackage.eINSTANCE.getAggregationRelationship(),
+                IArchimatePackage.eINSTANCE.getAssignmentRelationship(),
+                IArchimatePackage.eINSTANCE.getRealizationRelationship(),
+                IArchimatePackage.eINSTANCE.getServingRelationship(),
+                IArchimatePackage.eINSTANCE.getAccessRelationship(),
+                IArchimatePackage.eINSTANCE.getInfluenceRelationship(),
+                IArchimatePackage.eINSTANCE.getTriggeringRelationship(),
+                IArchimatePackage.eINSTANCE.getFlowRelationship(),
+                IArchimatePackage.eINSTANCE.getSpecializationRelationship(),
+                IArchimatePackage.eINSTANCE.getAssociationRelationship(),
+        };
+    }
+
     /**
      * @return A list of all Archimate Element EClass types (excluding connector classes)
      */
     public static EClass[] getAllArchimateClasses() {
         ArrayList<EClass> list = new ArrayList<EClass>();
+        
+        list.addAll(Arrays.asList(getStrategyClasses()));
         list.addAll(Arrays.asList(getBusinessClasses()));
         list.addAll(Arrays.asList(getApplicationClasses()));
         list.addAll(Arrays.asList(getTechnologyClasses()));
+        list.addAll(Arrays.asList(getPhysicalClasses()));
         list.addAll(Arrays.asList(getMotivationClasses()));
         list.addAll(Arrays.asList(getImplementationMigrationClasses()));
+        list.addAll(Arrays.asList(getOtherClasses()));
+        
         return list.toArray(new EClass[list.size()]);
+    }
+    
+    // =====================================================================================================
+    // Profile / Specialization Utils
+    // =====================================================================================================
+
+    /**
+     * @return True if a profile exists in the model with the given name and concept type
+     */
+    public static boolean hasProfileByNameAndType(IArchimateModel model, String profileName, String conceptType) {
+        return getProfileByNameAndType(model, profileName, conceptType) != null;
+    }
+    
+    /**
+     * @return True if a profile exists in the given Collection of Profiles with the given name and concept type
+     */
+    public static boolean hasProfileByNameAndType(Collection<IProfile> profiles, String profileName, String conceptType) {
+        return getProfileByNameAndType(profiles, profileName, conceptType) != null;
+    }
+    
+    /**
+     * @return The first matching profile in the model with the given name and concept type
+     */
+    public static IProfile getProfileByNameAndType(IArchimateModel model, String profileName, String conceptType) {
+        return getProfileByNameAndType(model.getProfiles(), profileName, conceptType);
+    }
+    
+    /**
+     * @return The first matching profile in the given Collection of Profiles with the given name and concept type
+     */
+    public static IProfile getProfileByNameAndType(Collection<IProfile> profiles, String profileName, String conceptType) {
+        for(IProfile p : profiles) {
+            if(p.getName() != null && p.getName().equalsIgnoreCase(profileName)
+                    && p.getConceptType() != null && p.getConceptType().equals(conceptType)) {
+                return p;
+            }
+        }
+        
+        return null;
+    }
+    
+    /**
+     * @return A list of all model Profiles that have a concept type set to the given conceptType
+     *         This is so we can find the ones suitable for a given concept
+     */
+    public static List<IProfile> findProfilesForConceptType(IArchimateModel model, EClass conceptType) {
+        List<IProfile> profiles = new ArrayList<>();
+        
+        for(IProfile profile : model.getProfiles()) {
+            if(conceptType != null && conceptType.getName().equals(profile.getConceptType())) {
+                profiles.add(profile);
+            }
+        }
+        
+        return profiles;
+    }
+    
+    /**
+     * @return A list of all references of the given Profile in the model.
+     *         If profile is null or is not contained in a model then an empty list is returned
+     *         This is a slow process if this is called more than once
+     */
+    public static List<IProfiles> findProfileUsage(IProfile profile) {
+        List<IProfiles> profiles = new ArrayList<>();
+        
+        if(profile != null && profile.getArchimateModel() != null) {
+            for(Setting setting : UsageCrossReferencer.find(profile, profile.getArchimateModel())) {
+                profiles.add((IProfiles)setting.getEObject());
+            }
+        }
+        
+        return profiles;
+    }
+    
+    /**
+     * @return A map of all references of all Profiles in the given model.
+     *         This method is many times faster than calling findProfileUsage(IProfile) repeatedly
+     */
+    public static Map<IProfile, List<IProfiles>> findProfilesUsage(IArchimateModel model) {
+        Map<IProfile, List<IProfiles>> map = new HashMap<>();
+        
+        // Iterate through all model contents
+        for(Iterator<EObject> iter = model.eAllContents(); iter.hasNext();) {
+            EObject eObject = iter.next();
+            
+            // This is a concept potentially containing profile references
+            if(eObject instanceof IProfiles) {
+                // Iterate through the profiles
+                for(IProfile profile : ((IProfiles)eObject).getProfiles()) {
+                    // Get the list from the map
+                    List<IProfiles> list = map.get(profile);
+                    // Create and add a new list if needed
+                    if(list == null) {
+                        list = new ArrayList<>();
+                        map.put(profile, list);
+                    }
+                    // Add the concept to the list
+                    list.add((IProfiles)eObject);
+                }
+            }
+        }
+        
+        return map;
+    }
+    
+    /**
+     * @return true if p1 matches p2 by same name and concept type
+     */
+    public static boolean isMatchingProfile(IProfile p1, IProfile p2) {
+        return p1.getName() != null && p1.getName().equalsIgnoreCase(p2.getName())
+                && p1.getConceptType() != null && p1.getConceptType().equals(p2.getConceptType());
     }
 }

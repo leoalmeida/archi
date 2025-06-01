@@ -6,6 +6,7 @@
 package com.archimatetool.editor.views.navigator;
 
 import java.beans.PropertyChangeEvent;
+import java.util.List;
 
 import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.emf.common.notify.Notification;
@@ -38,13 +39,13 @@ import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.part.DrillDownAdapter;
 
 import com.archimatetool.editor.model.IEditorModelManager;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.views.AbstractModelView;
 import com.archimatetool.editor.views.tree.actions.IViewerAction;
 import com.archimatetool.editor.views.tree.actions.PropertiesAction;
-import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
 
 
@@ -67,8 +68,6 @@ implements INavigatorView, ISelectionListener {
     
     private NavigatorDrillDownAdapter fDrillDownAdapter;
     
-    private IArchimateElement fCurrentElement;
-    
     private class NavigatorDrillDownAdapter extends DrillDownAdapter {
         public NavigatorDrillDownAdapter() {
             super(fTreeViewer);
@@ -76,17 +75,12 @@ implements INavigatorView, ISelectionListener {
         
         @Override
         public boolean canExpand(Object element) {
-            Object root = fTreeViewer.getActualInput();
-            element = fTreeViewer.getActualInput(element);
-            //return element != root && fTreeViewer.isExpandable(element);
-            return element != root;
+            return element != getViewerInput();
         }
 
         @Override
         public void goInto() {
-            IStructuredSelection sel = (IStructuredSelection)fTreeViewer.getSelection();
-            Object element = sel.getFirstElement();
-            goInto(new Object[] { element });
+            goInto(new Object[] { ((IStructuredSelection)fTreeViewer.getSelection()).getFirstElement() });
         }
     }
     
@@ -101,12 +95,11 @@ implements INavigatorView, ISelectionListener {
         fTreeViewer = new NavigatorViewer(parent, SWT.NULL);
         fTreeViewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
         
-        fTreeViewer.setInput(IEditorModelManager.INSTANCE);
-        
         /*
          * Listen to Double-click Action
          */
         fTreeViewer.addDoubleClickListener(new IDoubleClickListener() {
+            @Override
             public void doubleClick(DoubleClickEvent event) {
                 fDrillDownAdapter.goInto();
             }
@@ -114,6 +107,7 @@ implements INavigatorView, ISelectionListener {
         
         // Tree selection listener
         fTreeViewer.addSelectionChangedListener(new ISelectionChangedListener() {
+            @Override
             public void selectionChanged(SelectionChangedEvent event) {
                 // Update actions
                 updateActions();
@@ -166,14 +160,14 @@ implements INavigatorView, ISelectionListener {
         fActionPinContent = new Action(Messages.NavigatorView_0, IAction.AS_CHECK_BOX) {
             {
                 setToolTipText(Messages.NavigatorView_1);
-                setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_PIN_16));
+                setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_PIN));
             }
         };
         
         fActionNavDown = new Action(Messages.NavigatorView_2, IAction.AS_RADIO_BUTTON) {
             {
                 setToolTipText(Messages.NavigatorView_3);
-                setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_NAVIGATOR_DOWNWARD_16));
+                setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_NAVIGATOR_DOWNWARD));
                 setChecked(true);
             }
             
@@ -187,7 +181,7 @@ implements INavigatorView, ISelectionListener {
         fActionNavUp = new Action(Messages.NavigatorView_4, IAction.AS_RADIO_BUTTON) {
             {
                 setToolTipText(Messages.NavigatorView_5);
-                setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_NAVIGATOR_UPWARD_16));
+                setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_NAVIGATOR_UPWARD));
             }
             
             @Override
@@ -216,6 +210,7 @@ implements INavigatorView, ISelectionListener {
         menuMgr.setRemoveAllWhenShown(true);
         
         menuMgr.addMenuListener(new IMenuListener() {
+            @Override
             public void menuAboutToShow(IMenuManager manager) {
                 fillContextMenu(manager);
             }
@@ -253,8 +248,7 @@ implements INavigatorView, ISelectionListener {
      * Update the Local Actions depending on the selection 
      */
     private void updateActions() {
-        IStructuredSelection selection = (IStructuredSelection)getViewer().getSelection();
-        fActionProperties.update(selection);
+        fActionProperties.update();
         updateUndoActions();
     }
     
@@ -276,18 +270,13 @@ implements INavigatorView, ISelectionListener {
     
     @Override
     public void selectionChanged(IWorkbenchPart part, ISelection selection) {
-        if(part == this) {
-            return;
-        }
-        
-        if(fActionPinContent.isChecked()) {
+        if(part == this || fActionPinContent.isChecked()) {
             return;
         }
         
         // Don't reset if we select something in another Eclipse view
         if(selection instanceof IStructuredSelection && !selection.isEmpty()) {
-            Object object = ((IStructuredSelection)selection).getFirstElement();
-            setElement(object);
+            setElement(((IStructuredSelection)selection).getFirstElement());
         }
     }
     
@@ -299,34 +288,30 @@ implements INavigatorView, ISelectionListener {
     private void setElement(Object object) {
         fDrillDownAdapter.reset();
         
-        IArchimateElement element = null;
+        IArchimateConcept concept = null;
         
-        if(object instanceof IArchimateElement) {
-            element = (IArchimateElement)object;
+        if(object instanceof IArchimateConcept) {
+            concept = (IArchimateConcept)object;
         }
         else if(object instanceof IAdaptable) {
-            element = (IArchimateElement)((IAdaptable)object).getAdapter(IArchimateElement.class);
+            concept = ((IAdaptable)object).getAdapter(IArchimateConcept.class);
         }
         
-        if(element != null) {
-            getViewer().setInput(new Object[] { element }); // Need to use an array
-        }
-        else {
-            getViewer().setInput(null);
-        }
-        
-        fCurrentElement = element;
+        getViewer().setInput(new Object[] { concept }); // Need to use an array
     }
     
     private void reset() {
         fDrillDownAdapter.reset();
         getViewer().setInput(null);
-        fCurrentElement = null;
     }
     
     @Override
     protected IArchimateModel getActiveArchimateModel() {
-        return fCurrentElement != null ? fCurrentElement.getArchimateModel() : null;
+        return getViewerInput() != null ? getViewerInput().getArchimateModel() : null;
+    }
+    
+    private IArchimateModelObject getViewerInput() {
+        return getViewer() != null && getViewer().getActualInput() != null ? getViewer().getActualInput() : null;
     }
 
     @Override
@@ -335,6 +320,8 @@ implements INavigatorView, ISelectionListener {
         
         // Unregister selection listener
         getSite().getWorkbenchWindow().getSelectionService().removeSelectionListener(this);
+        
+        fTreeViewer = null;
     }
     
     // =================================================================================
@@ -343,18 +330,14 @@ implements INavigatorView, ISelectionListener {
     
     @Override
     public void propertyChange(PropertyChangeEvent evt) {
-        String propertyName = evt.getPropertyName();
-        Object newValue = evt.getNewValue();
-        
         // Model Closed
-        if(propertyName == IEditorModelManager.PROPERTY_MODEL_REMOVED) {
-            Object input = getViewer().getActualInput();
-            if(input instanceof IArchimateModelElement && ((IArchimateModelElement)input).getArchimateModel() == newValue) {
+        if(evt.getPropertyName() == IEditorModelManager.PROPERTY_MODEL_REMOVED) {
+            if(getActiveArchimateModel() == evt.getNewValue()) {
                 reset();
             }
         }
         // Command Stack - update Actions
-        else if(propertyName == IEditorModelManager.COMMAND_STACK_CHANGED) {
+        else if(evt.getPropertyName() == IEditorModelManager.COMMAND_STACK_CHANGED) {
             updateActions();
         }
         else {
@@ -368,47 +351,55 @@ implements INavigatorView, ISelectionListener {
     
     @Override
     protected void eCoreChanged(Notification msg) {
-        int type = msg.getEventType();
-        
-        if(type == Notification.ADD || type == Notification.ADD_MANY ||
-                type == Notification.REMOVE || type == Notification.REMOVE_MANY || type == Notification.MOVE) {
-            getViewer().refresh();
-        }
-        // Attribute set
-        else if(type == Notification.SET) {
-            Object feature = msg.getFeature();
-
-            // Relationship/Connection changed - requires full refresh
-            if(feature == IArchimatePackage.Literals.RELATIONSHIP__SOURCE ||
-                                        feature == IArchimatePackage.Literals.RELATIONSHIP__TARGET) {
-                getViewer().refresh();
-            }
-            else {
-                super.eCoreChanged(msg);
-            }
-        }
-        else {
-            super.eCoreChanged(msg);
-        }
+        doRefresh(msg);
     }
     
     @Override
-    protected void refreshElementsFromBufferedNotifications() {
-        getViewer().refresh();
+    protected void doRefreshFromNotifications(List<Notification> notifications) {
+        for(Notification msg : notifications) {
+            if(doRefresh(msg)) {
+                break; // Only need to refresh once
+            }
+        }
+    }
+    
+    private boolean doRefresh(Notification msg) {
+        // Name change
+        if(msg.getFeature() == IArchimatePackage.Literals.NAMEABLE__NAME) {
+            getViewer().update(msg.getNotifier(), null);
+        }
+        // Requires a full refresh
+        else if(isRefreshEvent(msg)) {
+            getViewer().refreshTreePreservingExpandedNodes();
+            return true;
+        }
+        
+        return false;
+    }
+    
+    private boolean isRefreshEvent(Notification msg) {
+        if(msg.getNewValue() instanceof IArchimateConcept || msg.getOldValue() instanceof IArchimateConcept) {
+            return true;
+        }
+        
+        return false;
     }
 
     // =================================================================================
     //                       Contextual Help support
     // =================================================================================
 
+    @Override
     public int getContextChangeMask() {
         return NONE;
     }
 
+    @Override
     public IContext getContext(Object target) {
         return HelpSystem.getContext(HELP_ID);
     }
 
+    @Override
     public String getSearchExpression(Object target) {
         return Messages.NavigatorView_6;
     }

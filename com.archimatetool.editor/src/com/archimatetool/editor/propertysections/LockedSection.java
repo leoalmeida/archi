@@ -5,12 +5,10 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.gef.EditPart;
-import org.eclipse.jface.viewers.IFilter;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -29,51 +27,48 @@ import com.archimatetool.model.ILockable;
  * 
  * @author Phillip Beauvoir
  */
-public class LockedSection extends AbstractArchimatePropertySection {
+public class LockedSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.elementPropertySection"; //$NON-NLS-1$
 
     /**
      * Filter to show or reject this section depending on input value
      */
-    public static class Filter implements IFilter {
+    public static class Filter extends ObjectFilter {
         @Override
-        public boolean select(Object object) {
-            return (object instanceof EditPart) && ((EditPart)object).getModel() instanceof ILockable;
+        public boolean isRequiredType(Object object) {
+            return object instanceof ILockable;
+        }
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return ILockable.class;
         }
     }
 
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
-     */
-    private Adapter eAdapter = new AdapterImpl() {
-        @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Model event (Undo/Redo and here)
-            if(feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
-                refreshLockedButton();
-            }
-        }
-    };
-    
-    private ILockable fLockable;
-    
     private Button fButtonLocked;
     
     @Override
     protected void createControls(Composite parent) {
         createLabel(parent, Messages.LockedSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
         
-        fButtonLocked = new Button(parent, SWT.CHECK);
+        fButtonLocked = getWidgetFactory().createButton(parent, null, SWT.CHECK);
+        
         fButtonLocked.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if(isAlive()) {
-                    fIsExecutingCommand = true;
-                    getCommandStack().execute(new LockObjectCommand(fLockable, fButtonLocked.getSelection()));
-                    fIsExecutingCommand = false;
+                CompoundCommand result = new CompoundCommand();
+
+                for(EObject lockable : getEObjects()) {
+                    if(isAlive(lockable)) {
+                        Command cmd = new LockObjectCommand((ILockable)lockable, fButtonLocked.getSelection());
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
                 }
+
+                executeCommand(result.unwrap());
             }
         });
 
@@ -82,37 +77,24 @@ public class LockedSection extends AbstractArchimatePropertySection {
     }
     
     @Override
-    protected void setElement(Object element) {
-        if(element instanceof EditPart && ((EditPart)element).getModel() instanceof ILockable) {
-            fLockable = (ILockable)((EditPart)element).getModel();
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+        if(feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
+            update();
         }
-
-        if(fLockable == null) {
-            throw new RuntimeException("Object was null"); //$NON-NLS-1$
-        }
-        
-        refreshControls();
     }
     
-    protected void refreshControls() {
-        refreshLockedButton();
-    }
-    
-    protected void refreshLockedButton() {
+    @Override
+    protected void update() {
         if(fIsExecutingCommand) {
             return; 
         }
         
-        fButtonLocked.setSelection(fLockable.isLocked());
+        fButtonLocked.setSelection(((ILockable)getFirstSelectedObject()).isLocked());
     }
     
     @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
-    }
-
-    @Override
-    protected EObject getEObject() {
-        return fLockable;
+    protected IObjectFilter getFilter() {
+        return new Filter();
     }
 }

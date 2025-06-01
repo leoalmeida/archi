@@ -5,21 +5,17 @@
  */
 package com.archimatetool.editor.utils;
 
-import junit.framework.TestSuite;
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
-@SuppressWarnings("nls")
+@Suite
+@SelectClasses({
+    FileUtilsTests.class,
+    HTMLUtilsTests.class,
+    StringUtilsTests.class,
+    ZipUtilsTests.class
+})
+@SuiteDisplayName("All Utils Tests")
 public class AllUtilsTests {
-
-    public static junit.framework.Test suite() {
-		TestSuite suite = new TestSuite("com.archimatetool.editor.utils");
-		
-        // utils
-        suite.addTest(FileUtilsTests.suite());
-        suite.addTest(HTMLUtilsTests.suite());
-        suite.addTest(StringUtilsTests.suite());
-        suite.addTest(ZipUtilsTests.suite());
-
-        return suite;
-	}
-
 }

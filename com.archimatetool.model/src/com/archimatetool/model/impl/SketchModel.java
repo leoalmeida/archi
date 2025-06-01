@@ -19,10 +19,10 @@ import com.archimatetool.model.ISketchModel;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.SketchModel#getBackground <em>Background</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -70,6 +70,7 @@ public class SketchModel extends DiagramModel implements ISketchModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getBackground() {
         return background;
     }
@@ -79,6 +80,7 @@ public class SketchModel extends DiagramModel implements ISketchModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setBackground(int newBackground) {
         int oldBackground = background;
         background = newBackground;
@@ -153,7 +155,7 @@ public class SketchModel extends DiagramModel implements ISketchModel {
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (background: "); //$NON-NLS-1$
         result.append(background);
         result.append(')');

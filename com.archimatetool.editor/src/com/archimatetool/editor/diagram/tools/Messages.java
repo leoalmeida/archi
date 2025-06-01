@@ -35,9 +35,13 @@ public class Messages extends NLS {
 
     public static String MagicConnectionCreationTool_4;
 
-    public static String MagicConnectionCreationTool_5;
-
     public static String MagicConnectionCreationTool_6;
+
+    public static String MagicConnectionCreationTool_7;
+
+    public static String MagicConnectionCreationTool_8;
+
+    public static String MagicConnectionCreationTool_9;
     static {
         // initialize resource bundle
         NLS.initializeMessages(BUNDLE_NAME, Messages.class);

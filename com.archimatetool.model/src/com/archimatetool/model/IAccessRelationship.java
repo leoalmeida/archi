@@ -13,16 +13,16 @@ package com.archimatetool.model;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IAccessRelationship#getAccessType <em>Access Type</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getAccessRelationship()
  * @model
  * @generated
  */
-public interface IAccessRelationship extends IRelationship {
+public interface IAccessRelationship extends IDependendencyRelationship {
 
     int WRITE_ACCESS = 0; // Default
     int READ_ACCESS = 1;

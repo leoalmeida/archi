@@ -15,12 +15,10 @@ import com.archimatetool.model.IDeliverable;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Deliverable</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Deliverable extends ImplementationMigrationElement implements IDeliverable {
+public class Deliverable extends ArchimateElement implements IDeliverable {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

@@ -5,10 +5,9 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IDiagramModelComponent;
@@ -17,10 +16,6 @@ import com.archimatetool.model.IDiagramModelImage;
 
 @SuppressWarnings("nls")
 public class DiagramModelImageTests extends DiagramModelObjectTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelImageTests.class);
-    }
     
     private IDiagramModelImage image;
     
@@ -44,5 +39,14 @@ public class DiagramModelImageTests extends DiagramModelObjectTests {
         image.setImagePath("/somepath");
         assertEquals("/somepath", image.getImagePath());
     }
+    
+    @Test
+    public void testGetProperties() {
+        CommonTests.testProperties(image);
+    }
 
+    @Test
+    public void testGetDocumentation() {
+        CommonTests.testGetDocumentation(image);
+    }
 }

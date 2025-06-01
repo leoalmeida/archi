@@ -13,10 +13,10 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 
 import com.archimatetool.editor.diagram.editparts.diagram.GroupEditPart;
-import com.archimatetool.editor.ui.ColorFactory;
-import com.archimatetool.editor.ui.IArchimateImages;
-import com.archimatetool.editor.ui.factory.AbstractElementUIProvider;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.factory.AbstractGraphicalObjectUIProvider;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.ITextAlignment;
 
 
 
@@ -25,8 +25,11 @@ import com.archimatetool.model.IArchimatePackage;
  * 
  * @author Phillip Beauvoir
  */
-public class GroupUIProvider extends AbstractElementUIProvider {
+public class GroupUIProvider extends AbstractGraphicalObjectUIProvider {
+    
+    private static Color defaultColor = new Color(210, 215, 215);
 
+    @Override
     public EClass providerFor() {
         return IArchimatePackage.eINSTANCE.getDiagramModelGroup();
     }
@@ -48,16 +51,21 @@ public class GroupUIProvider extends AbstractElementUIProvider {
     
     @Override
     public Image getImage() {
-        return IArchimateImages.ImageFactory.getImage(IArchimateImages.ICON_GROUP_16);
+        return IArchiImages.ImageFactory.getImage(IArchiImages.ICON_GROUP);
     }
 
     @Override
     public ImageDescriptor getImageDescriptor() {
-        return IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_GROUP_16);
+        return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_GROUP);
     }
 
     @Override
     public Color getDefaultColor() {
-        return ColorFactory.get(210, 215, 215);
+        return defaultColor;
+    }
+    
+    @Override
+    public int getDefaultTextAlignment() {
+        return ITextAlignment.TEXT_ALIGNMENT_LEFT;
     }
 }

@@ -5,17 +5,16 @@
  */
 package com.archimatetool.editor.diagram.sketch.editparts;
 
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.gef.EditPart;
 import org.eclipse.gef.EditPartFactory;
 
+import com.archimatetool.editor.Logger;
 import com.archimatetool.editor.diagram.editparts.diagram.EmptyEditPart;
-import com.archimatetool.editor.diagram.editparts.diagram.LineConnectionEditPart;
-import com.archimatetool.model.IDiagramModelConnection;
+import com.archimatetool.editor.ui.factory.ObjectUIFactory;
+import com.archimatetool.editor.ui.factory.IObjectUIProvider;
 import com.archimatetool.model.IDiagramModelGroup;
 import com.archimatetool.model.IDiagramModelReference;
-import com.archimatetool.model.ISketchModel;
-import com.archimatetool.model.ISketchModelActor;
-import com.archimatetool.model.ISketchModelSticky;
 
 
 /**
@@ -26,51 +25,38 @@ import com.archimatetool.model.ISketchModelSticky;
 public class SketchEditPartFactory
 implements EditPartFactory {
     
+    @Override
     public EditPart createEditPart(EditPart context, Object model) {
-        EditPart child = null;
-        
         if(model == null) {
             return null;
         }
         
-        // Main Diagram Edit Part
-        if(model instanceof ISketchModel) {
-            child = new SketchDiagramPart();
-        }
-        
-        // Actor
-        else if(model instanceof ISketchModelActor) {
-            child = new SketchActorEditPart();
-        }
-        
-        // Sticky
-        else if(model instanceof ISketchModelSticky) {
-            child = new StickyEditPart();
-        }
-        
-        // Diagram Model Reference
-        else if(model instanceof IDiagramModelReference) {
+        EditPart child = null;
+        IObjectUIProvider provider = null;
+
+        // Exceptions to the rule...
+        if(model instanceof IDiagramModelReference) {
             child = new SketchDiagramModelReferenceEditPart();
         }
-        
-        // Group
         else if(model instanceof IDiagramModelGroup) {
             child = new SketchGroupEditPart();
         }
-        
-        // Connections
-        else if(model instanceof IDiagramModelConnection) {
-            child = new LineConnectionEditPart();
+        else if(model instanceof EObject) {
+            provider = ObjectUIFactory.INSTANCE.getProviderForClass(((EObject)model).eClass());
+            if(provider != null) {
+                child = provider.createEditPart();
+            }
         }
-        
+
         /*
          * It's better to return an Empty Edit Part in case of a corrupt model.
          * Returning null is disastrous and means the Diagram View won't open.
          */
-        else {
+        if(child == null) {
+            Logger.logError("Could not create EditPart for: " + model); //$NON-NLS-1$
             child = new EmptyEditPart();
         }
-        
+
         // Set the Model in the Edit part
         child.setModel(model);
         

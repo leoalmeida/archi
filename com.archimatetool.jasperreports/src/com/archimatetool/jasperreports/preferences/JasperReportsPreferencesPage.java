@@ -17,7 +17,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.DirectoryDialog;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
@@ -43,7 +42,7 @@ implements IWorkbenchPreferencePage, IJasperPreferenceConstants {
     private Text fUserReportsFolderTextField;
     
 	public JasperReportsPreferencesPage() {
-		setPreferenceStore(JasperReportsPlugin.INSTANCE.getPreferenceStore());
+		setPreferenceStore(JasperReportsPlugin.getInstance().getPreferenceStore());
 	}
 	
     @Override
@@ -52,7 +51,9 @@ implements IWorkbenchPreferencePage, IJasperPreferenceConstants {
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
 
         Composite client = new Composite(parent, SWT.NULL);
-        client.setLayout(new GridLayout());
+        GridLayout layout = new GridLayout();
+        layout.marginWidth = layout.marginHeight = 0;
+        client.setLayout(layout);
                 
         Group settingsGroup = new Group(client, SWT.NULL);
         settingsGroup.setText(Messages.JasperReportsPreferencesPage_0);
@@ -64,11 +65,8 @@ implements IWorkbenchPreferencePage, IJasperPreferenceConstants {
         Label label = new Label(settingsGroup, SWT.NULL);
         label.setText(Messages.JasperReportsPreferencesPage_1);
         
-        fUserReportsFolderTextField = new Text(settingsGroup, SWT.BORDER | SWT.SINGLE);
+        fUserReportsFolderTextField = UIUtils.createSingleTextControl(settingsGroup, SWT.BORDER, false);
         fUserReportsFolderTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        
-        // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fUserReportsFolderTextField);
         
         Button folderButton = new Button(settingsGroup, SWT.PUSH);
         folderButton.setText(Messages.JasperReportsPreferencesPage_2);
@@ -88,7 +86,7 @@ implements IWorkbenchPreferencePage, IJasperPreferenceConstants {
     }
 
     private String chooseFolderPath() {
-        DirectoryDialog dialog = new DirectoryDialog(Display.getCurrent().getActiveShell());
+        DirectoryDialog dialog = new DirectoryDialog(getShell());
         dialog.setText(Messages.JasperReportsPreferencesPage_3);
         dialog.setMessage(Messages.JasperReportsPreferencesPage_4);
         File file = new File(fUserReportsFolderTextField.getText());
@@ -99,7 +97,7 @@ implements IWorkbenchPreferencePage, IJasperPreferenceConstants {
     }
 
     private void setValues() {
-        fUserReportsFolderTextField.setText(JasperReportsPlugin.INSTANCE.getUserTemplatesFolder().getAbsolutePath());
+        fUserReportsFolderTextField.setText(getPreferenceStore().getString(JASPER_USER_REPORTS_FOLDER));
     }
     
     @Override
@@ -110,10 +108,11 @@ implements IWorkbenchPreferencePage, IJasperPreferenceConstants {
     
     @Override
     protected void performDefaults() {
-        fUserReportsFolderTextField.setText(JasperReportsPlugin.INSTANCE.getDefaultUserTemplatesFolder().getAbsolutePath());
+        fUserReportsFolderTextField.setText(JasperReportsPlugin.getInstance().getDefaultUserTemplatesFolder().getAbsolutePath());
         super.performDefaults();
     }
     
+    @Override
     public void init(IWorkbench workbench) {
     }
 }

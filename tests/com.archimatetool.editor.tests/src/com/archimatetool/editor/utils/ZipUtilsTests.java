@@ -5,9 +5,10 @@
  */
 package com.archimatetool.editor.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.BufferedOutputStream;
 import java.io.File;
@@ -17,16 +18,14 @@ import java.io.IOException;
 import java.util.List;
 import java.util.zip.ZipOutputStream;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
-import org.junit.After;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.tests.TestUtils;
@@ -38,29 +37,25 @@ import com.archimatetool.tests.TestUtils;
 @SuppressWarnings("nls")
 public class ZipUtilsTests {
 
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ZipUtilsTests.class);
-    }
-    
     private File testZipFile = new File(TestSupport.getTestDataFolder(), "zip/test.zip");
     
     // ---------------------------------------------------------------------------------------------
     // BEFORE AND AFTER METHODS GO HERE 
     // ---------------------------------------------------------------------------------------------
     
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() {
     }
     
-    @AfterClass
+    @AfterAll
     public static void runOnceAfterAllTests() {
     }
     
-    @Before
+    @BeforeEach
     public void runBeforeEachTest() {
     }
     
-    @After
+    @AfterEach
     public void runAfterEachTest() throws IOException {
         FileUtils.deleteFolder(TestUtils.TMP_FOLDER);
     }
@@ -142,6 +137,8 @@ public class ZipUtilsTests {
 
         ZipUtils.addImageToZip(image, "img.png", zOut, SWT.IMAGE_PNG, null);
         
+        image.dispose();
+        
         zOut.flush();
         zOut.close();
 
@@ -149,8 +146,11 @@ public class ZipUtilsTests {
         File tmpOutFolder = TestUtils.createTempFolder("ziptest");
         ZipUtils.unpackZip(tmpZipFile, tmpOutFolder);
         File outFile = new File(tmpOutFolder, "img.png");
+        
         assertTrue(outFile.exists());
-        assertEquals(77, outFile.length());
+
+        // Image size will vary according to platform and device scale
+        assertTrue(outFile.length() > 70);
     }
     
     @Test
@@ -224,7 +224,7 @@ public class ZipUtilsTests {
         ZipUtils.unpackZip(testZipFile, folderTemp);
         
         // Test output folder exists
-        assertTrue("Zip Output folder not created: " + folderTemp, folderTemp.exists());
+        assertTrue(folderTemp.exists(), "Zip Output folder not created: " + folderTemp);
         
         // Compare files
         File file = new File(folderTemp, "Archisurance.archimate");
@@ -246,9 +246,37 @@ public class ZipUtilsTests {
     /**
      * Bogus zip file not existing should throw Exception
      */
-    @Test (expected=FileNotFoundException.class)
-    public void testUnpackZipFile_Exception() throws IOException {
-        ZipUtils.unpackZip(new File("bogus_file.zip"), TestUtils.createTempFolder("ziptest"));
+    @Test
+    public void testUnpackZipFile_Exception() {
+        assertThrows(FileNotFoundException.class, () -> {
+            ZipUtils.unpackZip(new File("bogus_file.zip"), TestUtils.createTempFolder("ziptest"));
+        });
     }
 
+    /**
+     * Test for cases where a zip entry has "../../file" which would unpack and possibly over-write a file
+     * in a parent folder.
+     */
+    @Test
+    public void testUnpackZipFileTriesToUnzipInParentRelativeFolder() throws Exception {
+        // Create a Zip file
+        File tmpZipFile = TestUtils.createTempFile(".zip");
+        
+        // Add afile
+        File srcFile = new File(TestSupport.getTestDataFolder(), "filetest/readme.txt");
+        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(tmpZipFile));
+        ZipOutputStream zOut = new ZipOutputStream(out);
+        
+        // But add it with a malicious path
+        ZipUtils.addFileToZip(srcFile, "../../" + srcFile.getName(), zOut);
+        zOut.flush();
+        zOut.close();
+
+        File folderTemp = new File(TestUtils.getMainTempFolder(), "ziptest");
+        
+        // Now unpack it and expect an exception
+        assertThrows(IOException.class, () -> {
+            ZipUtils.unpackZip(tmpZipFile, folderTemp);
+        });
+    }
 }

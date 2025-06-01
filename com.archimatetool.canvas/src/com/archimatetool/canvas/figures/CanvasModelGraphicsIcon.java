@@ -10,7 +10,6 @@ import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.swt.graphics.Color;
 
-import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.IGraphicsIcon;
 
 
@@ -21,19 +20,21 @@ import com.archimatetool.editor.ui.IGraphicsIcon;
  */
 public class CanvasModelGraphicsIcon implements IGraphicsIcon {
     
-    static Color blue = ColorFactory.get(150, 210, 247);
+    private static Color blue = new Color(200, 230, 247);
 
+    @Override
     public void drawIcon(Graphics graphics, Point origin) {
+        graphics.pushState();
+        
         graphics.setLineWidth(1);
         
         graphics.setBackgroundColor(ColorConstants.white);
         graphics.fillRectangle(origin.x, origin.y, 14, 12);
         
-        graphics.setForegroundColor(ColorConstants.white);
+        // Note - don't use graphics.fillGradient as it messes up the co-ordinate system on Linux hi-res
         graphics.setBackgroundColor(blue);
-        
-        graphics.fillGradient(origin.x, origin.y, 4, 8, true);
-        graphics.fillGradient(origin.x, origin.y + 9, 14, 3, true);
+        graphics.fillRectangle(origin.x, origin.y, 4, 8);
+        graphics.fillRectangle(origin.x, origin.y + 8, 14, 4);
         
         graphics.setForegroundColor(ColorConstants.darkGray);
 
@@ -42,6 +43,8 @@ public class CanvasModelGraphicsIcon implements IGraphicsIcon {
         graphics.drawLine(origin.x, origin.y + 8, origin.x + 14, origin.y + 8);
         graphics.drawLine(origin.x + 4, origin.y, origin.x + 4, origin.y + 8);
         graphics.drawLine(origin.x + 10, origin.y, origin.x + 10, origin.y + 8);
+        
+        graphics.popState();
     }
 
 }

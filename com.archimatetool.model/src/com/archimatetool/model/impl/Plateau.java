@@ -15,12 +15,10 @@ import com.archimatetool.model.IPlateau;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Plateau</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Plateau extends ImplementationMigrationElement implements IPlateau {
+public class Plateau extends ArchimateElement implements IPlateau {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

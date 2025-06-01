@@ -8,8 +8,10 @@ package com.archimatetool.model;
 import java.io.File;
 
 import org.eclipse.emf.common.util.EList;
-
 import org.eclipse.emf.ecore.EObject;
+
+import com.archimatetool.model.util.IModelContentListener;
+
 
 /**
  * <!-- begin-user-doc -->
@@ -18,21 +20,23 @@ import org.eclipse.emf.ecore.EObject;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IArchimateModel#getPurpose <em>Purpose</em>}</li>
  *   <li>{@link com.archimatetool.model.IArchimateModel#getFile <em>File</em>}</li>
  *   <li>{@link com.archimatetool.model.IArchimateModel#getVersion <em>Version</em>}</li>
  *   <li>{@link com.archimatetool.model.IArchimateModel#getMetadata <em>Metadata</em>}</li>
+ *   <li>{@link com.archimatetool.model.IArchimateModel#getProfiles <em>Profiles</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getArchimateModel()
  * @model extendedMetaData="name='model'"
  * @generated
  */
-public interface IArchimateModel extends IFolderContainer, INameable, IIdentifier, IArchimateModelElement, IProperties {
+public interface IArchimateModel extends IFolderContainer, IArchimateModelObject, IProperties {
     /**
      * Returns the value of the '<em><b>Purpose</b></em>' attribute.
+     * The default value is <code>""</code>.
      * <!-- begin-user-doc -->
      * <p>
      * If the meaning of the '<em>Purpose</em>' attribute isn't clear,
@@ -42,7 +46,8 @@ public interface IArchimateModel extends IFolderContainer, INameable, IIdentifie
      * @return the value of the '<em>Purpose</em>' attribute.
      * @see #setPurpose(String)
      * @see com.archimatetool.model.IArchimatePackage#getArchimateModel_Purpose()
-     * @model extendedMetaData="kind='element'"
+     * @model default=""
+     *        extendedMetaData="kind='element'"
      * @generated
      */
     String getPurpose();
@@ -117,6 +122,7 @@ public interface IArchimateModel extends IFolderContainer, INameable, IIdentifie
      * If the meaning of the '<em>Metadata</em>' reference isn't clear,
      * there really should be more of a description here...
      * </p>
+     * @deprecated Use getFeatures() instead
      * <!-- end-user-doc -->
      * @return the value of the '<em>Metadata</em>' containment reference.
      * @see #setMetadata(IMetadata)
@@ -129,12 +135,26 @@ public interface IArchimateModel extends IFolderContainer, INameable, IIdentifie
     /**
      * Sets the value of the '{@link com.archimatetool.model.IArchimateModel#getMetadata <em>Metadata</em>}' containment reference.
      * <!-- begin-user-doc -->
+     * @deprecated Use getFeatures().setFeature() instead
      * <!-- end-user-doc -->
      * @param value the new value of the '<em>Metadata</em>' containment reference.
      * @see #getMetadata()
      * @generated
      */
     void setMetadata(IMetadata value);
+
+    /**
+     * Returns the value of the '<em><b>Profiles</b></em>' containment reference list.
+     * The list contents are of type {@link com.archimatetool.model.IProfile}.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the value of the '<em>Profiles</em>' containment reference list.
+     * @see com.archimatetool.model.IArchimatePackage#getArchimateModel_Profiles()
+     * @model containment="true"
+     *        extendedMetaData="name='profile' kind='element'"
+     * @generated
+     */
+    EList<IProfile> getProfiles();
 
     /**
      * <!-- begin-user-doc -->
@@ -147,26 +167,10 @@ public interface IArchimateModel extends IFolderContainer, INameable, IIdentifie
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @model
+     * @model objectRequired="true"
      * @generated
      */
-    IFolder addDerivedRelationsFolder();
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @model
-     * @generated
-     */
-    void removeDerivedRelationsFolder();
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @model elementRequired="true"
-     * @generated
-     */
-    IFolder getDefaultFolderForElement(EObject element);
+    IFolder getDefaultFolderForObject(EObject object);
 
     /**
      * <!-- begin-user-doc -->
@@ -191,5 +195,22 @@ public interface IArchimateModel extends IFolderContainer, INameable, IIdentifie
      * @generated
      */
     IFolder getFolder(FolderType type);
+    
+    /**
+     * Add ecore listener for notifications in the whole model
+     * @param listener
+     */
+    boolean addModelContentListener(IModelContentListener listener);
+    
+    /**
+     * Remove ecore listener for whole model
+     * @param listener
+     */
+    boolean removeModelContentListener(IModelContentListener listener);
+    
+    /**
+     * Dispose of this model to free memory
+     */
+    void dispose();
 
 } // IArchimateModel

@@ -27,7 +27,6 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
@@ -35,11 +34,11 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.IImageExportProvider.IExportDialogAdapter;
 import com.archimatetool.editor.diagram.ImageExportProviderManager;
 import com.archimatetool.editor.diagram.ImageExportProviderManager.ImageExportProviderInfo;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.utils.StringUtils;
 
@@ -78,6 +77,11 @@ public class ExportAsImagePage extends WizardPage {
     private IFigure fFigure;
     
     /**
+     * The name
+     */
+    private String fName;
+    
+    /**
      * Provide an Interface to expose some of the functionality of this Dialog Page
      */
     private IExportDialogAdapter fExportDialogPageAdapter = new IExportDialogAdapter() {
@@ -88,16 +92,22 @@ public class ExportAsImagePage extends WizardPage {
     };
     
     private static final String PREFS_LAST_PROVIDER = "ExportImageLastProvider"; //$NON-NLS-1$
-    private static final String PREFS_LAST_FILE = "ExportImageLastFile"; //$NON-NLS-1$
+    private static final String PREFS_LAST_FOLDER = "ExportImageLastFolder"; //$NON-NLS-1$
     
-    public ExportAsImagePage(IFigure figure) {
+    public ExportAsImagePage(IFigure figure, String name) {
         super("ExportAsImagePage"); //$NON-NLS-1$
         
         fFigure = figure;
+        fName = name;
+        
+        // Safe name so never null or blank
+        if(!StringUtils.isSet(fName)) {
+            fName = "Image"; //$NON-NLS-1$
+        }
         
         setTitle(Messages.ExportAsImagePage_0);
         setDescription(Messages.ExportAsImagePage_1);
-        setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ECLIPSE_IMAGE_EXPORT_DIR_WIZARD));
+        setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ECLIPSE_IMAGE_EXPORT_DIR_WIZARD));
     }
 
     @Override
@@ -116,22 +126,21 @@ public class ExportAsImagePage extends WizardPage {
         Label label = new Label(exportGroup, SWT.NULL);
         label.setText(Messages.ExportAsImagePage_3);
         
-        fFileTextField = new Text(exportGroup, SWT.BORDER | SWT.SINGLE);
+        fFileTextField = UIUtils.createSingleTextControl(exportGroup, SWT.BORDER, false);
         fFileTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         
-        // Last saved name
-        String lastFileName = Preferences.STORE.getString(PREFS_LAST_FILE);
-        if(lastFileName != null && !"".equals(lastFileName)) { //$NON-NLS-1$
-            fFileTextField.setText(lastFileName);
+        // Get last folder
+        String lastFolder = ArchiPlugin.getInstance().getPreferenceStore().getString(PREFS_LAST_FOLDER);
+        if(StringUtils.isSet(lastFolder)) {
+            File file = new File(lastFolder);
+            fFileTextField.setText(new File(file, fName).getAbsolutePath());
         }
         else {
-            fFileTextField.setText(new File(System.getProperty("user.home"), "exported").getPath()); //$NON-NLS-1$ //$NON-NLS-2$
+            fFileTextField.setText(new File(System.getProperty("user.home"), fName).getAbsolutePath()); //$NON-NLS-1$
         }
         
-        // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fFileTextField);
-        
         fFileTextField.addModifyListener(new ModifyListener() {
+            @Override
             public void modifyText(ModifyEvent e) {
                 validateFields();
             }
@@ -167,7 +176,7 @@ public class ExportAsImagePage extends WizardPage {
 
         // Now set the combo and set to last user selected
         if(!fImageProviders.isEmpty()) {
-            String selectedProviderID = Preferences.STORE.getString(PREFS_LAST_PROVIDER);
+            String selectedProviderID = ArchiPlugin.getInstance().getPreferenceStore().getString(PREFS_LAST_PROVIDER);
             ImageExportProviderInfo provider = getImageProviderInfoFromID(selectedProviderID);
             if(provider == null) {
                 provider = fImageProviders.get(0);
@@ -226,10 +235,20 @@ public class ExportAsImagePage extends WizardPage {
             // Be nice and add a default extension to the file name
             String filename = fFileTextField.getText();
             if(filename.length() > 0) {
-                int dot = filename.lastIndexOf('.');
-                if(dot != -1) {
-                    filename = filename.substring(0, dot);
+                // Remove any known extensions so we can add a new one
+                // But we don't want to remove any dots or extension strings that might be in the file name itself
+                for(ImageExportProviderInfo info : fImageProviders) {
+                    for(String ext : info.getExtensions()) {
+                        if(filename.toLowerCase().endsWith("." + ext) ) { // ensure this is at the end //$NON-NLS-1$
+                            int index = filename.toLowerCase().lastIndexOf("." + ext); //$NON-NLS-1$
+                            if(index != -1) {
+                                filename = filename.substring(0, index);
+                                break;
+                            }
+                        }
+                    }
                 }
+                
                 fFileTextField.setText(filename + "." + fSelectedProvider.getExtensions().get(0)); //$NON-NLS-1$
             }
             
@@ -280,7 +299,7 @@ public class ExportAsImagePage extends WizardPage {
     }
     
     private File chooseFile() {
-        FileDialog dialog = new FileDialog(Display.getCurrent().getActiveShell(), SWT.SAVE);
+        FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
         dialog.setText(Messages.ExportAsImagePage_7);
         
         File file = new File(fFileTextField.getText());
@@ -295,6 +314,9 @@ public class ExportAsImagePage extends WizardPage {
         }
         
         dialog.setFilterExtensions(new String[] { extensions, "*.*" } ); //$NON-NLS-1$
+        
+        // Does nothing on macOS 10.15+. On Windows will work after Eclipse 4.21
+        dialog.setOverwrite(false);
         
         String path = dialog.open();
         if(path == null) {
@@ -324,9 +346,14 @@ public class ExportAsImagePage extends WizardPage {
     }
 
     void storePreferences() {
-        Preferences.STORE.setValue(PREFS_LAST_FILE, getFileName());
+        // Store current folder
+        File parentFile = new File(getFileName()).getAbsoluteFile().getParentFile(); // Make sure to use absolute file
+        if(parentFile != null) {
+            ArchiPlugin.getInstance().getPreferenceStore().setValue(PREFS_LAST_FOLDER, parentFile.getAbsolutePath());
+        }
+        
         if(fSelectedProvider != null) {
-            Preferences.STORE.setValue(PREFS_LAST_PROVIDER, fSelectedProvider.getID());
+            ArchiPlugin.getInstance().getPreferenceStore().setValue(PREFS_LAST_PROVIDER, fSelectedProvider.getID());
         }
     }
     

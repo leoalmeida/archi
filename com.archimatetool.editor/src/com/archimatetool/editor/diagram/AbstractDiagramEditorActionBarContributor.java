@@ -11,6 +11,7 @@ import org.eclipse.gef.ui.actions.ActionBarContributor;
 import org.eclipse.gef.ui.actions.AlignmentRetargetAction;
 import org.eclipse.gef.ui.actions.GEFActionConstants;
 import org.eclipse.gef.ui.actions.MatchHeightRetargetAction;
+import org.eclipse.gef.ui.actions.MatchSizeRetargetAction;
 import org.eclipse.gef.ui.actions.MatchWidthRetargetAction;
 import org.eclipse.gef.ui.actions.ZoomComboContributionItem;
 import org.eclipse.gef.ui.actions.ZoomInRetargetAction;
@@ -31,13 +32,11 @@ import org.eclipse.ui.actions.ActionFactory;
 import org.eclipse.ui.actions.LabelRetargetAction;
 import org.eclipse.ui.actions.RetargetAction;
 
-import com.archimatetool.editor.actions.ArchimateEditorActionFactory;
+import com.archimatetool.editor.actions.ArchiActionFactory;
 import com.archimatetool.editor.diagram.actions.BorderColorAction;
-import com.archimatetool.editor.diagram.actions.BringForwardAction;
-import com.archimatetool.editor.diagram.actions.BringToFrontAction;
-import com.archimatetool.editor.diagram.actions.ConnectionLineWidthAction;
 import com.archimatetool.editor.diagram.actions.ConnectionRouterAction;
 import com.archimatetool.editor.diagram.actions.DefaultEditPartSizeAction;
+import com.archimatetool.editor.diagram.actions.DeleteContainerAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageToClipboardAction;
 import com.archimatetool.editor.diagram.actions.FillColorAction;
@@ -45,14 +44,20 @@ import com.archimatetool.editor.diagram.actions.FontAction;
 import com.archimatetool.editor.diagram.actions.FontColorAction;
 import com.archimatetool.editor.diagram.actions.FullScreenAction;
 import com.archimatetool.editor.diagram.actions.LineColorAction;
+import com.archimatetool.editor.diagram.actions.LineWidthAction;
 import com.archimatetool.editor.diagram.actions.LockObjectAction;
+import com.archimatetool.editor.diagram.actions.ObjectPositionAction;
+import com.archimatetool.editor.diagram.actions.ObjectPositionAction.ObjectPositionActionDefinition;
+import com.archimatetool.editor.diagram.actions.OpacityAction;
+import com.archimatetool.editor.diagram.actions.OutlineOpacityAction;
 import com.archimatetool.editor.diagram.actions.ResetAspectRatioAction;
-import com.archimatetool.editor.diagram.actions.SendBackwardAction;
-import com.archimatetool.editor.diagram.actions.SendToBackAction;
 import com.archimatetool.editor.diagram.actions.TextAlignmentAction;
+import com.archimatetool.editor.diagram.actions.TextAlignmentAction.TextAlignmentActionDefinition;
 import com.archimatetool.editor.diagram.actions.TextPositionAction;
-import com.archimatetool.editor.ui.IArchimateImages;
-import com.archimatetool.editor.ui.components.CellEditorGlobalActionHandler;
+import com.archimatetool.editor.diagram.actions.TextPositionAction.TextPositionActionDefinition;
+import com.archimatetool.editor.diagram.actions.ZoomNormalAction;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.components.GlobalActionDisablementHandler;
 import com.archimatetool.editor.utils.PlatformUtils;
 
 
@@ -67,16 +72,36 @@ extends ActionBarContributor {
 
     protected ZoomComboContributionItem fZoomCombo;
     
-    protected String GROUP_EDIT_MENU = "group_editMenu"; //$NON-NLS-1$
-    protected String GROUP_TOOLBAR_END = "group_toolbarEnd"; //$NON-NLS-1$
-    protected String GROUP_POSITION = "group_position"; //$NON-NLS-1$
-    private String GROUP_CONNECTIONS = "group_connections"; //$NON-NLS-1$
-    
+    protected static final String GROUP_EDIT_MENU = "group_editMenu"; //$NON-NLS-1$
+    protected static final String GROUP_TOOLBAR_END = "group_toolbarEnd"; //$NON-NLS-1$
+    protected static final String GROUP_POSITION = "group_position"; //$NON-NLS-1$
+    protected static final String GROUP_CONNECTIONS = "group_connections"; //$NON-NLS-1$
+    protected static final String GROUP_EDIT_DELETE_MENU = "editDeleteMenuGroup"; //$NON-NLS-1$
+
+
     @Override
     protected void buildActions() {
-        // Zoom in and out
-        addRetargetAction(new ZoomInRetargetAction());
-        addRetargetAction(new ZoomOutRetargetAction());
+        // Zoom in
+        ZoomInRetargetAction zoomInAction = new ZoomInRetargetAction();
+        zoomInAction.setText(Messages.AbstractDiagramEditorActionBarContributor_9); // Externalise these
+        zoomInAction.setToolTipText(Messages.AbstractDiagramEditorActionBarContributor_10);
+        zoomInAction.setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ZOOM_IN));
+        addRetargetAction(zoomInAction);
+        
+        // Zoom out
+        ZoomOutRetargetAction zoomOutAction = new ZoomOutRetargetAction();
+        zoomOutAction.setText(Messages.AbstractDiagramEditorActionBarContributor_11); // Externalise these
+        zoomOutAction.setToolTipText(Messages.AbstractDiagramEditorActionBarContributor_12);
+        zoomOutAction.setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ZOOM_OUT));
+        addRetargetAction(zoomOutAction);
+        
+        // Zoom normal
+        RetargetAction retargetAction = new RetargetAction(ZoomNormalAction.ID, ZoomNormalAction.TEXT);
+        retargetAction.setActionDefinitionId(ZoomNormalAction.ID);
+        retargetAction.setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ZOOM_NORMAL));
+        retargetAction.setText(ZoomNormalAction.TEXT);
+        retargetAction.setToolTipText(ZoomNormalAction.TEXT);
+        addRetargetAction(retargetAction);
         
         // Alignment Actions
         addRetargetAction(new AlignmentRetargetAction(PositionConstants.LEFT));
@@ -86,9 +111,10 @@ extends ActionBarContributor {
         addRetargetAction(new AlignmentRetargetAction(PositionConstants.MIDDLE));
         addRetargetAction(new AlignmentRetargetAction(PositionConstants.BOTTOM));
         
-        // Match width/height
+        // Match width/height/size
         addRetargetAction(new MatchWidthRetargetAction());
         addRetargetAction(new MatchHeightRetargetAction());
+        addRetargetAction(new MatchSizeRetargetAction());
         
         addRetargetAction(new RetargetAction(SnapToGrid.PROPERTY_GRID_ENABLED, 
                 Messages.AbstractDiagramEditorActionBarContributor_0, IAction.AS_CHECK_BOX));
@@ -103,13 +129,14 @@ extends ActionBarContributor {
         //        "Ruler", IAction.AS_CHECK_BOX));
         
         // Default Size
-        RetargetAction retargetAction = new RetargetAction(DefaultEditPartSizeAction.ID, DefaultEditPartSizeAction.TEXT);
-        retargetAction.setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_DEFAULT_SIZE));
+        retargetAction = new RetargetAction(DefaultEditPartSizeAction.ID, DefaultEditPartSizeAction.TEXT);
+        retargetAction.setActionDefinitionId(DefaultEditPartSizeAction.ID);
+        retargetAction.setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_DEFAULT_SIZE));
         addRetargetAction(retargetAction);
         
         // Reset Aspect Ratio
         retargetAction = new RetargetAction(ResetAspectRatioAction.ID, ResetAspectRatioAction.TEXT);
-        retargetAction.setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_ASPECT_RATIO));
+        retargetAction.setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_ASPECT_RATIO));
         addRetargetAction(retargetAction);
         
         // Export as Image
@@ -120,12 +147,14 @@ extends ActionBarContributor {
         retargetAction.setActionDefinitionId(ExportAsImageToClipboardAction.ID); // key binding
         addRetargetAction(retargetAction);
         
-        // Fill color, line width, font, color
+        // Fill color, line width, font, color, opacity
         addRetargetAction(new RetargetAction(FillColorAction.ID, FillColorAction.TEXT));
-        addRetargetAction(new RetargetAction(ConnectionLineWidthAction.ID, ConnectionLineWidthAction.TEXT));
+        addRetargetAction(new RetargetAction(LineWidthAction.ID, LineWidthAction.TEXT));
         addRetargetAction(new RetargetAction(LineColorAction.ID, LineColorAction.TEXT));
         addRetargetAction(new RetargetAction(FontAction.ID, FontAction.TEXT));
         addRetargetAction(new RetargetAction(FontColorAction.ID, FontColorAction.TEXT));
+        addRetargetAction(new RetargetAction(OpacityAction.ID, OpacityAction.TEXT));
+        addRetargetAction(new RetargetAction(OutlineOpacityAction.ID, OutlineOpacityAction.TEXT));
         
         // Text Alignments
         for(RetargetAction action : TextAlignmentAction.createRetargetActions()) {
@@ -138,16 +167,16 @@ extends ActionBarContributor {
         }
 
         // Order Actions
-        addRetargetAction(new RetargetAction(BringToFrontAction.ID, BringToFrontAction.TEXT));
-        addRetargetAction(new RetargetAction(BringForwardAction.ID, BringForwardAction.TEXT));
-        addRetargetAction(new RetargetAction(SendToBackAction.ID, SendToBackAction.TEXT));
-        addRetargetAction(new RetargetAction(SendBackwardAction.ID, SendBackwardAction.TEXT));
+        for(RetargetAction action : ObjectPositionAction.createRetargetActions()) {
+            addRetargetAction(action);
+        }
         
         // Connection Routers
         addRetargetAction(new RetargetAction(ConnectionRouterAction.BendPointConnectionRouterAction.ID,
                 ConnectionRouterAction.CONNECTION_ROUTER_BENDPONT, IAction.AS_RADIO_BUTTON));
-        addRetargetAction(new RetargetAction(ConnectionRouterAction.ShortestPathConnectionRouterAction.ID,
-                ConnectionRouterAction.CONNECTION_ROUTER_SHORTEST_PATH, IAction.AS_RADIO_BUTTON));
+// Doesn't work with Connection to Connection
+//      addRetargetAction(new RetargetAction(ConnectionRouterAction.ShortestPathConnectionRouterAction.ID,
+//              ConnectionRouterAction.CONNECTION_ROUTER_SHORTEST_PATH, IAction.AS_RADIO_BUTTON));
         addRetargetAction(new RetargetAction(ConnectionRouterAction.ManhattanConnectionRouterAction.ID,
                 ConnectionRouterAction.CONNECTION_ROUTER_MANHATTAN, IAction.AS_RADIO_BUTTON));
         
@@ -163,6 +192,12 @@ extends ActionBarContributor {
         
         // Lock
         addRetargetAction(new LabelRetargetAction(LockObjectAction.ID, Messages.AbstractDiagramEditorActionBarContributor_3));
+        
+        // Delete Container
+        retargetAction = new RetargetAction(DeleteContainerAction.ID, DeleteContainerAction.TEXT);
+        retargetAction.setActionDefinitionId(DeleteContainerAction.ID); // key binding
+        retargetAction.setToolTipText(DeleteContainerAction.TOOLTIP_TEXT);
+        addRetargetAction(retargetAction);
     }
 
     @Override
@@ -171,6 +206,7 @@ extends ActionBarContributor {
         addGlobalActionKey(ActionFactory.CUT.getId());
         addGlobalActionKey(ActionFactory.COPY.getId());
         addGlobalActionKey(ActionFactory.PASTE.getId());
+        addGlobalActionKey(ArchiActionFactory.PASTE_SPECIAL.getId());
         addGlobalActionKey(ActionFactory.UNDO.getId());
         addGlobalActionKey(ActionFactory.REDO.getId());
         addGlobalActionKey(ActionFactory.SELECT_ALL.getId());
@@ -195,6 +231,7 @@ extends ActionBarContributor {
         
         viewMenu.add(getAction(GEFActionConstants.ZOOM_IN));
         viewMenu.add(getAction(GEFActionConstants.ZOOM_OUT));
+        viewMenu.add(getAction(ZoomNormalAction.ID));
         viewMenu.add(new Separator());
         
         viewMenu.add(getAction(SnapToGrid.PROPERTY_GRID_ENABLED));
@@ -205,10 +242,9 @@ extends ActionBarContributor {
         
         IMenuManager orderMenu = new MenuManager(Messages.AbstractDiagramEditorActionBarContributor_5, "menu_order"); //$NON-NLS-1$
         viewMenu.add(orderMenu);
-        orderMenu.add(getAction(BringToFrontAction.ID));
-        orderMenu.add(getAction(BringForwardAction.ID));
-        orderMenu.add(getAction(SendToBackAction.ID));
-        orderMenu.add(getAction(SendBackwardAction.ID));
+        for(ObjectPositionActionDefinition def : ObjectPositionAction.getActionDefinitions()) {
+            orderMenu.add(getAction(def.id()));
+        }
         
         viewMenu.add(new GroupMarker(GROUP_POSITION));
         IMenuManager alignmentMenu = new MenuManager(Messages.AbstractDiagramEditorActionBarContributor_6, "menu_position"); //$NON-NLS-1$
@@ -227,21 +263,23 @@ extends ActionBarContributor {
         
         alignmentMenu.add(getAction(GEFActionConstants.MATCH_WIDTH));
         alignmentMenu.add(getAction(GEFActionConstants.MATCH_HEIGHT));
+        alignmentMenu.add(getAction(GEFActionConstants.MATCH_SIZE));
         
         alignmentMenu.add(new Separator());
         alignmentMenu.add(getAction(DefaultEditPartSizeAction.ID));
+        alignmentMenu.add(getAction(ResetAspectRatioAction.ID));
         
-        viewMenu.add(new Separator(GROUP_CONNECTIONS ));
+        viewMenu.add(new Separator(GROUP_CONNECTIONS));
         IMenuManager connectionMenu = new MenuManager(Messages.AbstractDiagramEditorActionBarContributor_7, "menu_connection_router"); //$NON-NLS-1$
         viewMenu.add(connectionMenu);
         connectionMenu.add(getAction(ConnectionRouterAction.BendPointConnectionRouterAction.ID));
-        connectionMenu.add(getAction(ConnectionRouterAction.ShortestPathConnectionRouterAction.ID));
+// Doesn't work with Connection to Connection
+//      connectionMenu.add(getAction(ConnectionRouterAction.ShortestPathConnectionRouterAction.ID));
         connectionMenu.add(getAction(ConnectionRouterAction.ManhattanConnectionRouterAction.ID));
-        viewMenu.add(new Separator());
+        viewMenu.add(new Separator("end_connection_router")); //$NON-NLS-1$
 
         if(!PlatformUtils.isMac()) {
             viewMenu.add(getAction(FullScreenAction.ID));
-            viewMenu.add(new Separator());
         }
         
         menuManager.insertAfter(IWorkbenchActionConstants.M_EDIT, viewMenu);
@@ -255,32 +293,53 @@ extends ActionBarContributor {
         // Export menu items
         IMenuManager exportMenu = menuManager.findMenuUsingPath(IWorkbenchActionConstants.M_FILE + "/export_menu"); //$NON-NLS-1$
         exportMenu.add(getAction(ExportAsImageAction.ID));
-        exportMenu.add(getAction(ExportAsImageToClipboardAction.ID));
         
         return fileMenu;
     }
     
     protected IMenuManager contributeToEditMenu(IMenuManager menuManager) {
         IMenuManager editMenu = (IMenuManager)menuManager.find(IWorkbenchActionConstants.M_EDIT);
-        editMenu.insertAfter(ArchimateEditorActionFactory.RENAME.getId(), new Separator(GROUP_EDIT_MENU));
+        editMenu.insertAfter(ArchiActionFactory.RENAME.getId(), new Separator(GROUP_EDIT_MENU));
         
-        // Fill Color Action
+        // Copy as Image to Clipboard
+        editMenu.insertAfter(ActionFactory.COPY.getId(), getAction(ExportAsImageToClipboardAction.ID));
+        
+        // Fill Color
         editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(FillColorAction.ID));
         
-        // Connection Line Width and Color
-        editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(ConnectionLineWidthAction.ID));
-        editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(LineColorAction.ID));
+        // Fill opacity
+        editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(OpacityAction.ID));
 
+        // Outline opacity
+        editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(OutlineOpacityAction.ID));
+
+        // Line Width and Color
+        editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(LineWidthAction.ID));
+        editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(LineColorAction.ID));
+        
         // Font
         editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(FontAction.ID));
         editMenu.appendToGroup(GROUP_EDIT_MENU, getAction(FontColorAction.ID));
         
         // Text Alignment
         IMenuManager textAlignmentMenu = new MenuManager(Messages.AbstractDiagramEditorActionBarContributor_8);
-        textAlignmentMenu.add(getAction(TextAlignmentAction.ACTION_LEFT_ID));
-        textAlignmentMenu.add(getAction(TextAlignmentAction.ACTION_CENTER_ID));
-        textAlignmentMenu.add(getAction(TextAlignmentAction.ACTION_RIGHT_ID));
+        for(TextAlignmentActionDefinition def : TextAlignmentAction.getActionDefinitions()) {
+            textAlignmentMenu.add(getAction(def.id()));
+        }
         editMenu.appendToGroup(GROUP_EDIT_MENU, textAlignmentMenu);
+        
+        // Text Position
+        IMenuManager textPositionMenu = new MenuManager(Messages.AbstractDiagramEditorActionBarContributor_13);
+        for(TextPositionActionDefinition def : TextPositionAction.getActionDefinitions()) {
+            textPositionMenu.add(getAction(def.id()));
+        }
+        editMenu.appendToGroup(GROUP_EDIT_MENU, textPositionMenu);
+        
+        // Group marker for additional delete actions
+        editMenu.insertAfter(ArchiActionFactory.DELETE.getId(), new GroupMarker(GROUP_EDIT_DELETE_MENU));
+
+        // Delete Container
+        editMenu.appendToGroup(GROUP_EDIT_DELETE_MENU, getAction(DeleteContainerAction.ID));
 
         return editMenu;
     }
@@ -290,18 +349,20 @@ extends ActionBarContributor {
         // Add the Zoom Manager Combo
         fZoomCombo = new ZoomComboContributionItem(getPage()) {
             // Hook into the Combo so we can disable global edit action handlers when it gets the focus
-            private CellEditorGlobalActionHandler globalActionHandler;
+            private GlobalActionDisablementHandler globalActionHandler;
             
             @Override
             protected Control createControl(Composite parent) {
                 Combo combo = (Combo)super.createControl(parent);
                 
                 combo.addFocusListener(new FocusListener() {
+                    @Override
                     public void focusGained(FocusEvent e) {
-                        globalActionHandler = new CellEditorGlobalActionHandler(getActionBars());
+                        globalActionHandler = new GlobalActionDisablementHandler(getActionBars());
                         globalActionHandler.clearGlobalActions();
                     }
 
+                    @Override
                     public void focusLost(FocusEvent e) {
                         if(globalActionHandler != null) {
                             globalActionHandler.restoreGlobalActions();
@@ -310,6 +371,11 @@ extends ActionBarContributor {
                 });
                 
                 return combo;
+            }
+            
+            @Override
+            protected int computeWidth(Control control) {
+                return Math.min(super.computeWidth(control), 100); // On Linux GTK this can get too wide
             }
         };
         
@@ -326,8 +392,10 @@ extends ActionBarContributor {
         toolBarManager.add(new Separator());   
         toolBarManager.add(getAction(GEFActionConstants.MATCH_WIDTH));
         toolBarManager.add(getAction(GEFActionConstants.MATCH_HEIGHT));
+        toolBarManager.add(getAction(GEFActionConstants.MATCH_SIZE));
         toolBarManager.add(new Separator());
         toolBarManager.add(getAction(DefaultEditPartSizeAction.ID));
+        toolBarManager.add(getAction(ResetAspectRatioAction.ID));
         toolBarManager.add(new GroupMarker(GROUP_TOOLBAR_END));
     }
 

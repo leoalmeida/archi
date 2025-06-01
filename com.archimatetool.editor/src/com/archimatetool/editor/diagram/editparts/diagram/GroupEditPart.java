@@ -5,7 +5,6 @@
  */
 package com.archimatetool.editor.diagram.editparts.diagram;
 
-import org.eclipse.draw2d.ConnectionAnchor;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.gef.EditPolicy;
 import org.eclipse.gef.Request;
@@ -15,16 +14,11 @@ import org.eclipse.gef.editpolicies.SnapFeedbackPolicy;
 import org.eclipse.gef.requests.LocationRequest;
 import org.eclipse.gef.tools.DirectEditManager;
 
-import com.archimatetool.editor.diagram.directedit.LabelDirectEditManager;
+import com.archimatetool.editor.diagram.directedit.MultiLineTextDirectEditManager;
 import com.archimatetool.editor.diagram.editparts.AbstractConnectedEditPart;
-import com.archimatetool.editor.diagram.editparts.IColoredEditPart;
-import com.archimatetool.editor.diagram.editparts.ILinedEditPart;
-import com.archimatetool.editor.diagram.editparts.ITextEditPart;
 import com.archimatetool.editor.diagram.editparts.SnapEditPartAdapter;
 import com.archimatetool.editor.diagram.figures.IContainerFigure;
-import com.archimatetool.editor.diagram.figures.IDiagramModelObjectFigure;
 import com.archimatetool.editor.diagram.figures.diagram.GroupFigure;
-import com.archimatetool.editor.diagram.figures.diagram.GroupFigure.GroupFigureConnectionAnchor;
 import com.archimatetool.editor.diagram.policies.ArchimateDNDEditPolicy;
 import com.archimatetool.editor.diagram.policies.ArchimateDiagramConnectionPolicy;
 import com.archimatetool.editor.diagram.policies.ArchimateDiagramLayoutPolicy;
@@ -40,8 +34,7 @@ import com.archimatetool.editor.diagram.policies.PartDirectEditTitlePolicy;
  * 
  * @author Phillip Beauvoir
  */
-public class GroupEditPart extends AbstractConnectedEditPart
-implements IColoredEditPart, ITextEditPart, ILinedEditPart {
+public class GroupEditPart extends AbstractConnectedEditPart {
     
     @Override
     protected void createEditPolicies() {
@@ -74,11 +67,6 @@ implements IColoredEditPart, ITextEditPart, ILinedEditPart {
     protected IFigure createFigure() {
         GroupFigure figure = new GroupFigure(getModel());
         return figure;
-    }
-    
-    @Override
-    public IDiagramModelObjectFigure getFigure() {
-        return (IDiagramModelObjectFigure)super.getFigure();
     }
     
     @Override
@@ -117,19 +105,14 @@ implements IColoredEditPart, ITextEditPart, ILinedEditPart {
     }
     
     protected DirectEditManager createDirectEditManager() {
-        return new LabelDirectEditManager(this, getFigure().getTextControl());
+        //return new LabelDirectEditManager(this, getFigure().getTextControl(), getModel().getName());
+        return new MultiLineTextDirectEditManager(this, true);
     }
 
     @Override
-    protected ConnectionAnchor getDefaultConnectionAnchor() {
-        return new GroupFigureConnectionAnchor(getFigure());
-    }
-
-    @SuppressWarnings("rawtypes")
-    @Override
-    public Object getAdapter(Class adapter) {
+    public <T> T getAdapter(Class<T> adapter) {
         if(adapter == SnapToHelper.class) {
-            return new SnapEditPartAdapter(this).getSnapToHelper();
+            return adapter.cast(new SnapEditPartAdapter(this).getSnapToHelper());
         }
         
         return super.getAdapter(adapter);

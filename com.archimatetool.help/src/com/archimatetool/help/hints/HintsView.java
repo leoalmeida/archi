@@ -8,6 +8,7 @@ package com.archimatetool.help.hints;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Files;
 import java.util.Hashtable;
 
 import org.eclipse.core.runtime.FileLocator;
@@ -16,7 +17,6 @@ import org.eclipse.core.runtime.IConfigurationElement;
 import org.eclipse.core.runtime.IExtensionRegistry;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Platform;
-import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.help.HelpSystem;
 import org.eclipse.help.IContext;
@@ -30,7 +30,7 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.SWTError;
 import org.eclipse.swt.browser.Browser;
-import org.eclipse.swt.browser.ProgressEvent;
+import org.eclipse.swt.browser.LocationListener;
 import org.eclipse.swt.browser.ProgressListener;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.graphics.Color;
@@ -38,32 +38,27 @@ import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
-import org.eclipse.swt.widgets.MenuItem;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.ISelectionListener;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.part.IContributedContentsView;
 import org.eclipse.ui.part.ViewPart;
 import org.osgi.framework.Bundle;
 
-import com.archimatetool.editor.model.viewpoints.ViewpointsManager;
-import com.archimatetool.editor.ui.ColorFactory;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.IHelpHintProvider;
+import com.archimatetool.editor.ui.ThemeUtils;
 import com.archimatetool.editor.ui.services.ComponentSelectionManager;
 import com.archimatetool.editor.ui.services.IComponentSelectionListener;
-import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.editor.utils.StringUtils;
-import com.archimatetool.help.ArchimateEditorHelpPlugin;
-import com.archimatetool.model.IApplicationLayerElement;
+import com.archimatetool.help.ArchiHelpPlugin;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateDiagramModel;
-import com.archimatetool.model.IArchimateElement;
-import com.archimatetool.model.IBusinessLayerElement;
-import com.archimatetool.model.IDiagramModel;
-import com.archimatetool.model.IDiagramModelArchimateConnection;
-import com.archimatetool.model.IDiagramModelArchimateObject;
-import com.archimatetool.model.IDiagramModelConnection;
-import com.archimatetool.model.IDiagramModelObject;
-import com.archimatetool.model.ITechnologyLayerElement;
+import com.archimatetool.model.IDiagramModelComponent;
 
 
 
@@ -72,29 +67,33 @@ import com.archimatetool.model.ITechnologyLayerElement;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class HintsView
 extends ViewPart
-implements IContextProvider, IHintsView, ISelectionListener, IComponentSelectionListener {
+implements IContextProvider, IHintsView, ISelectionListener, IComponentSelectionListener, IContributedContentsView  {
     
-    static File cssFile = new File(ArchimateEditorHelpPlugin.INSTANCE.getHintsFolder(), "style.css"); //$NON-NLS-1$
+    
+    // CSS string
+    private String cssString = "";
 
     private Browser fBrowser;
     
     private IAction fActionPinContent;
     
+    /*
+     * Lookup table mapping class/interface name + key (if any) to Hint
+     */
     private Hashtable<String, Hint> fLookupTable = new Hashtable<String, Hint>();
     
     private String fLastPath;
     
     private CLabel fTitleLabel;
     
-    private boolean fPageLoaded;
-    
-    private class PinAction extends Action {
+    private static class PinAction extends Action {
         PinAction() {
             super(Messages.HintsView_0, IAction.AS_CHECK_BOX);
             setToolTipText(Messages.HintsView_1);
-            setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_PIN_16));
+            setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_PIN));
         }
     }
     
@@ -111,6 +110,15 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
         }
     }
 
+    public HintsView() {
+        // Load CSS for Hint Providers
+        try {
+            cssString = Files.readString(java.nio.file.Path.of(ArchiHelpPlugin.getInstance().getHintsFolder().getPath(), "style.css"));
+        }
+        catch(IOException ex) {
+            ex.printStackTrace();
+        }
+    }
     
     @Override
     public void createPartControl(Composite parent) {
@@ -120,15 +128,19 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
         layout.verticalSpacing = 0;
         parent.setLayout(layout);
         
-        if(!JFaceResources.getFontRegistry().hasValueFor("HintsTitleFont")) { //$NON-NLS-1$
+        if(!JFaceResources.getFontRegistry().hasValueFor("HintsTitleFont")) {
             FontData[] fontData = JFaceResources.getFontRegistry().getBold(JFaceResources.DEFAULT_FONT).getFontData();
             fontData[0].setHeight(fontData[0].getHeight() + 4);
-            JFaceResources.getFontRegistry().put("HintsTitleFont", fontData); //$NON-NLS-1$
+            JFaceResources.getFontRegistry().put("HintsTitleFont", fontData);
         }
         
         fTitleLabel = new CLabel(parent, SWT.NULL);
-        fTitleLabel.setFont(JFaceResources.getFont("HintsTitleFont")); //$NON-NLS-1$
-        fTitleLabel.setBackground(ColorConstants.white);
+        fTitleLabel.setFont(JFaceResources.getFont("HintsTitleFont"));
+
+        // Use CSS styling for label color
+        if(!ThemeUtils.isDarkTheme()) {
+            fTitleLabel.setData("style", "background-color: RGB(220, 235, 235); color: #000;");
+        }
         
         GridData gd = new GridData(GridData.FILL_HORIZONTAL);
         fTitleLabel.setLayoutData(gd);
@@ -138,23 +150,18 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
          */
         fBrowser = createBrowser(parent);
         if(fBrowser == null) {
+            // Create a message and show that instead
+            fTitleLabel.setText(Messages.HintsView_2);
+            Text text = new Text(parent, SWT.MULTI | SWT.WRAP);
+            text.setLayoutData(new GridData(GridData.FILL_BOTH));
+            text.setText(Messages.HintsView_3);
+            text.setForeground(new Color(255, 45, 45));
+
             return;
         }
         
         gd = new GridData(GridData.FILL_BOTH);
         fBrowser.setLayoutData(gd);
-        
-        // Listen to Loading progress
-        fBrowser.addProgressListener(new ProgressListener() {
-            @Override
-            public void completed(ProgressEvent event) {
-                fPageLoaded = true;
-            }
-            
-            @Override
-            public void changed(ProgressEvent event) {
-            }
-        });
         
         // Listen to Diagram Editor Selections
         ComponentSelectionManager.INSTANCE.addSelectionListener(this);
@@ -185,38 +192,44 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
      * Create the Browser if possible
      */
     private Browser createBrowser(Composite parent) {
-        Browser browser = null;
         try {
-            // On Linux set this, but check that user did not try to override for e.g. later versions.
-            if(PlatformUtils.isGTK() && System.getProperty("org.eclipse.swt.browser.DefaultType") == null) { //$NON-NLS-1$ 
-                System.setProperty("org.eclipse.swt.browser.UseWebKitGTK", "true"); //$NON-NLS-1$ //$NON-NLS-2$
-            }
-            browser = new Browser(parent, SWT.NONE);
+            final Browser browser = new Browser(parent, SWT.NONE);
+            
+            // Don't allow external hosts if set
+            browser.addLocationListener(LocationListener.changingAdapter(e -> {
+                if(!ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED)) {
+                    e.doit = isLocalURL(e.location); // can link to local locations
+                }
+            }));
+            
+            browser.addProgressListener(ProgressListener.completedAdapter(e -> {
+                // If this is a local URL and we're using dark theme apply dark css
+                if(browser.getJavascriptEnabled() && ThemeUtils.isDarkTheme() && isLocalURL(browser.getUrl())) {
+                    browser.execute("document.body.classList.add('dark-mode');");
+                }
+            }));
+            
+            // Start with skeleton html
+            browser.setText(makeHTMLEntry(""));
+            
+            return browser;
         }
         catch(SWTError error) {
         	error.printStackTrace();
-            // Create a message and show that instead
-            fTitleLabel.setText(Messages.HintsView_2);
-            fTitleLabel.setBackground(new Color[]{ColorConstants.lightGray, ColorConstants.white}, new int[]{80}, false);
-            Text text = new Text(parent, SWT.MULTI | SWT.WRAP);
-            text.setLayoutData(new GridData(GridData.FILL_BOTH));
-            text.setText(Messages.HintsView_3);
-            text.setForeground(ColorFactory.get(255, 45, 45));
+            
+        	// Remove junk child controls that might be created with failed load
+        	for(Control child : parent.getChildren()) {
+                if(child != fTitleLabel) {
+                    child.dispose();
+                }
+            }
+        	
+        	return null;
         }
-        
-        return browser;
     }
 
     @Override
     public void setFocus() {
-        /*
-         * Need to do this otherwise we get a:
-         * 
-         * "java.lang.RuntimeException: WARNING: Prevented recursive attempt to activate part org.eclipse.ui.views.PropertySheet
-         * while still in the middle of activating part *.hintsView"
-         * 
-         * But on Windows this leads to a SWTException if closing this View by shortcut key (Alt-4)
-         */
         if(fBrowser != null) {
             fBrowser.setFocus();
         }
@@ -228,92 +241,109 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
 
     @Override
     public void componentSelectionChanged(Object component, Object selection) {
-        selectionChanged(component, selection);
+        showHintForSelected(component, selection);
     }
 
+    @Override
     public void selectionChanged(IWorkbenchPart part, ISelection selection) {
         if(selection instanceof IStructuredSelection && !selection.isEmpty()) {
             Object selected = ((IStructuredSelection)selection).getFirstElement();
-            selectionChanged(part, selected);
+            showHintForSelected(part, selected);
         }
     }
     
-    public void selectionChanged(Object source, Object selected) {
+    private void showHintForSelected(Object source, Object selected) {
+        if(fBrowser == null) {
+            return;
+        }
+        
         if(fActionPinContent.isChecked()) {
             return;
         }
         
-        Object object = null;
+        Object actualObject = selected;
 
-        // EClass (selected from Diagram Palette) so get Java class
-        if(selected instanceof EClass) {
-            EClass eClass = (EClass)selected;
-            object = eClass.getInstanceClass();
-        }
-        // Adaptable, dig in to get to get Element...
-        else if(selected instanceof IAdaptable) {
-            object = ((IAdaptable)selected).getAdapter(IArchimateElement.class);
-            if(object == null) {
-                object = ((IAdaptable)selected).getAdapter(IDiagramModelObject.class);
+        // Adaptable, dig in to get to get the actual object
+        if(selected instanceof IAdaptable) {
+            // ArchiMate concept (in EditPart)
+            actualObject = ((IAdaptable)selected).getAdapter(IArchimateConcept.class);
+            
+            // Diagram Component (in EditPart)
+            if(actualObject == null) {
+                actualObject = ((IAdaptable)selected).getAdapter(IDiagramModelComponent.class);
             }
-            if(object == null) {
-                object = ((IAdaptable)selected).getAdapter(IDiagramModelConnection.class);
-            }
-            if(object == null) {
-                object = ((IAdaptable)selected).getAdapter(IDiagramModel.class);
-            }
-        }
-        // Default
-        else {
-            object = selected;
         }
         
-        // Hint Provider, if set
-        if(object instanceof IHelpHintProvider) {
-            String title = ((IHelpHintProvider)object).getHelpHintTitle();
-            String text = ((IHelpHintProvider)object).getHelpHintContent();
-            if(StringUtils.isSet(title) || StringUtils.isSet(text)) {
-                fTitleLabel.setText(title);
-                Color color = getTitleColor(object);
-                fTitleLabel.setBackground(new Color[] { color, ColorConstants.white }, new int[] { 80 }, false);
-                text = makeHTMLEntry(text);
-                fBrowser.setText(text);
-                fLastPath = ""; //$NON-NLS-1$
-                return;
-            }
-        }
-
-        // Convert Archimate Diagram Model object to Viewpoint object
-        if(object instanceof IArchimateDiagramModel) {
-            int index = ((IArchimateDiagramModel)object).getViewpoint();
-            object = ViewpointsManager.INSTANCE.getViewpoint(index);
-        }
+        String title = "", content = null, path = null;
+        Hint hint = getHintForObject(actualObject);
         
-        Hint hint = getHintFromObject(object);
+        // We have a hint so these are the defaults
         if(hint != null) {
-            if(fLastPath != hint.path) {
-                // Title and Color
-                Color color = getTitleColor(object);
-                fTitleLabel.setBackground(new Color[] { color, ColorConstants.white }, new int[] { 80 }, false);
-                fTitleLabel.setText(hint.title);
-
-                // Load page
-                fPageLoaded = false;
-                fBrowser.setUrl(hint.path);
-                fLastPath = hint.path;
-
-                // Kludge for Mac/Safari when displaying hint on mouse rollover menu item in MagicConnectionCreationTool
-                if(PlatformUtils.isMac() && source instanceof MenuItem) {
-                    _doMacWaitKludge();
-                }
+            title = hint.title;
+            path = hint.path;
+        }
+        
+        // If this is a Help Hint Provider it can over-ride hint title and content if set
+        IHelpHintProvider provider = (IHelpHintProvider)(actualObject instanceof IHelpHintProvider ? actualObject : selected instanceof IHelpHintProvider ? selected : null);
+        if(provider != null) {
+            // Title set
+            if(StringUtils.isSet(provider.getHelpHintTitle())) {
+                title = provider.getHelpHintTitle();
+            }
+            
+            // Content set
+            if(StringUtils.isSet(provider.getHelpHintContent())) {
+                content = makeHTMLEntry(provider.getHelpHintContent());
             }
         }
-        else {
-            fBrowser.setText(""); //$NON-NLS-1$
-            fLastPath = ""; //$NON-NLS-1$
-            fTitleLabel.setText(""); //$NON-NLS-1$
-            fTitleLabel.setBackground(ColorConstants.white);
+
+        // Set Title
+        fTitleLabel.setText(title);
+        
+        // Enable/Disable JS
+        fBrowser.setJavascriptEnabled(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.HINTS_BROWSER_JS_ENABLED));
+
+        // We have some content
+        if(content != null) {
+            fBrowser.setText(content);
+            fLastPath = "";
         }
+        // We have a hint path
+        else if(path != null) {
+            if(fLastPath != path) { // optimise
+                fBrowser.setUrl("file:///" + path);
+                fLastPath = path;
+            }
+        }
+        // Blank
+        else {
+            fBrowser.setText("");
+            fLastPath = "";
+        }
+    }
+    
+    private Hint getHintForObject(Object object) {
+        if(object == null) {
+            return null;
+        }
+        
+        String className;
+        
+        // This will be from the Palette hover/select or the Magic Connector hover
+        if(object instanceof EClass) {
+            className = ((EClass)object).getName();
+        }
+        // Object Instance
+        else {
+            className = object.getClass().getSimpleName();
+        }
+        
+        // Archimate Diagram Model so append the Viewpoint name
+        if(object instanceof IArchimateDiagramModel) {
+            className += ((IArchimateDiagramModel)object).getViewpoint();
+        }
+        
+        return fLookupTable.get(className);
     }
     
     /**
@@ -321,83 +351,44 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
      */
     private String makeHTMLEntry(String text) {
         if(text == null) {
-            return ""; //$NON-NLS-1$
+            return "";
         }
         
         StringBuffer html = new StringBuffer();
-        html.append("<html><head>"); //$NON-NLS-1$
+        html.append("<html><head>");
         
-        html.append("<link rel=\"stylesheet\" href=\""); //$NON-NLS-1$
-        html.append(cssFile.getPath());
-        html.append("\" type=\"text/css\">"); //$NON-NLS-1$
+        html.append("<style>");
+        html.append(cssString);
+        html.append("</style>");
         
-        html.append("</head>"); //$NON-NLS-1$
+        html.append("</head>");
         
-        html.append("<body>"); //$NON-NLS-1$
+        html.append("<body>");
         html.append(text);
-        html.append("</body>"); //$NON-NLS-1$
+        html.append("</body>");
         
-        html.append("</html>"); //$NON-NLS-1$
+        html.append("</html>");
         return html.toString();
     }
     
     /**
-     * If we are displaying a hint from a menu rollover in MagicConnectionCreationTool then the threading is different
-     * and the Browser does not update. So we need to wait for a few sleep cycles.
+     * @return true if URL is a local file or text
      */
-    private void _doMacWaitKludge() {
-        // This works on Carbon and Cocoa...usually needs about 4-7 sleep cycles
-        fBrowser.getDisplay().asyncExec(new Runnable() {
-            @Override
-            public void run() {
-                int i = 0;
-                while(!fPageLoaded && i++ < 20) { // Set an upper getout limit for safety
-                    fBrowser.getDisplay().sleep();
-                }
-            }
-        });
-    }
-    
-    private Hint getHintFromObject(Object object) {
-        if(object == null) {
-            return null;
-        }
-        
-        Hint hint = null;
-        
-        // Is it in the lookup?
-        hint = fLookupTable.get(object.getClass().getName());
-        if(hint != null) {
-            return hint;
-        }
-        
-        // It's a Class
-        if(object instanceof Class<?>) {
-            return fLookupTable.get(((Class<?>)object).getName());
-        }
-        
-        // Look for Java interface
-        Class<?> clazzes[] = object.getClass().getInterfaces();
-        for(Class<?> interf : clazzes) {
-            hint = fLookupTable.get(interf.getName());
-            if(hint != null) {
-                return hint;
-            }
-        }
-        
-        return null;
+    private boolean isLocalURL(String url) {
+        return url != null && (url.startsWith("file:") || url.startsWith("data:") || url.startsWith("about:"));
     }
     
     private void createFileMap() {
         IExtensionRegistry registry = Platform.getExtensionRegistry();
         for(IConfigurationElement configurationElement : registry.getConfigurationElementsFor(EXTENSION_POINT_ID)) {
-            String className = configurationElement.getAttribute("class"); //$NON-NLS-1$
-            String fileName = configurationElement.getAttribute("file"); //$NON-NLS-1$
-            String title = configurationElement.getAttribute("title"); //$NON-NLS-1$
+            String className = configurationElement.getAttribute("className");
+            String fileName = configurationElement.getAttribute("file");
+            String title = configurationElement.getAttribute("title");
+            String key = configurationElement.getAttribute("key");
             
             String id = configurationElement.getNamespaceIdentifier();
             Bundle bundle = Platform.getBundle(id);
-            URL url = FileLocator.find(bundle, new Path("$nl$/" + fileName), null); //$NON-NLS-1$
+            URL url = FileLocator.find(bundle, new Path("$nl$/" + fileName), null);
             
             try {
                 url = FileLocator.resolve(url);
@@ -407,44 +398,30 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
                 continue;
             }
             
+            if(url == null) {
+                continue;
+            }
+            
             File f = new File(url.getPath());
             
             Hint hint = new Hint(title, f.getPath());
+            
+            if(key != null) {
+                className += key;
+            }
+            
             fLookupTable.put(className, hint);
         }
     }
     
-    private Color getTitleColor(Object object) {
-        Class<?> clazz;
-        
-        if(object instanceof IDiagramModelArchimateObject) {
-            object = ((IDiagramModelArchimateObject)object).getArchimateElement();
-        }
-        else if(object instanceof IDiagramModelArchimateConnection) {
-            object = ((IDiagramModelArchimateConnection)object).getRelationship();
-        }
-        
-        if(object instanceof Class<?>) {
-            clazz = (Class<?>)object;
-        }
-        else {
-            clazz = object.getClass();
-        }
-        
-        if(IBusinessLayerElement.class.isAssignableFrom(clazz)) {
-            return ColorFactory.COLOR_BUSINESS;
-        }
-        if(IApplicationLayerElement.class.isAssignableFrom(clazz)) {
-            return ColorFactory.COLOR_APPLICATION;
-        }
-        if(ITechnologyLayerElement.class.isAssignableFrom(clazz)) {
-            return ColorFactory.COLOR_TECHNOLOGY;
-        }
-        
-        return ColorFactory.get(220, 235, 235);
+    /**
+     * Return null so that the Properties View displays "The active part does not provide properties" instead of a table
+     */
+    @Override
+    public IWorkbenchPart getContributingPart() {
+        return null;
     }
 
-    
     @Override
     public void dispose() {
         super.dispose();
@@ -456,14 +433,17 @@ implements IContextProvider, IHintsView, ISelectionListener, IComponentSelection
     //                       Contextual Help support
     // =================================================================================
     
+    @Override
     public int getContextChangeMask() {
         return NONE;
     }
 
+    @Override
     public IContext getContext(Object target) {
         return HelpSystem.getContext(HELP_ID);
     }
 
+    @Override
     public String getSearchExpression(Object target) {
         return Messages.HintsView_4;
     }

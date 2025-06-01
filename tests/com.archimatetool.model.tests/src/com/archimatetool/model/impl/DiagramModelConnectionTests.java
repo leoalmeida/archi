@@ -5,47 +5,70 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
+import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelConnection;
+import com.archimatetool.model.IDiagramModelGroup;
 import com.archimatetool.model.IDiagramModelObject;
-import com.archimatetool.model.IFontAttribute;
+import com.archimatetool.model.ITextAlignment;
 
 
 @SuppressWarnings("nls")
-public class DiagramModelConnectionTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelConnectionTests.class);
-    }
+public class DiagramModelConnectionTests extends DiagramModelComponentTests {
     
     private IDiagramModelObject source, target;
     private IDiagramModelConnection connection;
     
-    
-    @Before
-    public void runBeforeEachTest() {
+    @Override
+    protected IDiagramModelComponent getComponent() {
         source = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
         target = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
         connection = IArchimateFactory.eINSTANCE.createDiagramModelConnection();
+        return connection;
     }
-    
-    
+
+    @Test
+    public void testGetDiagramModel() {
+        assertNull(connection.getDiagramModel());
+        
+        IDiagramModelGroup dmo = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dm.getChildren().add(dmo);
+        connection.connect(dmo, dmo);
+        
+        assertSame(dm, connection.getDiagramModel());
+    }
+
+    @Test
+    public void testGetArchimateModel() {
+        assertNull(connection.getArchimateModel());
+        
+        IArchimateModel model = IArchimateFactory.eINSTANCE.createArchimateModel();
+        model.getDefaultFolderForObject(dm).getElements().add(dm);
+        
+        IDiagramModelGroup dmo = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dm.getChildren().add(dmo);
+        connection.connect(dmo, dmo);
+        
+        assertSame(model, connection.getArchimateModel());
+    }
+
     @Test
     public void testGetBendpoints() {
         assertTrue(connection.getBendpoints().isEmpty());
     }
 
+    @Override
     @Test
     public void testGetCopy() {
         connection.connect(source, target);
@@ -61,11 +84,6 @@ public class DiagramModelConnectionTests {
         assertNull(copy.getTarget());
         assertEquals(connection.getDocumentation(), copy.getDocumentation());
         assertEquals(connection.getType(), copy.getType());
-    }
-
-    @Test
-    public void testGetDefaultTextAlignment() {
-        assertEquals(IFontAttribute.TEXT_ALIGNMENT_CENTER, connection.getDefaultTextAlignment());
     }
 
     @Test
@@ -102,6 +120,13 @@ public class DiagramModelConnectionTests {
     }
     
     @Test
+    public void testNameVisible() {
+        assertTrue(connection.isNameVisible());
+        connection.setNameVisible(false);
+        assertFalse(connection.isNameVisible());
+    }
+    
+    @Test
     public void testGetProperties() {
         CommonTests.testProperties(connection);
     }
@@ -121,17 +146,21 @@ public class DiagramModelConnectionTests {
     }
     
     @Test
-    public void testGetTextAlignment() {
-        assertEquals(IFontAttribute.TEXT_ALIGNMENT_NONE, connection.getTextAlignment());
-        connection.setTextAlignment(2);
-        assertEquals(2, connection.getTextAlignment());
-    }
-    
-    @Test
     public void testGetTextPosition() {
         assertEquals(IDiagramModelConnection.CONNECTION_TEXT_POSITION_MIDDLE, connection.getTextPosition());
         connection.setTextPosition(2);
         assertEquals(2, connection.getTextPosition());
+    }
+    
+    @Test
+    public void testGetDefaultTextAlignment() {
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_CENTER, connection.getTextAlignment());
+    }
+    
+    @Test
+    public void testSetTextAlignment() {
+        connection.setTextAlignment(ITextAlignment.TEXT_ALIGNMENT_RIGHT);
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_RIGHT, connection.getTextAlignment());
     }
     
     @Test
@@ -141,9 +170,11 @@ public class DiagramModelConnectionTests {
         assertEquals(2, connection.getType());
     }
     
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void testConnectNull() {
-        connection.connect(null, null);
+        assertThrows(IllegalArgumentException.class, () -> {
+            connection.connect(null, null);
+        });
     }
     
     @Test
@@ -179,13 +210,17 @@ public class DiagramModelConnectionTests {
     private void testPreConnect() {
         assertNull(connection.getSource());
         assertNull(connection.getTarget());
-        assertFalse(source.getSourceConnections().contains(source));
-        assertFalse(target.getTargetConnections().contains(target));
+        
+        assertFalse(source.getSourceConnections().contains(connection));
+        assertFalse(source.getTargetConnections().contains(connection));
+
+        assertFalse(target.getTargetConnections().contains(connection));
+        assertFalse(target.getSourceConnections().contains(connection));
     }
     
     private void testPostConnect() {
-        assertEquals(source, connection.getSource());
-        assertEquals(target, connection.getTarget());
+        assertSame(source, connection.getSource());
+        assertSame(target, connection.getTarget());
         
         assertTrue(source.getSourceConnections().contains(connection));
         assertFalse(source.getTargetConnections().contains(connection));

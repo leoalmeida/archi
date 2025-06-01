@@ -5,6 +5,7 @@
  */
 package com.archimatetool.canvas;
 
+import java.io.File;
 import java.io.IOException;
 
 import org.eclipse.core.expressions.EvaluationResult;
@@ -14,9 +15,11 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IContributionItem;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.menus.ExtensionContributionFactory;
 import org.eclipse.ui.menus.IContributionRoot;
@@ -26,10 +29,12 @@ import com.archimatetool.canvas.preferences.IPreferenceConstants;
 import com.archimatetool.canvas.templates.wizard.NewCanvasFromTemplateWizard;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.ui.components.ExtendedWizardDialog;
-import com.archimatetool.model.FolderType;
-import com.archimatetool.model.IArchimateFactory;
+import com.archimatetool.editor.ui.services.EditorManager;
+import com.archimatetool.editor.ui.services.UIRequestManager;
+import com.archimatetool.editor.views.tree.TreeEditElementRequest;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IFolder;
+import com.archimatetool.model.ModelVersion;
+import com.archimatetool.model.util.UUIDFactory;
 
 
 
@@ -41,7 +46,7 @@ import com.archimatetool.model.IFolder;
  */
 public class NewModelWithCanvasExtensionContributionFactory extends ExtensionContributionFactory {
     
-    // TODO Do we really want this menu item?
+    // TODO Do we really want this feature? It's the same as create new model, then add new canvas from template
     private final static boolean ENABLED = true;
     
     public NewModelWithCanvasExtensionContributionFactory() {
@@ -68,25 +73,44 @@ public class NewModelWithCanvasExtensionContributionFactory extends ExtensionCon
         
         @Override
         public void run() {
-            IArchimateModel model = IArchimateFactory.eINSTANCE.createArchimateModel();
-            model.setName(Messages.NewModelWithCanvasExtensionContributionFactory_1);
-            model.setDefaults();
-            IEditorModelManager.INSTANCE.registerModel(model);
-            
-            IFolder folder = model.getFolder(FolderType.DIAGRAMS);
-            
+            // Open the wizard to get a new Model with Canvas from a template
+            NewCanvasFromTemplateWizard wizard = new NewCanvasFromTemplateWizard();
             WizardDialog dialog = new ExtendedWizardDialog(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                    new NewCanvasFromTemplateWizard(folder),
-                    "NewCanvasFromTemplateWizard"); //$NON-NLS-1$
-            int result = dialog.open();
+                                  wizard,
+                                  "NewCanvasFromTemplateWizard"); //$NON-NLS-1$
             
-            // User cancelled
-            if(result == Window.CANCEL) {
+            if(dialog.open() == Window.OK) {
                 try {
-                    IEditorModelManager.INSTANCE.closeModel(model);
+                    File file = wizard.getTempModelFile();
+                    if(file != null) {
+                        IArchimateModel model = IEditorModelManager.INSTANCE.openModel(file);
+                        if(model != null) {
+                            // Name
+                            model.setName(Messages.NewModelWithCanvasExtensionContributionFactory_1);
+                            
+                            // Set latest model version (need to do this in case we immediately save as Template)
+                            model.setVersion(ModelVersion.VERSION);
+                            
+                            // Set file to null
+                            model.setFile(null);
+                            
+                            // New IDs
+                            UUIDFactory.generateNewIDs(model);
+                            
+                            // Open Canvas
+                            EditorManager.openDiagramEditor(model.getDefaultDiagramModel(), false);
+                            
+                            // Edit in-place in Tree
+                            UIRequestManager.INSTANCE.fireRequestAsync(new TreeEditElementRequest(this, model));
+                        }
+                        
+                        file.delete();
+                    }
                 }
                 catch(IOException ex) {
                     ex.printStackTrace();
+                    MessageDialog.openError(Display.getCurrent().getActiveShell(),
+                            Messages.NewModelWithCanvasExtensionContributionFactory_2, ex.getMessage());
                 }
             }
         }
@@ -98,7 +122,7 @@ public class NewModelWithCanvasExtensionContributionFactory extends ExtensionCon
         
         @Override
         public ImageDescriptor getImageDescriptor() {
-            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_NEWFILE_16);
+            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_NEWFILE);
         }
     };
     
@@ -108,7 +132,7 @@ public class NewModelWithCanvasExtensionContributionFactory extends ExtensionCon
     private Expression visibleExpression = new Expression() {
         @Override
         public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
-            boolean isVisible = CanvasEditorPlugin.INSTANCE.getPreferenceStore().getBoolean(IPreferenceConstants.CANVAS_EDITOR_ENABLED);
+            boolean isVisible = CanvasEditorPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.CANVAS_EDITOR_ENABLED);
             return isVisible ? EvaluationResult.TRUE : EvaluationResult.FALSE;
         }
     };

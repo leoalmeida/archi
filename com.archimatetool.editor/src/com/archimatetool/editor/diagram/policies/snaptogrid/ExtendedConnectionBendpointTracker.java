@@ -19,10 +19,13 @@ package com.archimatetool.editor.diagram.policies.snaptogrid;
  */
 
 import org.eclipse.core.runtime.Platform;
+import org.eclipse.draw2d.FigureCanvas;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
+import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.ConnectionEditPart;
 import org.eclipse.gef.SnapToGrid;
+import org.eclipse.gef.editparts.ZoomManager;
 import org.eclipse.gef.requests.BendpointRequest;
 import org.eclipse.gef.tools.ConnectionBendpointTracker;
 import org.eclipse.swt.SWT;
@@ -101,9 +104,23 @@ public class ExtendedConnectionBendpointTracker extends ConnectionBendpointTrack
 	 * @param pt
 	 * @param gridSize
 	 */
-	protected Point setNearestSnapPoint(Point pt, int gridSize) {
-	    pt.setX(Math.round((float)pt.x / gridSize) * gridSize);
-        pt.setY(Math.round((float)pt.y / gridSize) * gridSize);
+	protected Point setNearestSnapPoint(Point pt, double gridSize) {
+        // Compensate viewport area and multiple zoom levels
+        int x_offset = 0, y_offset = 0;
+        if(getCurrentViewer() != null && getCurrentViewer().getControl() instanceof FigureCanvas) {
+            Rectangle ca = ((FigureCanvas) getCurrentViewer().getControl()).getViewport().getClientArea();
+            x_offset = ca.x;
+            y_offset = ca.y;
+            
+            ZoomManager zm = (ZoomManager)getCurrentViewer().getProperty(ZoomManager.class.toString());
+            if(zm != null) {
+                gridSize = gridSize * zm.getZoom();
+            }
+        }
+        
+        pt.setX((int) (Math.round(((float)pt.x + (float)x_offset) / gridSize) * gridSize - x_offset));
+        pt.setY((int) (Math.round(((float)pt.y + (float)y_offset) / gridSize) * gridSize - y_offset));
+        
         return pt;
 	}
 }

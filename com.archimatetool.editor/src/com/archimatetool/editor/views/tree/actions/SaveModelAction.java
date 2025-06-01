@@ -8,7 +8,6 @@ package com.archimatetool.editor.views.tree.actions;
 import java.io.IOException;
 
 import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.ui.IWorkbenchCommandConstants;
 
 import com.archimatetool.editor.model.IEditorModelManager;
@@ -52,11 +51,11 @@ public class SaveModelAction extends ViewerAction {
     }
 
     @Override
-    public void update(IStructuredSelection selection) {
+    public void update() {
         setEnabled(IEditorModelManager.INSTANCE.isModelDirty(getModel()));
     }
 
     private IArchimateModel getModel() {
-        return (IArchimateModel)fView.getAdapter(IArchimateModel.class);
+        return fView.getAdapter(IArchimateModel.class);
     }
 }

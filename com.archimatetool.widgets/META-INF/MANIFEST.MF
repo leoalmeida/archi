@@ -2,12 +2,13 @@ Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
 Bundle-Name: Archi Widgets
 Bundle-SymbolicName: com.archimatetool.widgets;singleton:=true
-Bundle-Version: 3.0.0.qualifier
-Bundle-Vendor: Phillip Beauvoir
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
+Bundle-Version: 5.6.0.qualifier
+Bundle-Vendor: Archi
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Eclipse-BundleShape: dir
 Bundle-ClassPath: com.archimatetool.widgets.jar,
- lib/org.eclipse.nebula.widgets.gallery_0.5.3.201111151116.jar,
- lib/org.eclipse.nebula.widgets.grid_1.0.0.201112231516.jar
+ lib/org.eclipse.nebula.widgets.gallery_1.0.0.202402011804.jar,
+ lib/org.eclipse.nebula.widgets.grid_1.1.1.202402011804.jar
 Export-Package: com.archimatetool.widgets,
  org.eclipse.nebula.animation,
  org.eclipse.nebula.animation.effects,
@@ -21,4 +22,5 @@ Export-Package: com.archimatetool.widgets,
 Bundle-ActivationPolicy: lazy
 Require-Bundle: org.eclipse.core.runtime,
  org.eclipse.ui
-Bundle-Activator: com.archimatetool.widgets.ArchimateWidgetsPlugin
+Bundle-Activator: com.archimatetool.widgets.ArchiWidgetsPlugin
+Automatic-Module-Name: com.archimatetool.widgets

@@ -15,10 +15,6 @@ public class Messages extends NLS {
 
     public static String NewArchimateModelFromTemplateWizard_1;
 
-    public static String NewArchimateModelFromTemplateWizard_2;
-
-    public static String NewArchimateModelFromTemplateWizard_3;
-
     public static String NewArchimateModelFromTemplateWizardPage_1;
 
     public static String NewArchimateModelFromTemplateWizardPage_2;
@@ -34,6 +30,9 @@ public class Messages extends NLS {
     public static String SaveArchimateModelAsTemplateWizard_2;
 
     public static String SaveArchimateModelAsTemplateWizard_3;
+
+    public static String SaveArchimateModelAsTemplateWizard_4;
+    
     public static String SaveArchimateModelAsTemplateWizardPage_10;
 
     public static String SaveArchimateModelAsTemplateWizardPage_11;

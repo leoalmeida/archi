@@ -19,22 +19,21 @@ import org.eclipse.draw2d.FreeformLayout;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.ManhattanConnectionRouter;
 import org.eclipse.draw2d.MarginBorder;
-import org.eclipse.draw2d.ShortestPathConnectionRouter;
 import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.gef.LayerConstants;
 import org.eclipse.gef.SnapToHelper;
-import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.util.AnimationUtil;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModel;
-import com.archimatetool.model.IProperties;
+import com.archimatetool.model.IFeature;
+import com.archimatetool.model.IFeatures;
+import com.archimatetool.model.util.LightweightEContentAdapter;
 
 
 
@@ -52,28 +51,26 @@ implements IEditPartFilterProvider {
      */
     private List<IEditPartFilter> fEditPartFilters;
     
-    private Adapter adapter = new AdapterImpl() {
-        @Override
-        public void notifyChanged(Notification msg) {
-            eCoreChanged(msg);
-        }
-    };
+    private Adapter adapter = new LightweightEContentAdapter(this::eCoreChanged, IFeature.class);
     
-    /**
-     * Application Preferences Listener
-     */
-    private IPropertyChangeListener prefsListener = new IPropertyChangeListener() {
-        @Override
-        public void propertyChange(PropertyChangeEvent event) {
-            applicationPreferencesChanged(event);
-        }
-    };
-    
+    protected AbstractDiagramPart() {
+        // Add a Nested Connection Filter
+        addEditPartFilter(new NestedConnectionEditPartFilter());
+    }
+
     /**
      * Message from the ECore Adapter
      * @param msg
      */
     protected void eCoreChanged(Notification msg) {
+        Object feature = msg.getFeature();
+        
+        // Archi Features
+        if(IFeatures.isFeatureNotification(msg)) {
+            refreshVisuals();
+            return;
+        }
+
         switch(msg.getEventType()) {
             // Children added or removed
             case Notification.ADD:
@@ -86,14 +83,9 @@ implements IEditPartFilterProvider {
                 break;
                 
             case Notification.SET:
-                Object feature = msg.getFeature();
                 // Connection Router Type
                 if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL__CONNECTION_ROUTER_TYPE) {
-                    refreshVisuals();
-                }
-                // Viewpoint changed
-                else if(feature == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT) {
-                    refreshChildrenFigures();
+                    setConnectionRouter(true);
                 }
                 break;
 
@@ -102,9 +94,15 @@ implements IEditPartFilterProvider {
         }
     }
     
+    @Override
+    protected Adapter getECoreAdapter() {
+        return adapter;
+    }
+    
     /**
      * Application User Preferences were changed
      */
+    @Override
     protected void applicationPreferencesChanged(PropertyChangeEvent event) {
         if(event.getProperty() == IPreferenceConstants.ANTI_ALIAS) {
             setAntiAlias();
@@ -129,33 +127,12 @@ implements IEditPartFilterProvider {
     }
 
     @Override
-    public void activate() {
-        if(isActive()) {
-            return;
-        }
-        
-        super.activate();
-        
-        // Listen to Model
-        getModel().eAdapters().add(adapter);
-        
-        // Listen to Prefs changes
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
-    }
-
-    @Override
     public void deactivate() {
         if(!isActive()) {
             return;
         }
         
         super.deactivate();
-        
-        // Remove Model listener
-        getModel().eAdapters().remove(adapter);
-        
-        // Remove Prefs listener
-        Preferences.STORE.removePropertyChangeListener(prefsListener);
         
         // Clear Filters
         if(fEditPartFilters != null) {
@@ -174,8 +151,9 @@ implements IEditPartFilterProvider {
     protected IFigure createFigure() {
         FreeformLayer figure = new FreeformLayer();
         
-        // Provide an edge when in negative space
-        figure.setBorder(new MarginBorder(5));
+        // Add a border so that user can grab edges of an object
+        int marginWidth = ArchiPlugin.getInstance().getPreferenceStore().getInt(IPreferenceConstants.MARGIN_WIDTH);
+        figure.setBorder(new MarginBorder(marginWidth));
         
         figure.setLayoutManager(new FreeformLayout());
         
@@ -190,35 +168,34 @@ implements IEditPartFilterProvider {
     
     @Override
     public void refreshVisuals() {
-        // Set Connection Router type for the whole diagram
-        
-        // For animation to work on connections also set addRoutingListener(RoutingAnimator.getDefault());
-        // on the connection figures - see AbstractConnectionFigure
-        if(AnimationUtil.doAnimate()) {
+        setConnectionRouter(false);
+    }
+    
+    /**
+     * Set Connection Router type for the whole diagram
+     */
+    protected void setConnectionRouter(boolean withAnimation) {
+        // Animation
+        if(withAnimation && AnimationUtil.doAnimate()) {
             Animation.markBegin();
         }
-        
+
         ConnectionLayer cLayer = (ConnectionLayer) getLayer(LayerConstants.CONNECTION_LAYER);
-        
+
         switch(getModel().getConnectionRouterType()) {
+            case IDiagramModel.CONNECTION_ROUTER_MANHATTAN:
+                cLayer.setConnectionRouter(new ManhattanConnectionRouter());
+                break;
+            
             case IDiagramModel.CONNECTION_ROUTER_BENDPOINT:
+            default:
                 AutomaticRouter router = new FanRouter();
                 router.setNextRouter(new BendpointConnectionRouter());
                 cLayer.setConnectionRouter(router);
                 break;
-                
-            case IDiagramModel.CONNECTION_ROUTER_SHORTEST_PATH:
-                router = new FanRouter();
-                router.setNextRouter(new ShortestPathConnectionRouter(getFigure()));
-                cLayer.setConnectionRouter(router);
-                break;
-                
-            case IDiagramModel.CONNECTION_ROUTER_MANHATTAN:
-                cLayer.setConnectionRouter(new ManhattanConnectionRouter());
-                break;
         }
-        
-        if(AnimationUtil.doAnimate()) {
+
+        if(withAnimation && AnimationUtil.doAnimate()) {
             Animation.run(AnimationUtil.animationSpeed());
         }
     }
@@ -227,18 +204,24 @@ implements IEditPartFilterProvider {
         ConnectionLayer cLayer = (ConnectionLayer) getLayer(LayerConstants.CONNECTION_LAYER);
         
         // Anti-aliasing
-        cLayer.setAntialias(Preferences.useAntiAliasing() ? SWT.ON : SWT.DEFAULT);
+        cLayer.setAntialias(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.ANTI_ALIAS) ? SWT.ON : SWT.DEFAULT);
     }
     
-    @SuppressWarnings("rawtypes")
     @Override
-    public Object getAdapter(Class adapter) {
+    public boolean isSelectable() {
+        // This part is not selectable.
+        // This ensures that when objects are selected using the "touched" marquee selection tools the objects can be dragged.
+        return false;
+    }
+    
+    @Override
+    public <T> T getAdapter(Class<T> adapter) {
         if(adapter == SnapToHelper.class) {
-            return new SnapEditPartAdapter(this).getSnapToHelper();
+            return adapter.cast(new SnapEditPartAdapter(this).getSnapToHelper());
         }
         
-        if(adapter == IDiagramModel.class || adapter == IProperties.class) {
-            return getModel();
+        if(getModel() != null && adapter.isInstance(getModel())) {
+            return adapter.cast(getModel());
         }
         
         return super.getAdapter(adapter);

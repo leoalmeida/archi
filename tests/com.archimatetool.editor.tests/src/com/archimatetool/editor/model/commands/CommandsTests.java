@@ -5,29 +5,28 @@
  */
 package com.archimatetool.editor.model.commands;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.IOException;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.ecore.util.EContentAdapter;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IFolder;
 import com.archimatetool.testingtools.ArchimateTestModel;
@@ -37,15 +36,6 @@ import com.archimatetool.tests.TestData;
 @SuppressWarnings("nls")
 public class CommandsTests {
     
-    /**
-     * This is required in order to run JUnit 4 tests with the old JUnit runner
-     * 
-     * @return
-     */
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(CommandsTests.class);
-    }
-    
     private ArchimateTestModel tm;
     private IArchimateModel model;
     
@@ -53,7 +43,7 @@ public class CommandsTests {
     // BEFORE AND AFTER METHODS GO HERE 
     // ---------------------------------------------------------------------------------------------
     
-    @Before
+    @BeforeEach
     public void runBeforeEachTest() throws IOException {
         tm = new ArchimateTestModel(TestData.TEST_MODEL_FILE_ARCHISURANCE);
         model = tm.loadModel();
@@ -65,51 +55,78 @@ public class CommandsTests {
 
     @Test
     public void testDeleteDiagramModelCommand() {
-        IDiagramModel dm = model.getDiagramModels().get(0);
+        IDiagramModel dm = (IDiagramModel)tm.getObjectByID("3641"); // "ArchiMate View"
         assertNotNull(dm);
+        int position = model.getDiagramModels().indexOf(dm);
 
         DeleteDiagramModelCommand cmd = new DeleteDiagramModelCommand(dm);
-        
         cmd.execute();
+        
         assertNull(dm.eContainer());
         assertFalse(model.getDiagramModels().contains(dm));
         
         cmd.undo();
-        assertEquals(0, model.getDiagramModels().indexOf(dm));
+        assertEquals(position, model.getDiagramModels().indexOf(dm));
     }
 
     @Test
-    public void testDeleteElementCommand() {
+    public void testDeleteArchimateElementCommand() {
         IArchimateElement element = (IArchimateElement)tm.getObjectByID("1544");
         assertNotNull(element);
         
         IFolder parent = (IFolder)element.eContainer();
+        int position = parent.getElements().indexOf(element);
 
-        DeleteElementCommand cmd = new DeleteElementCommand(element);
-        
+        DeleteArchimateElementCommand cmd = new DeleteArchimateElementCommand(element);
         cmd.execute();
+        
         assertNull(element.eContainer());
         assertFalse(parent.getElements().contains(element));
         
         cmd.undo();
-        assertEquals(0, parent.getElements().indexOf(element));
+        assertEquals(position, parent.getElements().indexOf(element));
     }
 
+    @Test
+    public void testDeleteArchimateRelationshipCommand() {
+        IArchimateRelationship relationship = (IArchimateRelationship)tm.getObjectByID("670aa5ed");
+        assertNotNull(relationship);
+        
+        assertTrue(relationship.getSource().getSourceRelationships().contains(relationship));
+        assertTrue(relationship.getTarget().getTargetRelationships().contains(relationship));
+
+        IFolder parent = (IFolder)relationship.eContainer();
+        int position = parent.getElements().indexOf(relationship);
+        
+        DeleteArchimateRelationshipCommand cmd = new DeleteArchimateRelationshipCommand(relationship);
+        cmd.execute();
+        
+        assertNull(relationship.eContainer());
+        assertFalse(parent.getElements().contains(relationship));
+        
+        assertFalse(relationship.getSource().getSourceRelationships().contains(relationship));
+        assertFalse(relationship.getTarget().getTargetRelationships().contains(relationship));
+
+        cmd.undo();
+        assertEquals(position, parent.getElements().indexOf(relationship));
+    }
+    
     @Test
     public void testDeleteFolderCommand() {
         IFolder folder = (IFolder)tm.getObjectByID("403e5717");
         assertNotNull(folder);
         
         IFolder parent = (IFolder)folder.eContainer();
+        int position = parent.getFolders().indexOf(folder);
 
         DeleteFolderCommand cmd = new DeleteFolderCommand(folder);
-        
         cmd.execute();
+        
         assertNull(folder.eContainer());
         assertFalse(parent.getFolders().contains(folder));
         
         cmd.undo();
-        assertEquals(1, parent.getFolders().indexOf(folder));
+        assertEquals(position, parent.getFolders().indexOf(folder));
     }
     
     @Test

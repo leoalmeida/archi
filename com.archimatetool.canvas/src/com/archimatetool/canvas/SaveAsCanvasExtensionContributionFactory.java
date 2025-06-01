@@ -43,7 +43,7 @@ public class SaveAsCanvasExtensionContributionFactory extends ExtensionContribut
 
     @Override
     public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
-        boolean enabled = CanvasEditorPlugin.INSTANCE.getPreferenceStore().getBoolean(IPreferenceConstants.CANVAS_EDITOR_ENABLED);
+        boolean enabled = CanvasEditorPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.CANVAS_EDITOR_ENABLED);
         if(!enabled) {
             return;
         }
@@ -82,7 +82,7 @@ public class SaveAsCanvasExtensionContributionFactory extends ExtensionContribut
         
         @Override
         public ImageDescriptor getImageDescriptor() {
-            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_MODEL_16);
+            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_MODEL);
         }
     };
 

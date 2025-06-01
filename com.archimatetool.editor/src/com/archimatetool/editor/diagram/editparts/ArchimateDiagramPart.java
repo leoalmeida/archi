@@ -9,9 +9,11 @@ import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.gef.EditPolicy;
 import org.eclipse.gef.editpolicies.SnapFeedbackPolicy;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.policies.ArchimateDNDEditPolicy;
 import com.archimatetool.editor.diagram.policies.ArchimateDiagramLayoutPolicy;
 import com.archimatetool.editor.diagram.policies.BasicContainerEditPolicy;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimatePackage;
 
@@ -23,6 +25,13 @@ import com.archimatetool.model.IArchimatePackage;
  * @author Phillip Beauvoir
  */
 public class ArchimateDiagramPart extends AbstractDiagramPart {
+    
+    public ArchimateDiagramPart() {
+        // Add a Viewpoint Child EditPart Filter if set in Preferences (hides rather than ghosts)
+        if(!ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS)) {
+            addEditPartFilter(new ViewpointEditPartFilter());
+        }
+    }
 
     @Override
     public IArchimateDiagramModel getModel() {
@@ -34,7 +43,8 @@ public class ArchimateDiagramPart extends AbstractDiagramPart {
         Object feature = msg.getFeature();
         
         // Viewpoint changed
-        if(feature == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT) {
+        if(feature == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT &&
+                ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS)) {
             refreshChildrenFigures();
         }
         else {

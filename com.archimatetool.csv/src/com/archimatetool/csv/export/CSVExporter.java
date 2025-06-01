@@ -15,21 +15,23 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
-import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.TreeMap;
 
 import org.eclipse.emf.ecore.EObject;
 
 import com.archimatetool.csv.CSVConstants;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.FolderType;
+import com.archimatetool.model.IAccessRelationship;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.IArchimateRelationship;
+import com.archimatetool.model.IAssociationRelationship;
 import com.archimatetool.model.IFolder;
-import com.archimatetool.model.INameable;
+import com.archimatetool.model.IInfluenceRelationship;
+import com.archimatetool.model.IJunction;
+import com.archimatetool.model.IProfile;
 import com.archimatetool.model.IProperty;
-import com.archimatetool.model.IRelationship;
 
 
 
@@ -38,16 +40,16 @@ import com.archimatetool.model.IRelationship;
  * 
  * @author Phillip Beauvoir
  */
-@SuppressWarnings("nls")
 public class CSVExporter implements CSVConstants {
     
     private char fDelimiter = ',';
-    private String fFilePrefix = "";
+    private String fFilePrefix = ""; //$NON-NLS-1$
     
     private boolean fStripNewLines = false;
     
-    // See http://www.creativyst.com/Doc/Articles/CSV/CSV01.htm#CSVAndExcel
-    private boolean fUseLeadingCharsHack = false;
+    private boolean fExcelCompatible = false;
+    
+    private String fEncoding = "UTF-8"; //$NON-NLS-1$
     
     /*
      * Internal option. BUT...
@@ -64,7 +66,7 @@ public class CSVExporter implements CSVConstants {
         fModel = model;
     }
     
-    void export(File folder) throws IOException {
+    public void export(File folder) throws IOException {
         writeModelAndElements(new File(folder, createElementsFileName()));
         writeRelationships(new File(folder, createRelationsFileName()));
         writeProperties(new File(folder, createPropertiesFileName()));
@@ -75,7 +77,7 @@ public class CSVExporter implements CSVConstants {
      * Default is the comma ","
      * @param delimiter
      */
-    void setDelimiter(char delimiter) {
+    public void setDelimiter(char delimiter) {
         fDelimiter = delimiter;
     }
     
@@ -83,41 +85,52 @@ public class CSVExporter implements CSVConstants {
      * Set the prefix to use on file names. A null value is ignored.
      * @param prefix
      */
-    void setFilePrefix(String prefix) {
+    public void setFilePrefix(String prefix) {
         if(prefix != null) {
             fFilePrefix = prefix;
         }
     }
     
-    void setStripNewLines(boolean set) {
+    public void setStripNewLines(boolean set) {
         fStripNewLines = set;
     }
     
-    void setUseLeadingCharsHack(boolean set) {
-        fUseLeadingCharsHack = set;
+    public void setExcelCompatible(boolean set) {
+        fExcelCompatible = set;
+    }
+    
+    public void setEncoding(String encoding) {
+        fEncoding = encoding;
     }
     
     /**
      * Write the Model and All Elements
      */
     private void writeModelAndElements(File file) throws IOException {
-        Writer writer = new OutputStreamWriter(new FileOutputStream(file)); // Don't use UTF-8 as Excel prefers ANSI
+        Writer writer = createOutputStreamWriter(file);
+        
+        // Write BOM
+        writeBOM(writer);
         
         // Write Header
         String header = createHeader(MODEL_ELEMENTS_HEADER);
         writer.write(header);
+        
+        // CRLF
+        writer.write(CRLF);
         
         // Write Model
         String modelRow = createModelRow();
         writer.write(modelRow);
         
         // Write Elements
+        writeElementsInFolder(writer, fModel.getFolder(FolderType.STRATEGY));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.BUSINESS));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.APPLICATION));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.TECHNOLOGY));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.MOTIVATION));
         writeElementsInFolder(writer, fModel.getFolder(FolderType.IMPLEMENTATION_MIGRATION));
-        writeElementsInFolder(writer, fModel.getFolder(FolderType.CONNECTORS));
+        writeElementsInFolder(writer, fModel.getFolder(FolderType.OTHER));
         
         writer.close();
     }
@@ -130,11 +143,14 @@ public class CSVExporter implements CSVConstants {
             return;
         }
         
-        List<IArchimateElement> elements = getElements(folder);
-        sort(elements);
+        List<IArchimateConcept> concepts = getConcepts(folder);
+        sort(concepts);
         
-        for(IArchimateElement element : elements) {
-            writer.write(createElementRow(element));
+        for(IArchimateConcept concept : concepts) {
+            if(concept instanceof IArchimateElement) {
+                writer.write(CRLF);
+                writer.write(createElementRow((IArchimateElement)concept));
+            }
         }
     }
     
@@ -142,24 +158,28 @@ public class CSVExporter implements CSVConstants {
      * Write All Relationships
      */
     private void writeRelationships(File file) throws IOException {
-        List<IArchimateElement> elements = getElements(fModel.getFolder(FolderType.RELATIONS));
-        sort(elements);
+        List<IArchimateConcept> concepts = getConcepts(fModel.getFolder(FolderType.RELATIONS));
+        sort(concepts);
         
         // Are there any to write?
-        if(!fWriteEmptyFile && elements.isEmpty()) {
+        if(!fWriteEmptyFile && concepts.isEmpty()) {
             return;
         }
         
-        Writer writer = new OutputStreamWriter(new FileOutputStream(file)); // Don't use UTF-8 as Excel prefers ANSI
+        Writer writer = createOutputStreamWriter(file);
+        
+        // Write BOM
+        writeBOM(writer);
         
         // Write Header
         String header = createHeader(RELATIONSHIPS_HEADER);
         writer.write(header);
         
         // Write Relationships
-        for(IArchimateElement element : elements) {
-            if(element instanceof IRelationship) {
-                writer.write(createRelationshipRow((IRelationship)element));
+        for(IArchimateConcept concept : concepts) {
+            if(concept instanceof IArchimateRelationship) {
+                writer.write(CRLF);
+                writer.write(createRelationshipRow((IArchimateRelationship)concept));
             }
         }
         
@@ -170,41 +190,101 @@ public class CSVExporter implements CSVConstants {
      * Write All Properties
      */
     private void writeProperties(File file) throws IOException {
-        SortedMap<String, IProperty> toWrite = new TreeMap<String, IProperty>();
-        
-        // Model Properties
-        for(IProperty property : fModel.getProperties()) {
-            toWrite.put(fModel.getId(), property);
-        }
-        
-        // Element and Relationship Properties
-        for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
-            EObject eObject = iter.next();
-            if(eObject instanceof IArchimateElement) {
-                IArchimateElement element = (IArchimateElement)eObject;
-                for(IProperty property : element.getProperties()) {
-                    toWrite.put(element.getId(), property);
-                }
-            }
-        }
-        
         // Are there any to write?
-        if(!fWriteEmptyFile && toWrite.isEmpty()) {
+        if(!fWriteEmptyFile && !hasProperties()) {
             return;
         }
         
-        Writer writer = new OutputStreamWriter(new FileOutputStream(file)); // Don't use UTF-8 as Excel prefers ANSI
+        Writer writer = createOutputStreamWriter(file);
+        
+        // Write BOM
+        writeBOM(writer);
         
         // Write Header
         String header = createHeader(PROPERTIES_HEADER);
         writer.write(header);
         
-        // Write Properties
-        for(Entry<String, IProperty> entry : toWrite.entrySet()) {
-            writer.write(createPropertyRow(entry.getKey(), entry.getValue()));
+        // Write Model Properties
+        for(IProperty property : fModel.getProperties()) {
+            writer.write(CRLF);
+            writer.write(createPropertyRow(fModel.getId(), property));
+        }
+        
+        // Write Element and Relationship Properties
+        for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
+            EObject eObject = iter.next();
+            if(eObject instanceof IArchimateConcept) {
+                IArchimateConcept concept = (IArchimateConcept)eObject;
+                
+                for(IProperty property : concept.getProperties()) {
+                    writer.write(CRLF);
+                    writer.write(createPropertyRow(concept.getId(), property));
+                }
+                
+                // Write special attributes as properties
+                writeSpecialProperties(writer, concept);
+            }
         }
         
         writer.close();
+    }
+    
+    private void writeSpecialProperties(Writer writer, IArchimateConcept concept) throws IOException {
+        // Influence relationship strength
+        if(concept instanceof IInfluenceRelationship) {
+            String strength = ((IInfluenceRelationship)concept).getStrength();
+            if(StringUtils.isSet(strength)) {
+                writer.write(CRLF);
+                writer.write(createPropertyRow(concept.getId(), INFLUENCE_STRENGTH, strength));
+            }
+        }
+        
+        // Access relationship type
+        else if(concept instanceof IAccessRelationship) {
+            writer.write(CRLF);
+            writer.write(createPropertyRow(concept.getId(), ACCESS_TYPE, ACCESS_TYPES.get(((IAccessRelationship)concept).getAccessType())));
+        }
+        
+        // Association relationship directed
+        else if(concept instanceof IAssociationRelationship) {
+            writer.write(CRLF);
+            writer.write(createPropertyRow(concept.getId(), ASSOCIATION_DIRECTED,
+                    ((IAssociationRelationship)concept).isDirected() ? "true" : "false")); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        
+        // Junction Type
+        else if(concept instanceof IJunction) {
+            String type = ((IJunction)concept).getType();
+            if(IJunction.AND_JUNCTION_TYPE.equals(type)) {
+                type = JUNCTION_AND;
+            }
+            else {
+                type = JUNCTION_OR;
+            }
+            writer.write(CRLF);
+            writer.write(createPropertyRow(concept.getId(), JUNCTION_TYPE, type));
+        }
+    }
+    
+    /**
+     * @return true if the model has any user properties
+     */
+    boolean hasProperties() {
+        if(!fModel.getProperties().isEmpty()) {
+            return true;
+        }
+        
+        for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
+            EObject eObject = iter.next();
+            if(eObject instanceof IArchimateConcept) {
+                IArchimateConcept concept = (IArchimateConcept)eObject;
+                if(!concept.getProperties().isEmpty()) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -215,16 +295,13 @@ public class CSVExporter implements CSVConstants {
         
         for(int i = 0; i < elements.length; i++) {
             String s = elements[i];
-            sb.append("\"");
+            sb.append("\""); //$NON-NLS-1$
             sb.append(s);
-            sb.append("\"");
+            sb.append("\""); //$NON-NLS-1$
             if(i < elements.length - 1) {
                 sb.append(fDelimiter);
             }
         }
-        
-        // Newline
-        sb.append(CRLF);
         
         return sb.toString();
     }
@@ -248,9 +325,10 @@ public class CSVExporter implements CSVConstants {
         
         String purpose = normalise(fModel.getPurpose());
         sb.append(surroundWithQuotes(purpose));
+        sb.append(fDelimiter);
         
-        // Newline
-        sb.append(CRLF);
+        // Specialization dummy entry
+        sb.append("\"\""); //$NON-NLS-1$
         
         return sb.toString();
     }
@@ -261,22 +339,29 @@ public class CSVExporter implements CSVConstants {
     String createElementRow(IArchimateElement element) {
         StringBuffer sb = new StringBuffer();
         
+        // ID
         String id = element.getId();
         sb.append(surroundWithQuotes(id));
         sb.append(fDelimiter);
         
+        // Class
         sb.append(surroundWithQuotes(element.eClass().getName()));
         sb.append(fDelimiter);
         
+        // Name
         String name = normalise(element.getName());
         sb.append(surroundWithQuotes(name));
         sb.append(fDelimiter);
         
+        // Documentation
         String documentation = normalise(element.getDocumentation());
         sb.append(surroundWithQuotes(documentation));
+        sb.append(fDelimiter);
         
-        // Newline
-        sb.append(CRLF);
+        // Specialization
+        IProfile profile = element.getPrimaryProfile();
+        String specialization = normalise(profile != null ? profile.getName() : ""); //$NON-NLS-1$
+        sb.append(surroundWithQuotes(specialization));
         
         return sb.toString();
     }
@@ -284,43 +369,52 @@ public class CSVExporter implements CSVConstants {
     /**
      * Create a String Row for a Relationship
      */
-    String createRelationshipRow(IRelationship relationship) {
+    String createRelationshipRow(IArchimateRelationship relationship) {
         StringBuffer sb = new StringBuffer();
         
+        // ID
         String id = relationship.getId();
         sb.append(surroundWithQuotes(id));
         sb.append(fDelimiter);
         
+        // Class
         sb.append(surroundWithQuotes(relationship.eClass().getName()));
         sb.append(fDelimiter);
         
+        // Name
         String name = normalise(relationship.getName());
         sb.append(surroundWithQuotes(name));
         sb.append(fDelimiter);
         
+        // Documentation
         String documentation = normalise(relationship.getDocumentation());
         sb.append(surroundWithQuotes(documentation));
         sb.append(fDelimiter);
         
+        // Source
         if(relationship.getSource() != null) {
             String sourceID = relationship.getSource().getId();
             sb.append(surroundWithQuotes(sourceID));
         }
         else {
-            sb.append("\"\"");
+            sb.append("\"\""); //$NON-NLS-1$
         }
         sb.append(fDelimiter);
         
+        // Target
         if(relationship.getTarget() != null) {
             String targetID = relationship.getTarget().getId();
             sb.append(surroundWithQuotes(targetID));
         }
         else {
-            sb.append("\"\"");
+            sb.append("\"\""); //$NON-NLS-1$
         }
+        sb.append(fDelimiter);
         
-        // Newline
-        sb.append(CRLF);
+        // Specialization
+        IProfile profile = relationship.getPrimaryProfile();
+        String specialization = normalise(profile != null ? profile.getName() : ""); //$NON-NLS-1$
+        sb.append(surroundWithQuotes(specialization));
         
         return sb.toString();
     }
@@ -328,26 +422,40 @@ public class CSVExporter implements CSVConstants {
     /**
      * Create a String Row for a Property
      */
-    String createPropertyRow(String elementID, IProperty property) {
+    String createPropertyRow(String conceptID, IProperty property) {
+        return createPropertyRow(conceptID, property.getKey(), property.getValue());
+    }
+
+    /**
+     * Create a String Row for a Key/Value
+     */
+    String createPropertyRow(String conceptID, String key, String value) {
         StringBuffer sb = new StringBuffer();
         
-        String id = elementID;
-        sb.append(surroundWithQuotes(id));
+        sb.append(surroundWithQuotes(conceptID));
         sb.append(fDelimiter);
         
-        String key = normalise(property.getKey());
+        key = normalise(key);
         sb.append(surroundWithQuotes(key));
         sb.append(fDelimiter);
         
-        String value = normalise(property.getValue());
+        value = normalise(value);
         sb.append(surroundWithQuotes(value));
-        
-        // Newline
-        sb.append(CRLF);
         
         return sb.toString();
     }
 
+    /**
+     * Write BOM byte to file
+     * @param writer
+     * @throws IOException
+     */
+    private void writeBOM(Writer writer) throws IOException {
+        if(fEncoding.contains("BOM")) { //$NON-NLS-1$
+            writer.write('\ufeff');
+        }
+    }
+    
     /**
      * Return a normalised String.
      * A Null string is returned as an empty string
@@ -355,52 +463,63 @@ public class CSVExporter implements CSVConstants {
      */
     String normalise(String s) {
         if(s == null) {
-            return "";
+            return ""; //$NON-NLS-1$
         }
         
         // Newlines (optional)
         if(fStripNewLines) {
-            s = s.replaceAll("(\r\n|\r|\n)", " ");
+            s = s.replaceAll("(\r\n|\r|\n)", " ");  //$NON-NLS-1$//$NON-NLS-2$
         }
         
         // Tabs become a space
-        s = s.replace("\t", " ");
+        s = s.replace("\t", " "); //$NON-NLS-1$ //$NON-NLS-2$
         
         // Single quotes become double quotes
-        s = s.replace("\"", "\"\"");
+        s = s.replace("\"", "\"\"");  //$NON-NLS-1$//$NON-NLS-2$
         
         return s;
     }
     
     String surroundWithQuotes(String s) {
         if(needsLeadingCharHack(s)) {
-            return "\"=\"\"" + s + "\"\"\"";
+            return "\"=\"\"" + s + "\"\"\""; //$NON-NLS-1$ //$NON-NLS-2$
         }
-        return "\"" + s + "\"";
+        else if(needsLeadingCharFormulaHack(s)) {
+            s = " " + s; //$NON-NLS-1$
+        }
+        return "\"" + s + "\""; //$NON-NLS-1$ //$NON-NLS-2$
     }
     
+    // See http://www.creativyst.com/Doc/Articles/CSV/CSV01.htm#CSVAndExcel
     boolean needsLeadingCharHack(String s) {
-        return s != null && fUseLeadingCharsHack && (s.startsWith(" ") || s.startsWith("0"));
+        return s != null && fExcelCompatible && (s.startsWith(" ") || s.startsWith("0"));  //$NON-NLS-1$//$NON-NLS-2$
+    }
+    
+    // If string starts with "=", "+", "-", "@"
+    // See https://payatu.com/csv-injection-basic-to-exploit
+    //     https://owasp.org/www-community/attacks/CSV_Injection
+    boolean needsLeadingCharFormulaHack(String s) {
+        return s != null && fExcelCompatible && (s.startsWith("=") || s.startsWith("+") || s.startsWith("-") || s.startsWith("@"));  //$NON-NLS-1$//$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$
     }
     
     /**
      * Return a list of all elements/relations in a given folder and its child folders
      */
-    private List<IArchimateElement> getElements(IFolder folder) {
-        List<IArchimateElement> list = new ArrayList<IArchimateElement>();
+    private List<IArchimateConcept> getConcepts(IFolder folder) {
+        List<IArchimateConcept> list = new ArrayList<IArchimateConcept>();
         
         if(folder == null) {
             return list;
         }
         
         for(EObject object : folder.getElements()) {
-            if(object instanceof IArchimateElement) {
-                list.add((IArchimateElement)object);
+            if(object instanceof IArchimateConcept) {
+                list.add((IArchimateConcept)object);
             }
         }
         
         for(IFolder f : folder.getFolders()) {
-            list.addAll(getElements(f));
+            list.addAll(getConcepts(f));
         }
         
         return list;
@@ -410,17 +529,17 @@ public class CSVExporter implements CSVConstants {
      * Sort a list of ArchimateElement/Relationship types
      * Sort by class name then element name
      */
-    void sort(List<IArchimateElement> list) {
+    void sort(List<IArchimateConcept> list) {
         if(list == null || list.size() < 2) {
             return;
         }
         
-        Collections.sort(list, new Comparator<IArchimateElement>() {
+        Collections.sort(list, new Comparator<IArchimateConcept>() {
             @Override
-            public int compare(IArchimateElement o1, IArchimateElement o2) {
+            public int compare(IArchimateConcept o1, IArchimateConcept o2) {
                 if(o1.eClass().equals(o2.eClass())) {
-                    String name1 = StringUtils.safeString(((INameable)o1).getName()).toLowerCase().trim();
-                    String name2 = StringUtils.safeString(((INameable)o2).getName()).toLowerCase().trim();
+                    String name1 = StringUtils.safeString(o1.getName().toLowerCase().trim());
+                    String name2 = StringUtils.safeString(o2.getName().toLowerCase().trim());
                     return name1.compareTo(name2);
                 }
                 
@@ -441,5 +560,17 @@ public class CSVExporter implements CSVConstants {
     
     String createPropertiesFileName() {
         return fFilePrefix + PROPERTIES_FILENAME + FILE_EXTENSION;
+    }
+    
+    OutputStreamWriter createOutputStreamWriter(File file) throws IOException {
+        if("ANSI".equals(fEncoding)) { //$NON-NLS-1$
+            return new OutputStreamWriter(new FileOutputStream(file));
+        }
+        else if(fEncoding.startsWith("UTF-8")) { //$NON-NLS-1$
+            return new OutputStreamWriter(new FileOutputStream(file), "UTF-8"); //$NON-NLS-1$
+        }
+        else {
+            return new OutputStreamWriter(new FileOutputStream(file), fEncoding);
+        }
     }
 }

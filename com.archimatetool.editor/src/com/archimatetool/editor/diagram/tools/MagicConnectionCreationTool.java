@@ -5,9 +5,11 @@
  */
 package com.archimatetool.editor.diagram.tools;
 
-import org.eclipse.draw2d.FigureCanvas;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.gef.EditPart;
@@ -29,27 +31,27 @@ import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.MenuItem;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.ArchimateDiagramModelFactory;
+import com.archimatetool.editor.diagram.commands.CreateDiagramArchimateConnectionWithDialogCommand;
 import com.archimatetool.editor.diagram.editparts.AbstractBaseEditPart;
-import com.archimatetool.editor.diagram.editparts.IArchimateEditPart;
 import com.archimatetool.editor.diagram.editparts.diagram.GroupEditPart;
 import com.archimatetool.editor.diagram.figures.IContainerFigure;
-import com.archimatetool.editor.diagram.policies.ArchimateDiagramConnectionPolicy.CreateArchimateConnectionCommand;
-import com.archimatetool.editor.model.viewpoints.IViewpoint;
-import com.archimatetool.editor.model.viewpoints.ViewpointsManager;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
-import com.archimatetool.editor.ui.IArchimateImages;
-import com.archimatetool.editor.ui.factory.ElementUIFactory;
-import com.archimatetool.editor.ui.factory.IElementUIProvider;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.ImageFactory;
 import com.archimatetool.editor.ui.services.ComponentSelectionManager;
+import com.archimatetool.editor.utils.PlatformUtils;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateDiagramModel;
-import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.IArchimateFactory;
+import com.archimatetool.model.IDiagramModelArchimateComponent;
 import com.archimatetool.model.IDiagramModelArchimateConnection;
 import com.archimatetool.model.IDiagramModelArchimateObject;
 import com.archimatetool.model.IDiagramModelContainer;
 import com.archimatetool.model.util.ArchimateModelUtils;
+import com.archimatetool.model.viewpoints.ViewpointManager;
 
 
 
@@ -62,18 +64,19 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     
     private static Cursor cursor = new Cursor(
             null,
-            IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.CURSOR_IMG_MAGIC_CONNECTOR).getImageData(),
+            IArchiImages.ImageFactory.getImage(IArchiImages.CURSOR_IMG_MAGIC_CONNECTOR).getImageData(ImageFactory.getCursorDeviceZoom()),
             0,
             0);
 
     
     /**
-     * Flags to update Factory elements when hovering on menu items
+     * Flag to update Factory elements when hovering on relationship menu items
+     * This is to ensure that when the user presses escape the menu selection is cancelled
      */
-    private boolean fArmOnElements, fArmOnConnections;
+    private boolean fSetRelationshipTypeWhenHoveringOnConnectionMenuItem;
 
     /**
-     * This flag stops some thread conditions (on Mac) that can re-set the current command when the context menu is showing
+     * This flag stops some thread conditions (on Mac) that can re-set the current command when the popup menu is showing
      */
     private boolean fCanSetCurrentCommand = true;
     
@@ -106,22 +109,23 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         EditPart sourceEditPart = request.getSourceEditPart();
         EditPart targetEditPart = request.getTargetEditPart();
         
-        if(sourceEditPart == null || sourceEditPart == targetEditPart) {
+        // Allow circular connections
+        //if(sourceEditPart == null || sourceEditPart == targetEditPart) { 
+        if(sourceEditPart == null) {
             eraseSourceFeedback();
             return false;
         }
         
-        IDiagramModelArchimateObject sourceDiagramModelObject = (IDiagramModelArchimateObject)sourceEditPart.getModel();
+        IDiagramModelArchimateComponent sourceDiagramModelComponent = (IDiagramModelArchimateComponent)sourceEditPart.getModel();
         
-        // If targetEditPart is null then user clicked on the canvas or in a non-Archimate Editpart
+        // If targetEditPart is null then user clicked on the diagram or on a non-Archimate concept Editpart
         if(targetEditPart == null) {
-            return createElementAndConnection(sourceDiagramModelObject, request.getLocation());
+            return createElementAndConnection(sourceDiagramModelComponent, request.getLocation());
         }
         
-        // User clicked on Archimate target edit part
-        if(targetEditPart.getModel() instanceof IDiagramModelArchimateObject) {
-            IDiagramModelArchimateObject targetDiagramModelObject = (IDiagramModelArchimateObject)targetEditPart.getModel();
-            return createConnection(request, sourceDiagramModelObject, targetDiagramModelObject);
+        // User clicked on Archimate target concept edit part
+        if(targetEditPart.getModel() instanceof IDiagramModelArchimateComponent) {
+            return createConnection(request, sourceDiagramModelComponent, (IDiagramModelArchimateComponent)targetEditPart.getModel());
         }
         
         eraseSourceFeedback();
@@ -130,11 +134,32 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     
     @Override
     protected void setTargetEditPart(EditPart editpart) {
-        // Set this to null if it's not an Archimate target editpart so we can handle it as if we clicked on the canvas
-        // This also disables unwanted connection target feedback
-        if(!(editpart instanceof IArchimateEditPart)) {
+        /*
+         * Set editpart to null if it's not an Archimate target concept so we can handle it as if we clicked on the canvas.
+         * This also disables unwanted connection target feedback.
+         */
+        if(editpart != null && !(editpart.getModel() instanceof IDiagramModelArchimateComponent)) {
             editpart = null;
         }
+        
+        /*
+         * Check whether we are trying to connect an element to a relation where the relation is already connected to that element
+         * If we are, set editpart to null to veto it.
+         */
+        if(editpart != null) {
+            EditPart sourceEditPart = ((CreateConnectionRequest)getSourceRequest()).getSourceEditPart();
+            if(sourceEditPart != null) {
+                if(sourceEditPart.getModel() instanceof IDiagramModelArchimateComponent && editpart.getModel() instanceof IDiagramModelArchimateComponent) {
+                    IArchimateConcept sourceConcept = ((IDiagramModelArchimateComponent)sourceEditPart.getModel()).getArchimateConcept();
+                    IArchimateConcept targetConcept = ((IDiagramModelArchimateComponent)editpart.getModel()).getArchimateConcept();
+                    
+                    if(ArchimateModelUtils.hasDirectRelationship(sourceConcept, targetConcept)) {
+                        editpart = null;
+                    }
+                }
+            }
+        }
+        
         super.setTargetEditPart(editpart);
     }
     
@@ -147,18 +172,19 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     }
     
     /**
-     * Create just a new connection between source and target elements
+     * Create just a new connection between source and target components
      */
-    private boolean createConnection(CreateConnectionRequest request, IDiagramModelArchimateObject sourceDiagramModelObject,
-            IDiagramModelArchimateObject targetDiagramModelObject) {
+    private boolean createConnection(CreateConnectionRequest request, IDiagramModelArchimateComponent sourceDiagramModelComponent,
+            IDiagramModelArchimateComponent targetDiagramModelComponent) {
         
-        fArmOnConnections = false;
+        // Only set when a menu selection for a connection is actually made
+        fSetRelationshipTypeWhenHoveringOnConnectionMenuItem = false;
         
         // Set this threading safety guard
         fCanSetCurrentCommand = false;
         
         Menu menu = new Menu(getCurrentViewer().getControl());
-        addConnectionActions(menu, sourceDiagramModelObject.getArchimateElement(), targetDiagramModelObject.getArchimateElement());
+        addConnectionActions(menu, sourceDiagramModelComponent, targetDiagramModelComponent);
         menu.setVisible(true);
         
         // Modal menu
@@ -169,6 +195,12 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
             }
         }
         
+        // Workaround for Bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=480318
+        // SWT Menu does not fire Selection Event when Windows touch display is enabled
+        if(PlatformUtils.isWindows()) {
+            while(display.readAndDispatch());
+        }
+
         if(!menu.isDisposed()) {
             menu.dispose();
         }
@@ -187,8 +219,8 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         // If user selected a reverse connection from target to source then swap the source/target in the Command
         // (Yes, I know this is kludgey, but you try and disentangle GEF's Request/Policy/Factory/Command dance...)
         if(getFactory().swapSourceAndTarget()) {
-            CreateArchimateConnectionCommand cmd = (CreateArchimateConnectionCommand)getCurrentCommand();
-            cmd.swapSourceAndTargetElements();
+            CreateDiagramArchimateConnectionWithDialogCommand cmd = (CreateDiagramArchimateConnectionWithDialogCommand)getCurrentCommand();
+            cmd.swapSourceAndTargetConcepts();
         }
         
         executeCurrentCommand();
@@ -201,15 +233,15 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     /**
      * Create an Element and a connection in one go when user clicks on the canvas or in a non-Archimate Editpart
      */
-    private boolean createElementAndConnection(IDiagramModelArchimateObject sourceDiagramModelObject, Point location) {
+    private boolean createElementAndConnection(IDiagramModelArchimateComponent sourceDiagramModelComponent, Point location) {
         // Grab this now as it will disappear after menu is shown
         EditPartViewer viewer = getCurrentViewer();
         
-        // Default parent
-        IDiagramModelContainer parent = sourceDiagramModelObject.getDiagramModel();
-        
         // What did we click on?
         GraphicalEditPart targetEditPart = (GraphicalEditPart)viewer.findObjectAt(getCurrentInput().getMouseLocation());
+        
+        // Target parent (default is the diagram itself)
+        IDiagramModelContainer parent = sourceDiagramModelComponent.getDiagramModel();
         
         // If we clicked on a Group EditPart use that as parent
         if(targetEditPart instanceof GroupEditPart) {
@@ -221,21 +253,23 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
             parent = (IDiagramModelContainer)targetEditPart.getModel();
         }
         
-        boolean elementsFirst = Preferences.isMagicConnectorPolarity();
+        boolean elementsFirst = ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.MAGIC_CONNECTOR_POLARITY);
         boolean modKeyPressed = getCurrentInput().isModKeyDown(SWT.MOD1);
         elementsFirst ^= modKeyPressed;
         
         Menu menu = new Menu(getCurrentViewer().getControl());
+        
+        // User will hover over element, then connection
         if(elementsFirst) {
-            fArmOnElements = true;
-            fArmOnConnections = false;
-            addElementActions(menu, sourceDiagramModelObject);
+            fSetRelationshipTypeWhenHoveringOnConnectionMenuItem = false; 
+            addElementActions(menu, sourceDiagramModelComponent);
         }
+        // User will hover over connection, then element
         else {
-            fArmOnConnections = true;
-            fArmOnElements = false;
-            addConnectionActions(menu, sourceDiagramModelObject);
+            fSetRelationshipTypeWhenHoveringOnConnectionMenuItem = true;
+            addConnectionActions(menu, sourceDiagramModelComponent);
         }
+        
         menu.setVisible(true);
         
         // Modal menu
@@ -246,6 +280,12 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
             }
         }
         
+        // Workaround for Bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=480318
+        // SWT Menu does not fire Selection Event when Windows touch display is enabled
+        if(PlatformUtils.isWindows()) {
+            while(display.readAndDispatch());
+        }
+
         if(!menu.isDisposed()) {
             menu.dispose();
         }
@@ -259,7 +299,7 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         }
         
         // Create Compound Command first
-        CompoundCommand cmd = new CreateElementCompoundCommand((FigureCanvas)viewer.getControl(), location.x, location.y);
+        CompoundCommand cmd = new CompoundCommand(Messages.MagicConnectionCreationTool_6);
         
         // If the EditPart's Figure is a Container, adjust the location to relative co-ords
         if(targetEditPart.getFigure() instanceof IContainerFigure) {
@@ -272,8 +312,8 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         }
         
         CreateNewDiagramObjectCommand cmd1 = new CreateNewDiagramObjectCommand(parent,
-                getFactory().getElementType(), location);
-        Command cmd2 = new CreateNewConnectionCommand(sourceDiagramModelObject, cmd1.getNewObject(),
+                getFactory().getElementType(), location, viewer);
+        Command cmd2 = new CreateNewConnectionCommand(sourceDiagramModelComponent, cmd1.getNewObject(),
                 getFactory().getRelationshipType());
         cmd.add(cmd1);
         cmd.add(cmd2);
@@ -289,25 +329,29 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     /**
      * Add Connection->Element Actions
      */
-    private void addConnectionActions(Menu menu, IDiagramModelArchimateObject sourceDiagramModelObject) {
+    private void addConnectionActions(Menu menu, IDiagramModelArchimateComponent sourceDiagramModelComponent) {
         for(EClass relationshipType : ArchimateModelUtils.getRelationsClasses()) {
-            if(ArchimateModelUtils.isValidRelationshipStart(sourceDiagramModelObject.getArchimateElement(), relationshipType)) {
+            if(ArchimateModelUtils.isValidRelationshipStart(sourceDiagramModelComponent.getArchimateConcept(), relationshipType)) {
                 MenuItem item = addConnectionAction(menu, relationshipType, false);
                 Menu subMenu = new Menu(item);
                 item.setMenu(subMenu);
                 
-                addConnectionActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getBusinessClasses(), relationshipType);
-                addConnectionActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getApplicationClasses(), relationshipType);
-                addConnectionActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getTechnologyClasses(), relationshipType);
-                addConnectionActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getMotivationClasses(), relationshipType);
-                addConnectionActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getImplementationMigrationClasses(), relationshipType);
-                addConnectionActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getConnectorClasses(), relationshipType);
-                
-                // Remove the very last separator if there is one
-                int itemCount = subMenu.getItemCount() - 1;
-                if(itemCount > 0 && (subMenu.getItem(itemCount).getStyle() & SWT.SEPARATOR) != 0) {
-                    subMenu.getItem(itemCount).dispose();
-                }
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_7,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getStrategyClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_0,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getBusinessClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_1,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getApplicationClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_2,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getTechnologyClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_9,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getPhysicalClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_3,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getMotivationClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_4,
+                        sourceDiagramModelComponent, ArchimateModelUtils.getImplementationMigrationClasses(), relationshipType);
+                addConnectionActions(subMenu, Messages.MagicConnectionCreationTool_8,
+                        sourceDiagramModelComponent, getOtherAndConnectorClasses(), relationshipType);
                 
                 if(subMenu.getItemCount() == 0) {
                     item.dispose(); // Nothing there
@@ -316,125 +360,98 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         }
     }
     
-    private void addConnectionActions(Menu menu, IDiagramModelArchimateObject sourceDiagramModelObject, EClass[] list, EClass relationshipType) {
-        boolean added = false;
-        IArchimateElement sourceElement = sourceDiagramModelObject.getArchimateElement();
+    private void addConnectionActions(Menu menu, String menuText, IDiagramModelArchimateComponent sourceDiagramModelComponent,
+            EClass[] list, EClass relationshipType) {
+        
+        // Check if relationship allowed by Viewpoint
+        if(!isAllowedTargetTypeInViewpoint(sourceDiagramModelComponent, relationshipType)) {
+            return;
+        }
+
+        MenuItem item = new MenuItem(menu, SWT.CASCADE);
+        item.setText(menuText);
+        Menu subMenu = new Menu(item);
+        item.setMenu(subMenu);
         
         for(EClass type : list) {
-            // Check if allowed by Viewpoint
-            if(!isAllowedTargetTypeInViewpoint(sourceDiagramModelObject, type)) {
+            // Check if target type allowed by Viewpoint
+            if(!isAllowedTargetTypeInViewpoint(sourceDiagramModelComponent, type)) {
                 continue;
             }
 
-            if(ArchimateModelUtils.isValidRelationship(sourceElement.eClass(), type, relationshipType)) {
-                added = true;
-                addElementAction(menu, type);
+            // Check valid relationship between actual concepts to check Junction rules, if any
+            IArchimateConcept sourceConcept = sourceDiagramModelComponent.getArchimateConcept();
+            IArchimateConcept targetConcept = (IArchimateConcept)IArchimateFactory.eINSTANCE.create(type);
+            
+            if(ArchimateModelUtils.isValidRelationship(sourceConcept, targetConcept, relationshipType)) {
+                addElementAction(subMenu, type);
             }
         }
         
-        if(added) {
-            new MenuItem(menu, SWT.SEPARATOR);
-        }
-    }
-
-    /**
-     * Add Element to Connection Actions
-     */
-    private void addElementActions(Menu menu, IDiagramModelArchimateObject sourceDiagramModelObject) {
-        MenuItem item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(Messages.MagicConnectionCreationTool_0);
-        Menu subMenu = new Menu(item);
-        item.setMenu(subMenu);
-        addElementActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getBusinessClasses());
-
-        if(subMenu.getItemCount() == 0) {
-            item.dispose(); // Nothing there
-        }
-
-        item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(Messages.MagicConnectionCreationTool_1);
-        subMenu = new Menu(item);
-        item.setMenu(subMenu);
-        addElementActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getApplicationClasses());
-
-        if(subMenu.getItemCount() == 0) {
-            item.dispose(); // Nothing there
-        }
-
-        item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(Messages.MagicConnectionCreationTool_2);
-        subMenu = new Menu(item);
-        item.setMenu(subMenu);
-        addElementActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getTechnologyClasses());
-
-        if(subMenu.getItemCount() == 0) {
-            item.dispose(); // Nothing there
-        }
-
-        item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(Messages.MagicConnectionCreationTool_3);
-        subMenu = new Menu(item);
-        item.setMenu(subMenu);
-        addElementActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getMotivationClasses());
-
-        if(subMenu.getItemCount() == 0) {
-            item.dispose(); // Nothing there
-        }
-
-        item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(Messages.MagicConnectionCreationTool_4);
-        subMenu = new Menu(item);
-        item.setMenu(subMenu);
-        addElementActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getImplementationMigrationClasses());
-
-        if(subMenu.getItemCount() == 0) {
-            item.dispose(); // Nothing there
-        }
-
-        item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(Messages.MagicConnectionCreationTool_5);
-        subMenu = new Menu(item);
-        item.setMenu(subMenu);
-        addElementActions(subMenu, sourceDiagramModelObject, ArchimateModelUtils.getConnectorClasses());
-
         if(subMenu.getItemCount() == 0) {
             item.dispose(); // Nothing there
         }
     }
     
-    private void addElementActions(Menu menu, IDiagramModelArchimateObject sourceDiagramModelObject, EClass[] list) {
-        IArchimateElement sourceElement = sourceDiagramModelObject.getArchimateElement();
-        
+    /**
+     * Add Element to Connection Actions
+     */
+    private void addElementActions(Menu menu, IDiagramModelArchimateComponent sourceDiagramModelComponent) {
+        addElementActions(menu, Messages.MagicConnectionCreationTool_7, sourceDiagramModelComponent, ArchimateModelUtils.getStrategyClasses());
+        addElementActions(menu, Messages.MagicConnectionCreationTool_0, sourceDiagramModelComponent, ArchimateModelUtils.getBusinessClasses());
+        addElementActions(menu, Messages.MagicConnectionCreationTool_1, sourceDiagramModelComponent, ArchimateModelUtils.getApplicationClasses());
+        addElementActions(menu, Messages.MagicConnectionCreationTool_2, sourceDiagramModelComponent, ArchimateModelUtils.getTechnologyClasses());
+        addElementActions(menu, Messages.MagicConnectionCreationTool_3, sourceDiagramModelComponent, ArchimateModelUtils.getMotivationClasses());
+        addElementActions(menu, Messages.MagicConnectionCreationTool_4, sourceDiagramModelComponent, ArchimateModelUtils.getImplementationMigrationClasses());
+        addElementActions(menu, Messages.MagicConnectionCreationTool_8, sourceDiagramModelComponent, getOtherAndConnectorClasses());
+    }
+    
+    private void addElementActions(Menu menu, String menuText, IDiagramModelArchimateComponent sourceDiagramModelComponent, EClass[] list) {
+        MenuItem item = new MenuItem(menu, SWT.CASCADE);
+        item.setText(menuText);
+        Menu subMenu = new Menu(item);
+        item.setMenu(subMenu);
+
         for(EClass type : list) {
             // Check if allowed by Viewpoint
-            if(!isAllowedTargetTypeInViewpoint(sourceDiagramModelObject, type)) {
+            if(!isAllowedTargetTypeInViewpoint(sourceDiagramModelComponent, type)) {
                 continue;
             }
             
-            MenuItem item = addElementAction(menu, type);
-            Menu subMenu = new Menu(item);
-            item.setMenu(subMenu);
-            for(EClass typeRel : ArchimateModelUtils.getRelationsClasses()) {
-                if(ArchimateModelUtils.isValidRelationship(sourceElement.eClass(), type, typeRel)) {
-                    addConnectionAction(subMenu, typeRel, false);
+            MenuItem subItem = addElementAction(subMenu, type);
+            Menu childSubMenu = new Menu(subItem);
+            subItem.setMenu(childSubMenu);
+            
+            // Check valid relationship between actual concepts to check Junction rules, if any
+            IArchimateConcept sourceConcept = sourceDiagramModelComponent.getArchimateConcept();
+            IArchimateConcept targetConcept = (IArchimateConcept)IArchimateFactory.eINSTANCE.create(type);
+            
+            for(EClass eClass : ArchimateModelUtils.getValidRelationships(sourceConcept, targetConcept)) {
+                if(isAllowedTargetTypeInViewpoint(sourceDiagramModelComponent, eClass)) { // Check if allowed by Viewpoint
+                    addConnectionAction(childSubMenu, eClass, false);
                 }
             }
-            if(subMenu.getItemCount() == 0) {
-                item.dispose(); // Nothing there
+            
+            if(childSubMenu.getItemCount() == 0) {
+                subItem.dispose(); // Nothing there
             }
+        }
+        
+        if(subMenu.getItemCount() == 0) {
+            item.dispose(); // Nothing there
         }
     }
 
     private MenuItem addElementAction(Menu menu, final EClass type) {
         final MenuItem item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(ArchimateLabelProvider.INSTANCE.getDefaultName(type));
-        item.setImage(ArchimateLabelProvider.INSTANCE.getImage(type));
+        item.setText(ArchiLabelProvider.INSTANCE.getDefaultName(type));
+        item.setImage(ArchiLabelProvider.INSTANCE.getImage(type));
         
-        // Add hover listener to notify Hints View and also set element if elements first
+        // Add arm listener to notify Hints View and also set element if elements first
         item.addArmListener(new ArmListener() {
             @Override
             public void widgetArmed(ArmEvent e) {
-                if(fArmOnElements) {
+                if(!fSetRelationshipTypeWhenHoveringOnConnectionMenuItem) { // User will hover over element, then connection
                     getFactory().setElementType(type);
                 }
                 ComponentSelectionManager.INSTANCE.fireSelectionEvent(item, type);
@@ -454,17 +471,27 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     /**
      * Add Connection Actions going in both directions
      */
-    private void addConnectionActions(Menu menu, IArchimateElement sourceElement, IArchimateElement targetElement) {
+    private void addConnectionActions(Menu menu, IDiagramModelArchimateComponent sourceDiagramModelComponent, IDiagramModelArchimateComponent targetDiagramModelComponent) {
+        List<MenuItem> forward = new ArrayList<>();
+        List<MenuItem> reverse = new ArrayList<>();
+        
         // Add forward direction connections
-        for(EClass type : ArchimateModelUtils.getValidRelationships(sourceElement, targetElement)) {
-            addConnectionAction(menu, type, false);
+        for(EClass type : ArchimateModelUtils.getValidRelationships(sourceDiagramModelComponent.getArchimateConcept(), targetDiagramModelComponent.getArchimateConcept())) {
+            if(isAllowedTargetTypeInViewpoint(sourceDiagramModelComponent, type)) {
+                forward.add(addConnectionAction(menu, type, false));
+            }
         }
         
-        new MenuItem(menu, SWT.SEPARATOR);
-        
         // Add reverse direction connections
-        for(EClass type : ArchimateModelUtils.getValidRelationships(targetElement, sourceElement)) {
-            addConnectionAction(menu, type, true);
+        for(EClass type : ArchimateModelUtils.getValidRelationships(targetDiagramModelComponent.getArchimateConcept(), sourceDiagramModelComponent.getArchimateConcept())) {
+            if(isAllowedTargetTypeInViewpoint(sourceDiagramModelComponent, type)) {
+                reverse.add(addConnectionAction(menu, type, true));
+            }
+        }
+        
+        // Add a separator only if we have both sets of items on the menu
+        if(!forward.isEmpty() && !reverse.isEmpty()) {
+            new MenuItem(menu, SWT.SEPARATOR, forward.size());
         }
     }
     
@@ -473,14 +500,14 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
      */
     private MenuItem addConnectionAction(Menu menu, final EClass relationshipType, final boolean reverseDirection) {
         final MenuItem item = new MenuItem(menu, SWT.CASCADE);
-        item.setText(ArchimateLabelProvider.INSTANCE.getRelationshipPhrase(relationshipType, reverseDirection));
-        item.setImage(ArchimateLabelProvider.INSTANCE.getImage(relationshipType));
+        item.setText(ArchiLabelProvider.INSTANCE.getRelationshipPhrase(relationshipType, reverseDirection));
+        item.setImage(ArchiLabelProvider.INSTANCE.getImage(relationshipType));
         
-        // Add hover listener to notify Hints View
+        // Add arm listener to notify Hints View
         item.addArmListener(new ArmListener() {
             @Override
             public void widgetArmed(ArmEvent e) {
-                if(fArmOnConnections) {
+                if(fSetRelationshipTypeWhenHoveringOnConnectionMenuItem) { // User will hover over connection, then element
                     getFactory().setRelationshipType(relationshipType);
                 }
                 ComponentSelectionManager.INSTANCE.fireSelectionEvent(item, relationshipType);
@@ -499,17 +526,24 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     }
     
     /**
+     * @return "Other" and "Connector" Classes as one arraArraysy
+     */
+    private EClass[] getOtherAndConnectorClasses() {
+        List<EClass> list = new ArrayList<EClass>();
+        list.addAll(Arrays.asList(ArchimateModelUtils.getOtherClasses()));
+        list.addAll(Arrays.asList(ArchimateModelUtils.getConnectorClasses()));
+        return list.toArray(new EClass[] {});
+    }
+    
+    /**
      * @return True if type is an allowed target type for a given Viewpoint
      */
-    private boolean isAllowedTargetTypeInViewpoint(IDiagramModelArchimateObject diagramObject, EClass type) {
-        if(!Preferences.STORE.getBoolean(IPreferenceConstants.VIEWPOINTS_HIDE_MAGIC_CONNECTOR_ELEMENTS)) {
+    private boolean isAllowedTargetTypeInViewpoint(IDiagramModelArchimateComponent diagramComponent, EClass type) {
+        if(!ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEWPOINTS_HIDE_MAGIC_CONNECTOR_ELEMENTS)) {
             return true;
         }
         
-        IArchimateDiagramModel dm = (IArchimateDiagramModel)diagramObject.getDiagramModel();
-        int index = dm.getViewpoint();
-        IViewpoint viewpoint = ViewpointsManager.INSTANCE.getViewpoint(index);
-        return viewpoint == null ? true : viewpoint.isAllowedType(type);
+        return ViewpointManager.INSTANCE.isAllowedConceptForDiagramModel((IArchimateDiagramModel)diagramComponent.getDiagramModel(), type);
     }
     
     @Override
@@ -534,52 +568,24 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
     // ======================================================================================================
     
     /**
-     * Create Element Command
-     */
-    private static class CreateElementCompoundCommand extends CompoundCommand {
-        PoofAnimater animater;
-        
-        CreateElementCompoundCommand(FigureCanvas canvas, int x, int y) {
-            super(Messages.MagicConnectionCreationTool_6);
-            animater = new PoofAnimater(canvas, x, y);
-        }
-        
-        @Override
-        public void undo() {
-            super.undo();
-            if(Preferences.doAnimateMagicConnector()) {
-                animater.animate(false);
-            }
-        }
-        
-        @Override
-        public void redo() {
-            if(Preferences.doAnimateMagicConnector()) {
-                animater.animate(true);
-            }
-            super.redo();
-        }
-    }
-    
-    /**
      * Create New DiagramObject Command
      */
     private static class CreateNewDiagramObjectCommand extends Command {
         private IDiagramModelContainer fParent;
         private IDiagramModelArchimateObject fChild;
         private EClass fTemplate;
+        private EditPartViewer fViewer;
 
-        CreateNewDiagramObjectCommand(IDiagramModelContainer parent, EClass type, Point location) {
+        CreateNewDiagramObjectCommand(IDiagramModelContainer parent, EClass type, Point location, EditPartViewer viewer) {
             fParent = parent;
             fTemplate = type;
+            fViewer = viewer;
 
             // Create this now
             fChild = (IDiagramModelArchimateObject)new ArchimateDiagramModelFactory(fTemplate).getNewObject();
             
-            // Default size
-            IElementUIProvider provider = ElementUIFactory.INSTANCE.getProvider(fChild);
-            Dimension defaultSize = provider.getDefaultSize();
-            fChild.setBounds(location.x, location.y, defaultSize.width, defaultSize.height);
+            // Location
+            fChild.getBounds().setLocation(location.x, location.y);
         }
         
         IDiagramModelArchimateObject getNewObject() {
@@ -589,18 +595,31 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         @Override
         public void execute() {
             redo();
+            
+            // Select EditPart and edit name
+            if(fViewer != null && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.EDIT_NAME_ON_NEW_OBJECT)) {
+                EditPart editPart = (EditPart)fViewer.getEditPartRegistry().get(fChild);
+                if(editPart != null) {
+                    // Async this otherwise the edit label is not aligned
+                    Display.getCurrent().asyncExec(() -> {
+                        fViewer.select(editPart);
+                        Request directEditRequest = new Request(RequestConstants.REQ_DIRECT_EDIT);
+                        editPart.performRequest(directEditRequest);
+                    });
+                }
+            }                
         }
 
         @Override
         public void undo() {
             fParent.getChildren().remove(fChild);
-            fChild.removeArchimateElementFromModel();
+            fChild.removeArchimateConceptFromModel();
         }
 
         @Override
         public void redo() {
             fParent.getChildren().add(fChild);
-            fChild.addArchimateElementToModel(null);
+            fChild.addArchimateConceptToModel(null);
         }
         
         @Override
@@ -608,6 +627,7 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
             fParent = null;
             fChild = null;
             fTemplate = null;
+            fViewer = null;
         }
     }
     
@@ -616,11 +636,11 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
      */
     private static class CreateNewConnectionCommand extends Command {
         private IDiagramModelArchimateConnection fConnection;
-        private IDiagramModelArchimateObject fSource;
-        private IDiagramModelArchimateObject fTarget;
+        private IDiagramModelArchimateComponent fSource;
+        private IDiagramModelArchimateComponent fTarget;
         private EClass fTemplate;
         
-        CreateNewConnectionCommand(IDiagramModelArchimateObject source, IDiagramModelArchimateObject target, EClass type) {
+        CreateNewConnectionCommand(IDiagramModelArchimateComponent source, IDiagramModelArchimateComponent target, EClass type) {
             fSource = source;
             fTarget = target;
             fTemplate = type;
@@ -630,19 +650,19 @@ public class MagicConnectionCreationTool extends ConnectionCreationTool {
         public void execute() {
             fConnection = (IDiagramModelArchimateConnection)new ArchimateDiagramModelFactory(fTemplate).getNewObject();
             fConnection.connect(fSource, fTarget);
-            fConnection.addRelationshipToModel(null);
+            fConnection.addArchimateConceptToModel(null);
         }
         
         @Override
         public void redo() {
             fConnection.reconnect();
-            fConnection.addRelationshipToModel(null);
+            fConnection.addArchimateConceptToModel(null);
         }
         
         @Override
         public void undo() {
             fConnection.disconnect();
-            fConnection.removeRelationshipFromModel();
+            fConnection.removeArchimateConceptFromModel();
         }
 
         @Override

@@ -15,12 +15,10 @@ import com.archimatetool.model.IGoal;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Goal</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Goal extends MotivationElement implements IGoal {
+public class Goal extends ArchimateElement implements IGoal {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

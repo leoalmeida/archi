@@ -36,10 +36,10 @@ a {
 	text-decoration:none;
 }
 a:link {
-	color:#0033ee;
+	color:#228cd3;
 }
 a:visited {
-	color:#025999;
+	color:#228cd3;
 }
 a:hover	{
 	color:#ff9900;
@@ -58,6 +58,7 @@ table.border {
 td {
 	padding: 5px;
 	min-width: 100px;
+	vertical-align: top;
 }
 
 td.border {
@@ -65,12 +66,17 @@ td.border {
 	padding: 4px;
 }
 
-.font12 {
-	font-size: 12pt;
+pre {
+    font-size: 11px;
 }
 
-.font14 {
-	font-size: 14pt;
+.pagebreak {
+    page-break-before: always;
+}
+
+.heading {
+	font-size: 12pt;
+	font-weight: 600;
 }
 
 .caption {

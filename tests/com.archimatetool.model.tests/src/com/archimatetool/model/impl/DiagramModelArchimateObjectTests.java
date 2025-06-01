@@ -5,21 +5,23 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import com.archimatetool.model.IApplicationInterface;
 import com.archimatetool.model.IArchimateDiagramModel;
+import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IBusinessActor;
 import com.archimatetool.model.IDiagramModelArchimateObject;
 import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IFolder;
@@ -28,16 +30,15 @@ import com.archimatetool.model.IFolder;
 @SuppressWarnings("nls")
 public class DiagramModelArchimateObjectTests extends DiagramModelObjectTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelArchimateObjectTests.class);
-    }
-    
     private IDiagramModelArchimateObject object;
+    
+    private IArchimateElement element;
     
     @Override
     protected IDiagramModelComponent getComponent() {
         object = IArchimateFactory.eINSTANCE.createDiagramModelArchimateObject();
-        object.setArchimateElement(IArchimateFactory.eINSTANCE.createBusinessActor());
+        element = IArchimateFactory.eINSTANCE.createBusinessActor();
+        object.setArchimateElement(element);
         return object;
     }
 
@@ -61,9 +62,42 @@ public class DiagramModelArchimateObjectTests extends DiagramModelObjectTests {
 
     @Test
     public void testGetArchimateElement() {
-        assertTrue(object.getArchimateElement() instanceof IBusinessActor);
+        assertSame(element, object.getArchimateElement());
     }
     
+    @Test
+    public void testSetArchimateElementCanBeNull() {
+        object.setArchimateElement(null);
+        assertNull(object.getArchimateElement());
+    }
+    
+    @Test
+    public void testGetArchimateConcept() {
+        assertSame(element, object.getArchimateConcept());
+    }
+    
+    @Test
+    public void testSetArchimateConcept() {
+        IApplicationInterface e = IArchimateFactory.eINSTANCE.createApplicationInterface();
+        object.setArchimateConcept(e);
+        assertSame(e, object.getArchimateConcept());
+        assertSame(e, object.getArchimateElement());
+    }
+    
+    @Test
+    public void testSetArchimateConceptCanBeNull() {
+        object.setArchimateConcept(null);
+        assertNull(object.getArchimateConcept());
+        assertNull(object.getArchimateElement());
+    }
+    
+    @Test
+    public void testSetArchimateConceptThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            object.setArchimateConcept(IArchimateFactory.eINSTANCE.createAssociationRelationship());
+        });
+    }
+
     @Test
     public void testGetType() {
         assertEquals(0, object.getType());
@@ -71,31 +105,32 @@ public class DiagramModelArchimateObjectTests extends DiagramModelObjectTests {
         assertEquals(2, object.getType());
     }
     
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void testAddArchimateElementToModel_AlreadyHasParent() {
         IFolder parent = IArchimateFactory.eINSTANCE.createFolder();
         parent.getElements().add(object.getArchimateElement());
-        
-        object.addArchimateElementToModel(null);
+        assertThrows(IllegalArgumentException.class, () -> {
+            object.addArchimateConceptToModel(null);
+        });
     }
     
     @Test
     public void testAdd_Remove_ArchimateElementToModel() {
         IArchimateModel model = IArchimateFactory.eINSTANCE.createArchimateModel();
         IArchimateDiagramModel dm = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
-        model.getDefaultFolderForElement(dm).getElements().add(dm);
+        model.getDefaultFolderForObject(dm).getElements().add(dm);
         dm.getChildren().add(object);
         
         // Passing null uses a default folder in the model
-        IFolder expectedFolder = model.getDefaultFolderForElement(object.getArchimateElement());
-        object.addArchimateElementToModel(null);
+        IFolder expectedFolder = model.getDefaultFolderForObject(object.getArchimateElement());
+        object.addArchimateConceptToModel(null);
         assertSame(expectedFolder, object.getArchimateElement().eContainer());
         
-        object.removeArchimateElementFromModel();
+        object.removeArchimateConceptFromModel();
         assertNull(object.getArchimateElement().eContainer());
         
         expectedFolder = IArchimateFactory.eINSTANCE.createFolder();
-        object.addArchimateElementToModel(expectedFolder);
+        object.addArchimateConceptToModel(expectedFolder);
         assertSame(expectedFolder, object.getArchimateElement().eContainer());
     }
 
@@ -110,4 +145,19 @@ public class DiagramModelArchimateObjectTests extends DiagramModelObjectTests {
         assertNotNull(copy.getArchimateElement());
         assertNotSame(copy.getArchimateElement(), object.getArchimateElement());
     }
+    
+    @Test
+    public void testSetImageSource() {
+        assertEquals(IDiagramModelArchimateObject.FEATURE_IMAGE_SOURCE_DEFAULT, object.getImageSource());
+        object.setImageSource(IDiagramModelArchimateObject.IMAGE_SOURCE_CUSTOM);
+        assertEquals(IDiagramModelArchimateObject.IMAGE_SOURCE_CUSTOM, object.getImageSource());
+    }
+    
+    @Test
+    public void testUseProfileImage() {
+        assertTrue(object.useProfileImage());
+        object.setImageSource(IDiagramModelArchimateObject.IMAGE_SOURCE_CUSTOM);
+        assertFalse(object.useProfileImage());
+    }
+    
 }

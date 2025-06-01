@@ -5,24 +5,22 @@
  */
 package com.archimatetool.editor.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.swt.graphics.Image;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.editor.model.IArchiveManager;
@@ -43,11 +41,7 @@ public class ArchiveManagerTests {
     private IDiagramModel dm;
     private ArchiveManager archiveManager;
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ArchiveManagerTests.class);
-    }
-    
-    @Before
+    @BeforeEach
     public void runBeforeEachTest() {
         tm = new ArchimateTestModel();
         model = tm.createNewModel();
@@ -58,76 +52,69 @@ public class ArchiveManagerTests {
     @Test
     public void testCreateArchiveManager() throws Exception {
         assertNotNull(archiveManager);
-        
-        // Should have an ID Adapter and an extra EContentAdapter adapter
-        assertEquals(2, model.eAdapters().size());
-        assertEquals(TestUtils.getPrivateField(archiveManager, "fModelAdapter"), model.eAdapters().get(1));
-        
         assertTrue(archiveManager.getImagePaths().isEmpty());
+        assertTrue(archiveManager.getLoadedImagePaths().isEmpty());
         assertFalse(archiveManager.hasImages());
     }
     
     @Test
-    public void testEContentAdapter() throws Exception {
-        assertTrue(archiveManager.getImagePaths().isEmpty());
+    public void testAddImageFromFile_Exception() {
+        IOException thrown = assertThrows(IOException.class, () -> {
+            archiveManager.addImageFromFile(new File("bogus.pomp"));
+        });
         
-        IDiagramModelImage dmImage = IArchimateFactory.eINSTANCE.createDiagramModelImage();
-        
-        // Add IDiagramModelImageProvider without an image path set - should not register
-        dm.getChildren().add(dmImage);
-        assertTrue(archiveManager.getImagePaths().isEmpty());
-        assertTrue(archiveManager.getLoadedImagePaths().isEmpty());
-        
-        dm.getChildren().remove(dmImage);
-
-        // Add IDiagramModelImageProvider with an image path set - should register
-        String imagePath = "/somePath/image.png";
-        dmImage.setImagePath(imagePath);
-        dm.getChildren().add(dmImage);
-        assertEquals(1, archiveManager.getImagePaths().size());
-        assertEquals(1, archiveManager.getLoadedImagePaths().size());
-        assertEquals(imagePath, archiveManager.getImagePaths().get(0));
-        
-        // Set image path, should still only be one
-        String imagePath2 = "/somePath/image2.png";
-        dmImage.setImagePath(imagePath2);
-        assertEquals(1, archiveManager.getImagePaths().size());
-        assertEquals(2, archiveManager.getLoadedImagePaths().size()); // This should be increased
-        assertEquals(imagePath2, archiveManager.getImagePaths().get(0));
-    }
-    
-    @Rule
-    public ExpectedException expectedEx = ExpectedException.none();
-    
-    @Test
-    public void testAddImageFromFile_Exception() throws IOException {
-        expectedEx.expect(IOException.class);
-        expectedEx.expectMessage("Cannot find file");
-        archiveManager.addImageFromFile(new File("bogus.pomp"));
+        assertEquals("Cannot find file", thrown.getMessage());
     }
     
     @Test
-    public void testAddImageFromFile_WrongFileFormat() throws IOException {
-        expectedEx.expect(IOException.class);
-        expectedEx.expectMessage("Not a supported image file");
-        archiveManager.addImageFromFile(TestSupport.TEST_MODEL_FILE_ZIPPED);
+    public void testAddImageFromFile_WrongFileFormat() {
+        IOException thrown = assertThrows(IOException.class, () -> {
+            archiveManager.addImageFromFile(TestSupport.TEST_MODEL_FILE_ZIPPED);
+        });
+        
+        assertEquals("Not a supported image file", thrown.getMessage());
     }
 
     @Test
     public void testAddImageFromFile() throws Exception {
+        // Add a DiagramModelImage object
         IDiagramModelImage dmImage = IArchimateFactory.eINSTANCE.createDiagramModelImage();
         dm.getChildren().add(dmImage);
         
-        assertTrue(archiveManager.getLoadedImagePaths().isEmpty()); // should be empty
+        // Loaded images and image refs should be empty
+        assertTrue(archiveManager.getLoadedImagePaths().isEmpty());
+        assertTrue(archiveManager.getImagePaths().isEmpty());
 
+        // Load an image from file
         File imgFile = new File(TestSupport.getTestDataFolder(), "/img/img1.png");
         String pathName = archiveManager.addImageFromFile(imgFile);
-        assertNotNull(pathName);
-        assertTrue(archiveManager.getLoadedImagePaths().isEmpty()); // should still be empty
         
+        // Path name should be set
+        assertNotNull(pathName);
+        
+        // Should be one loaded image
+        assertEquals(1, archiveManager.getLoadedImagePaths().size());
+        
+        // And no referenced image
+        assertTrue(archiveManager.getImagePaths().isEmpty());
+        
+        // Now set the image path
         dmImage.setImagePath(pathName);
-        assertEquals(pathName, archiveManager.getLoadedImagePaths().get(0)); // This should now be increased
-        assertEquals(pathName, archiveManager.getImagePaths().get(0)); // This should be set
+        
+        // Should be one loaded image
+        assertEquals(1, archiveManager.getLoadedImagePaths().size());
+        assertTrue(archiveManager.getLoadedImagePaths().contains(pathName));
+        
+        // And one referenced image
+        assertEquals(1, archiveManager.getImagePaths().size());
+        assertTrue(archiveManager.getImagePaths().contains(pathName));
+        
+        // If we add the image again...
+        String pathName2 = archiveManager.addImageFromFile(imgFile);
+        
+        // Things should be the same
+        assertEquals(pathName, pathName2);
+        assertEquals(1, archiveManager.getLoadedImagePaths().size());
     }
     
     @Test
@@ -145,6 +132,7 @@ public class ArchiveManagerTests {
         
         Image image = archiveManager.createImage(pathName);
         assertNotNull(image);
+        image.dispose();
     }
     
     @Test
@@ -156,7 +144,8 @@ public class ArchiveManagerTests {
         String pathName = "/aPath.png";
         dmImage.setImagePath(pathName);
         
-        assertEquals(pathName, archiveManager.getImagePaths().get(0));
+        assertEquals(1, archiveManager.getImagePaths().size());
+        assertTrue(archiveManager.getImagePaths().contains(pathName));
     }
     
     @Test
@@ -166,32 +155,45 @@ public class ArchiveManagerTests {
         assertTrue(archiveManager.getLoadedImagePaths().isEmpty());
         
         archiveManager.loadImages();
-        assertFalse(archiveManager.getLoadedImagePaths().isEmpty());
+        assertEquals(2, archiveManager.getLoadedImagePaths().size());
     }
     
     @Test
     public void testLoadImagesFromModelFile() throws Exception {
+        // File is null, returns false
         boolean result = archiveManager.loadImagesFromModelFile(null);
         assertFalse(result);
         
+        // File contains no images, returns false
         result = archiveManager.loadImagesFromModelFile(TestData.TEST_MODEL_FILE_ARCHISURANCE);
         assertFalse(result);
         
+        // Loaded images is empty
         assertTrue(archiveManager.getLoadedImagePaths().isEmpty());
         
+        // Load some images
         result = archiveManager.loadImagesFromModelFile(TestSupport.TEST_MODEL_FILE_ZIPPED);
         assertTrue(result);
-        assertFalse(archiveManager.getLoadedImagePaths().isEmpty());
+        assertEquals(2, archiveManager.getLoadedImagePaths().size());
+        
+        // But should not be in use
+        assertEquals(0, archiveManager.getImagePaths().size());
     }
     
     @Test
-    public void testHasImages() {
+    public void testHasImages() throws IOException {
         assertFalse(archiveManager.hasImages());
         
         IDiagramModelImage dmImage = IArchimateFactory.eINSTANCE.createDiagramModelImage();
-        dmImage.setImagePath("somePath");
         dm.getChildren().add(dmImage);
         
+        // Not good enough to just set the image path, the matching image has to be loaded
+        dmImage.setImagePath("somePath");
+        assertFalse(archiveManager.hasImages());
+        
+        // So load the image
+        archiveManager.loadImagesFromModelFile(TestSupport.TEST_MODEL_FILE_ZIPPED);
+        dmImage.setImagePath(archiveManager.getLoadedImagePaths().iterator().next());
         assertTrue(archiveManager.hasImages());
     }    
     
@@ -211,7 +213,7 @@ public class ArchiveManagerTests {
         
         // Is an archive file
         archiveManager.loadImagesFromModelFile(TestSupport.TEST_MODEL_FILE_ZIPPED);
-        dmImage.setImagePath(archiveManager.getLoadedImagePaths().get(0));
+        dmImage.setImagePath(archiveManager.getLoadedImagePaths().iterator().next());
         
         archiveManager.saveModel();
         assertTrue(IArchiveManager.FACTORY.isArchiveFile(file));
@@ -240,18 +242,14 @@ public class ArchiveManagerTests {
     }
     
     @Test
-    public void testDispose() throws IOException {
-        IDiagramModelImage dmImage = IArchimateFactory.eINSTANCE.createDiagramModelImage();
-        dm.getChildren().add(dmImage);
+    public void testClone() throws IOException {
         archiveManager.loadImagesFromModelFile(TestSupport.TEST_MODEL_FILE_ZIPPED);
-        dmImage.setImagePath(archiveManager.getLoadedImagePaths().get(0));
         
-        assertEquals(2, model.eAdapters().size());
-        assertFalse(archiveManager.getLoadedImagePaths().isEmpty());
+        IArchiveManager clone = archiveManager.clone(model);
+        assertNotSame(clone, archiveManager);
         
-        archiveManager.dispose();
-        
-        assertEquals(1, model.eAdapters().size());
-        assertTrue(archiveManager.getLoadedImagePaths().isEmpty());
+        for(String entryName : archiveManager.getLoadedImagePaths()) {
+            assertSame(archiveManager.getBytesFromEntry(entryName), clone.getBytesFromEntry(entryName));
+        }
     }
 }

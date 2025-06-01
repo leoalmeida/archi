@@ -5,14 +5,10 @@
  */
 package com.archimatetool.editor.diagram.commands;
 
-import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.gef.commands.Command;
-import org.eclipse.gef.commands.CompoundCommand;
 
-import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.model.IConnectable;
 import com.archimatetool.model.IDiagramModelConnection;
-import com.archimatetool.model.IDiagramModelObject;
 
 
 /**
@@ -25,10 +21,10 @@ extends Command {
 
     protected IDiagramModelConnection fConnection;
     
-    protected IDiagramModelObject fNewSource;
-    protected IDiagramModelObject fNewTarget;
-    protected IDiagramModelObject fOldSource;
-    protected IDiagramModelObject fOldTarget;
+    protected IConnectable fNewSource;
+    protected IConnectable fNewTarget;
+    protected IConnectable fOldSource;
+    protected IConnectable fOldTarget;
     
     /**
      * Extra bendpoints were added as a result of a circular connection
@@ -45,13 +41,13 @@ extends Command {
         fOldTarget = connection.getTarget();
     }
     
-    public void setNewSource(IDiagramModelObject source) {
+    public void setNewSource(IConnectable source) {
         fNewSource = source;
         fNewTarget = null;
         setLabel(Messages.ReconnectDiagramConnectionCommand_0);
     }
 
-    public void setNewTarget(IDiagramModelObject target) {
+    public void setNewTarget(IConnectable target) {
         fNewTarget = target;
         fNewSource = null;
         setLabel(Messages.ReconnectDiagramConnectionCommand_1);
@@ -74,9 +70,7 @@ extends Command {
             return false;
         }
 
-        // Disallow same node connections if not enabled in Preferences
-        boolean allowCircularConnection = Preferences.STORE.getBoolean(IPreferenceConstants.ALLOW_CIRCULAR_CONNECTIONS);
-        return allowCircularConnection ? true : fNewSource != fOldTarget;
+        return true;
     }
     
     protected boolean checkTargetConnection() {
@@ -85,13 +79,44 @@ extends Command {
             return false;
         }
         
-        // Disallow same node connections if not enabled in Preferences
-        boolean allowCircularConnection = Preferences.STORE.getBoolean(IPreferenceConstants.ALLOW_CIRCULAR_CONNECTIONS);
-        return allowCircularConnection ? true : fNewTarget != fOldSource;
+        return true;
     }
 
     @Override
     public void execute() {
+        doConnection();
+
+        // If it's a circular connection, add some bendpoints if there are none
+        if(fConnection.getSource() == fConnection.getTarget() && fConnection.getBendpoints().size() < 1) {
+            fBendpointCommand = CreateDiagramConnectionCommand.createBendPointsForCircularConnectionCommand(fConnection);
+            if(fBendpointCommand != null) {
+                fBendpointCommand.execute();
+            }
+        }
+    }
+    
+    @Override
+    public void redo() {
+        doConnection();
+        
+        if(fBendpointCommand != null) {
+            fBendpointCommand.redo();
+        }
+    }
+
+    /**
+     * Reconnect the connection to its original source and target endpoints.
+     */
+    @Override
+    public void undo() {
+        if(fBendpointCommand != null) {
+            fBendpointCommand.undo();
+        }
+
+        fConnection.connect(fOldSource, fOldTarget);
+    }
+    
+    protected void doConnection() {
         if(fNewSource != null) {
             fConnection.connect(fNewSource, fOldTarget);
         }
@@ -101,69 +126,13 @@ extends Command {
         else {
             throw new IllegalStateException("Should not happen"); //$NON-NLS-1$
         }
-        
-        // If it's a circular connection, add some bendpoints if there are none
-        if(fConnection.getSource() == fConnection.getTarget() && fConnection.getBendpoints().size() < 2) {
-            if(fBendpointCommand == null) {
-                fBendpointCommand = createBendPointsCommand();
-            }
-            fBendpointCommand.execute();
-        }
-    }
-
-    /**
-     * Reconnect the connection to its original source and target endpoints.
-     */
-    @Override
-    public void undo() {
-        fConnection.connect(fOldSource, fOldTarget);
-        
-        if(fBendpointCommand != null) {
-            fBendpointCommand.undo();
-        }
-    }
-    
-    /**
-     * Adding a circular connection requires some bendpoints
-     */
-    protected Command createBendPointsCommand() {
-        int width = fConnection.getSource().getBounds().getWidth();
-        if(width == -1) {
-            width = 100;
-        }
-        int height = fConnection.getSource().getBounds().getHeight();
-        if(height == -1) {
-            height = 60;
-        }
-        
-        width = (int)Math.max(100, width * 0.6);
-        height = (int)Math.max(60, height * 0.6);
-        
-        CompoundCommand result = new CompoundCommand();
-        
-        CreateBendpointCommand cmd = new CreateBendpointCommand();
-        cmd.setDiagramModelConnection(fConnection);
-        cmd.setRelativeDimensions(new Dimension(width, 0), new Dimension(width, 0));
-        result.add(cmd);
-        
-        cmd = new CreateBendpointCommand();
-        cmd.setDiagramModelConnection(fConnection);
-        cmd.setRelativeDimensions(new Dimension(width, height), new Dimension(width, height));
-        result.add(cmd);
-        
-        cmd = new CreateBendpointCommand();
-        cmd.setDiagramModelConnection(fConnection);
-        cmd.setRelativeDimensions(new Dimension(0, height), new Dimension(0, height));
-        result.add(cmd);
-        
-        return result;
     }
     
     @Override
     public void dispose() {
         fConnection = null;
         fNewSource = null;
-        fOldSource = null;
+        fNewTarget = null;
         fOldSource = null;
         fOldTarget = null;
     }

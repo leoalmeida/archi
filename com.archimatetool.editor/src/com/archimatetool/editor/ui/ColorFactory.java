@@ -11,15 +11,16 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.jface.resource.ColorRegistry;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.widgets.Display;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.factory.ElementUIFactory;
-import com.archimatetool.editor.ui.factory.IElementUIProvider;
+import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
+import com.archimatetool.editor.ui.factory.IObjectUIProvider;
+import com.archimatetool.editor.ui.factory.ObjectUIFactory;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IDiagramModelArchimateConnection;
-import com.archimatetool.model.IDiagramModelArchimateObject;
+import com.archimatetool.model.IDiagramModelArchimateComponent;
 import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.ILineObject;
@@ -33,14 +34,11 @@ import com.archimatetool.model.ILineObject;
  */
 public class ColorFactory {
     
-    public static final Color COLOR_BUSINESS = new Color(null, 255, 255, 181);
-    public static final Color COLOR_APPLICATION = new Color(null, 181, 255, 255);
-    public static final Color COLOR_TECHNOLOGY = new Color(null, 201, 231, 183);
-    
     /**
      * Color Registry
+     * We need to check Display.getCurrent() because it can be null if running headless (tests, scripting, command line)
      */
-    private static ColorRegistry ColorRegistry = new ColorRegistry();
+    private static ColorRegistry ColorRegistry = new ColorRegistry(Display.getCurrent() != null ? Display.getCurrent() : Display.getDefault());
     
     public static Color get(int red, int green, int blue) {
         return get(new RGB(red, green, blue));
@@ -71,26 +69,27 @@ public class ColorFactory {
      * Set user default colors as set in prefs for a model object
      */
     public static void setDefaultColors(IDiagramModelComponent component) {
-        // If user Prefs is to *not* save default colours in file
-        if(!Preferences.STORE.getBoolean(IPreferenceConstants.SAVE_USER_DEFAULT_COLOR)) {
-            return;
+        // Derived line color
+        if(component instanceof IDiagramModelObject dmo) {
+            dmo.setDeriveElementLineColor(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR));
         }
-        
-        // Fill color
-        if(component instanceof IDiagramModelObject) {
-            IDiagramModelObject dmo = (IDiagramModelObject)component;
-            Color fillColor = getDefaultFillColor(dmo);
-            if(fillColor != null) {
-                dmo.setFillColor(convertColorToString(fillColor));
+
+        // If user Prefs is set to save default colours in file
+        if(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.SAVE_USER_DEFAULT_COLOR)) {
+            // Fill color
+            if(component instanceof IDiagramModelObject dmo) {
+                Color fillColor = getDefaultFillColor(dmo);
+                if(fillColor != null) {
+                    dmo.setFillColor(convertColorToString(fillColor));
+                }
             }
-        }
-        
-        // Line color
-        if(component instanceof ILineObject) {
-            ILineObject lo = (ILineObject)component;
-            Color lineColor = getDefaultLineColor(lo);
-            if(lineColor != null) {
-                lo.setLineColor(convertColorToString(lineColor));
+            
+            // Line color
+            if(component instanceof ILineObject lo) {
+                Color lineColor = getDefaultLineColor(lo);
+                if(lineColor != null) {
+                    lo.setLineColor(convertColorToString(lineColor));
+                }
             }
         }
     }
@@ -117,7 +116,7 @@ public class ColorFactory {
         
         if(eClass != null) {
             // User preference
-            String value = Preferences.STORE.getString(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX + eClass.getName());
+            String value = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX + eClass.getName());
             if(StringUtils.isSet(value)) {
                 return get(value);
             }
@@ -134,9 +133,20 @@ public class ColorFactory {
         EClass eClass = getEClassForObject(object);
         
         if(eClass != null) {
-            IElementUIProvider provider = ElementUIFactory.INSTANCE.getProvider(eClass);
-            if(provider != null) {
-                return provider.getDefaultColor() == null ? ColorConstants.white : provider.getDefaultColor();
+            // Is there a value set in preferences? (This could be in a suppplied preference file)
+            String defaultValue = ArchiPlugin.getInstance().getPreferenceStore().getDefaultString(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX + eClass.getName());
+            if(StringUtils.isSet(defaultValue)) {
+                Color c = get(defaultValue);
+                if(c != null) {
+                    return c;
+                }
+            }
+            
+            // Use UI Provider
+            IObjectUIProvider provider = ObjectUIFactory.INSTANCE.getProviderForClass(eClass);
+            if(provider instanceof IGraphicalObjectUIProvider) {
+                Color color = ((IGraphicalObjectUIProvider)provider).getDefaultColor();
+                return color != null ? color : ColorConstants.white;
             }
         }
         
@@ -162,16 +172,16 @@ public class ColorFactory {
         EClass eClass = getEClassForObject(object);
         
         if(IArchimatePackage.eINSTANCE.getDiagramModelConnection().isSuperTypeOf(eClass) ||
-                IArchimatePackage.eINSTANCE.getRelationship().isSuperTypeOf(eClass)) {
+                IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(eClass)) {
             // User preference
-            String value = Preferences.STORE.getString(IPreferenceConstants.DEFAULT_CONNECTION_LINE_COLOR);
+            String value = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.DEFAULT_CONNECTION_LINE_COLOR);
             if(StringUtils.isSet(value)) {
                 return get(value);
             }
         }
         else {
             // User preference
-            String value = Preferences.STORE.getString(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR);
+            String value = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR);
             if(StringUtils.isSet(value)) {
                 return get(value);
             }
@@ -188,9 +198,27 @@ public class ColorFactory {
         EClass eClass = getEClassForObject(object);
         
         if(eClass != null) {
-            IElementUIProvider provider = ElementUIFactory.INSTANCE.getProvider(eClass);
-            if(provider != null) {
-                return provider.getDefaultLineColor() == null ? ColorConstants.black : provider.getDefaultLineColor();
+            // Is there a default value set in preferences? (This could be in a suppplied preference file)
+            String defaultValue = null;
+            if(IArchimatePackage.eINSTANCE.getDiagramModelConnection().isSuperTypeOf(eClass) ||
+                    IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(eClass)) {
+                defaultValue = ArchiPlugin.getInstance().getPreferenceStore().getDefaultString(IPreferenceConstants.DEFAULT_CONNECTION_LINE_COLOR);
+            }
+            // Element
+            else {
+                defaultValue = ArchiPlugin.getInstance().getPreferenceStore().getDefaultString(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR);
+            }
+            if(StringUtils.isSet(defaultValue)) {
+                Color c = get(defaultValue);
+                if(c != null) {
+                    return c;
+                }
+            }
+            
+            IObjectUIProvider provider = ObjectUIFactory.INSTANCE.getProviderForClass(eClass);
+            if(provider instanceof IGraphicalObjectUIProvider) {
+                Color color = ((IGraphicalObjectUIProvider)provider).getDefaultLineColor();
+                return color != null ? color : ColorConstants.black;
             }
         }
         
@@ -206,11 +234,8 @@ public class ColorFactory {
         if(object instanceof EClass) {
             eClass = (EClass)object;
         }
-        else if(object instanceof IDiagramModelArchimateObject) {
-            eClass = ((IDiagramModelArchimateObject)object).getArchimateElement().eClass();
-        }
-        else if(object instanceof IDiagramModelArchimateConnection) {
-            eClass = ((IDiagramModelArchimateConnection)object).getRelationship().eClass();
+        else if(object instanceof IDiagramModelArchimateComponent) {
+            eClass = ((IDiagramModelArchimateComponent)object).getArchimateConcept().eClass();
         }
         else if(object instanceof EObject) {
             eClass = ((EObject)object).eClass();
@@ -317,4 +342,20 @@ public class ColorFactory {
         return get(convertRGBToString(rgb));
     }
 
+    /**
+     * Return a color based on the suppled one for elements
+     * @param color The color to base this one on
+     * @return the new color
+     */
+    public static Color getDerivedLineColor(Color color) {
+        if(color == null) {
+            return null;
+        }
+        
+        float contrastFactor = 0.7f;
+        
+        RGB rgb = new RGB((int)(color.getRed() * contrastFactor), (int)(color.getGreen() * contrastFactor), (int)(color.getBlue() * contrastFactor));
+        
+        return get(convertRGBToString(rgb));
+    }
 }

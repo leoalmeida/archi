@@ -5,20 +5,26 @@
  */
 package com.archimatetool.editor.views.navigator;
 
-import org.eclipse.emf.ecore.EObject;
+import java.text.Collator;
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerSorter;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
+import com.archimatetool.editor.ui.ThemeUtils;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
-import com.archimatetool.model.IRelationship;
-import com.archimatetool.model.util.ArchimateModelUtils;
+import com.archimatetool.model.IArchimateModelObject;
+import com.archimatetool.model.IArchimateRelationship;
 
 
 
@@ -35,28 +41,52 @@ public class NavigatorViewer extends TreeViewer {
     public NavigatorViewer(Composite parent, int style) {
         super(parent, style | SWT.MULTI);
         
+        // Set CSS ID
+        ThemeUtils.registerCssId(getTree(), "NavigatorTree"); //$NON-NLS-1$
+        
+        // Set font in case CSS theming is disabled
+        ThemeUtils.setFontIfCssThemingDisabled(getTree(), IPreferenceConstants.NAVIGATOR_TREE_FONT);
+        
         setContentProvider(new NavigatorViewerContentProvider());
         setLabelProvider(new NavigatorViewerLabelProvider());
         setAutoExpandLevel(3);
         
-        setSorter(new ViewerSorter());
+        setComparator(new ViewerComparator(Collator.getInstance()));
     }
     
-    public Object getActualInput() {
-        return getActualInput(getInput());
-    }
-    
-    public Object getActualInput(Object input) {
+    /**
+     * @return The input object from the array
+     */
+    IArchimateModelObject getActualInput() {
+        Object input = getInput();
+        
         if(input instanceof Object[] && ((Object[])input).length == 1) {
             input = ((Object[])input)[0];
         }
-        return input;
+        
+        return input instanceof IArchimateModelObject ? (IArchimateModelObject)input : null;
     }
     
-    public void setShowTargetElements(boolean set) {
+    void setShowTargetElements(boolean set) {
         if(fShowTargetElements != set) {
             fShowTargetElements = set;
             refresh();
+            expandToLevel(3);
+        }
+    }
+    
+    /**
+     * Refresh the tree and restore expanded tree nodes
+     */
+    void refreshTreePreservingExpandedNodes() {
+        try {
+            Object[] expanded = getExpandedElements();
+            getControl().setRedraw(false);
+            refresh();
+            setExpandedElements(expanded);
+        }
+        finally {
+            getControl().setRedraw(true);
         }
     }
     
@@ -65,52 +95,63 @@ public class NavigatorViewer extends TreeViewer {
      */
     private class NavigatorViewerContentProvider implements ITreeContentProvider {
         
+        @Override
         public void inputChanged(Viewer v, Object oldInput, Object newInput) {
         }
         
+        @Override
         public void dispose() {
         }
         
+        @Override
         public Object[] getElements(Object parent) {
             if(parent instanceof Object[]) {
-                // Check if it was deleted
-                Object input = getActualInput(parent);
-                if(input instanceof EObject && ((EObject)input).eContainer() == null) {
-                    return new Object[0];
-                }
-                
-                return (Object[])parent;
-            }
-            return new Object[0];
-        }
-
-        public Object[] getChildren(Object parent) {
-            if(parent instanceof IRelationship) {
-                IRelationship relation = (IRelationship)parent;
-                if(fShowTargetElements) {
-                    return new Object[] { relation.getTarget() };
-                }
-                else {
-                    return new Object[] { relation.getSource() };
-                }
-            }
-            else if(parent instanceof IArchimateElement) {
-                IArchimateElement element = (IArchimateElement)parent;
-                if(fShowTargetElements) {
-                    return ArchimateModelUtils.getSourceRelationships(element).toArray();
-                }
-                else {
-                    return ArchimateModelUtils.getTargetRelationships(element).toArray();
+                IArchimateModelObject input = getActualInput();
+                if(input != null && input.eContainer() != null) { // Check if it was deleted
+                    return (Object[])parent;
                 }
             }
             
             return new Object[0];
         }
 
+        @Override
+        public Object[] getChildren(Object parent) {
+            if(parent instanceof IArchimateRelationship) {
+            	IArchimateRelationship relation = (IArchimateRelationship)parent;
+                
+            	List<IArchimateConcept> results = new ArrayList<>();
+            	
+            	if(fShowTargetElements) {
+            	    results.addAll(relation.getSourceRelationships());
+            	    results.add(relation.getTarget());
+            	}
+            	else {
+            	    results.addAll(relation.getTargetRelationships());
+            	    results.add(relation.getSource());
+            	}
+                
+                return results.toArray();
+            }
+            else if(parent instanceof IArchimateElement) {
+                IArchimateElement element = (IArchimateElement)parent;
+                if(fShowTargetElements) {
+                    return element.getSourceRelationships().toArray();
+                }
+                else {
+                    return element.getTargetRelationships().toArray();
+                }
+            }
+            
+            return new Object[0];
+        }
+
+        @Override
         public Object getParent(Object element) {
             return null;
         }
 
+        @Override
         public boolean hasChildren(Object element) {
             return getChildren(element).length > 0;
         }
@@ -120,16 +161,15 @@ public class NavigatorViewer extends TreeViewer {
     /**
      * Label Provider
      */
-    private class NavigatorViewerLabelProvider extends LabelProvider {
-        
+    private static class NavigatorViewerLabelProvider extends LabelProvider {
         @Override
         public String getText(Object element) {
-            return ArchimateLabelProvider.INSTANCE.getLabel(element);
+            return ArchiLabelProvider.INSTANCE.getLabelNormalised(element);
         }
         
         @Override
         public Image getImage(Object element) {
-            return ArchimateLabelProvider.INSTANCE.getImage(element);
+            return ArchiLabelProvider.INSTANCE.getImage(element);
         }
     }
     

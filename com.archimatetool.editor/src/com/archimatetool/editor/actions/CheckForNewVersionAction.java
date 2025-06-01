@@ -9,7 +9,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 
@@ -20,7 +21,9 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.browser.IWebBrowser;
 import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
 
-import com.archimatetool.editor.Application;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
+import com.archimatetool.editor.utils.NetUtils;
 import com.archimatetool.editor.utils.StringUtils;
 
 
@@ -32,16 +35,12 @@ import com.archimatetool.editor.utils.StringUtils;
  */
 public class CheckForNewVersionAction extends Action {
     
-    String versionFile = "http://www.archimatetool.com/archi-version.txt"; //$NON-NLS-1$
-    
-    String downloadPage = "http://www.archimatetool.com/download"; //$NON-NLS-1$
-    
     public CheckForNewVersionAction() {
         super(Messages.CheckForNewVersionAction_0);
     }
     
     String getOnlineVersion(URL url) throws IOException {
-        URLConnection connection = url.openConnection();
+        URLConnection connection = NetUtils.openConnection(url);
         connection.connect();
         
         InputStream is = connection.getInputStream();
@@ -65,24 +64,37 @@ public class CheckForNewVersionAction extends Action {
     @Override
     public void run() {
         try {
-            URL url = new URL(versionFile);
-            String newVersion = getOnlineVersion(url);
+            String versionFile = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.UPDATE_URL);
+            
+            if(!StringUtils.isSet(versionFile)) {
+                return;
+            }
+            
+            String newVersion = getOnlineVersion(new URI(versionFile).toURL());
             
             // Get this app's main version number
-            String thisVersion = System.getProperty(Application.APPLICATION_VERSIONID);
+            String thisVersion = ArchiPlugin.getInstance().getVersion();
             
             if(StringUtils.compareVersionNumbers(newVersion, thisVersion) > 0) {
-                boolean reply = MessageDialog.openQuestion(null, Messages.CheckForNewVersionAction_1,
-                        Messages.CheckForNewVersionAction_2 +
-                        " (" + newVersion + "). " + //$NON-NLS-1$ //$NON-NLS-2$
-                        Messages.CheckForNewVersionAction_3);
+                String downloadURL = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.DOWNLOAD_URL);
                 
+                // No download URL
+                if(!StringUtils.isSet(downloadURL)) {
+                    MessageDialog.openInformation(null, Messages.CheckForNewVersionAction_1,
+                            Messages.CheckForNewVersionAction_2 + " (" + newVersion + "). "); //$NON-NLS-1$ //$NON-NLS-2$
+                    return;
+                }
+
+                // Does have download URL
+                boolean reply = MessageDialog.openQuestion(null, Messages.CheckForNewVersionAction_1,
+                        Messages.CheckForNewVersionAction_2 + " (" + newVersion + "). " + //$NON-NLS-1$ //$NON-NLS-2$
+                                Messages.CheckForNewVersionAction_3);
+
                 if(reply) {
                     IWorkbenchBrowserSupport support = PlatformUI.getWorkbench().getBrowserSupport();
                     IWebBrowser browser = support.getExternalBrowser();
                     if(browser != null) {
-                        URL url2 = new URL(downloadPage);
-                        browser.openURL(url2);
+                        browser.openURL(new URI(downloadURL).toURL());
                     }
                 }
             }
@@ -90,12 +102,9 @@ public class CheckForNewVersionAction extends Action {
                 MessageDialog.openInformation(null, Messages.CheckForNewVersionAction_1, Messages.CheckForNewVersionAction_4);
             }
         }
-        catch(MalformedURLException ex) {
+        catch(URISyntaxException | IOException ex) {
             ex.printStackTrace();
-        }
-        catch(IOException ex) {
-            ex.printStackTrace();
-            showErrorMessage(Messages.CheckForNewVersionAction_5);
+            showErrorMessage(Messages.CheckForNewVersionAction_5 + " " + ex.getMessage()); //$NON-NLS-1$
             return;
         }
         catch(PartInitException ex) {
@@ -103,6 +112,12 @@ public class CheckForNewVersionAction extends Action {
         }
 
     };
+    
+    @Override
+    public boolean isEnabled() {
+        String versionFile = ArchiPlugin.getInstance().getPreferenceStore().getString(IPreferenceConstants.UPDATE_URL);
+        return StringUtils.isSet(versionFile);
+    }
     
     private void showErrorMessage(String message) {
         MessageDialog.openError(null, Messages.CheckForNewVersionAction_6, message);

@@ -8,12 +8,11 @@ package com.archimatetool.editor.diagram.figures.connections;
 import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.Graphics;
+import org.eclipse.draw2d.PolygonDecoration;
 import org.eclipse.draw2d.RotatableDecoration;
-import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
-import org.eclipse.draw2d.geometry.Rectangle;
 
-import com.archimatetool.model.IDiagramModelArchimateConnection;
+import com.archimatetool.editor.diagram.figures.PolarPoint;
 
 
 /**
@@ -25,26 +24,28 @@ import com.archimatetool.model.IDiagramModelArchimateConnection;
 public class AssignmentConnectionFigure extends AbstractArchimateConnectionFigure {
 	
     /**
-     * @return Decoration to use on Target Node
+     * Ball
      */
-    public static class OvalDecoration extends Figure implements RotatableDecoration {
+    static class BallEndpoint extends Figure implements RotatableDecoration {
+        private int radius = 3;
+        private Point pLocation;
 
-        private int radius = 2;
-
-        public OvalDecoration() {
+        BallEndpoint() {
             setSize(radius * 2 + 1, radius * 2 + 1);
         }
 
+        @Override
         public void setReferencePoint(Point ref) {
+            if(pLocation != null) {
+                PolarPoint pp = new PolarPoint(ref, pLocation);
+                pp.r -= radius;
+                super.setLocation(pp.toAbsolutePoint(ref).getTranslated(-radius, -radius));
+            }
         }
 
         @Override
         public void setLocation(Point p) {
-            if(getLocation().equals(p)) {
-                return;
-            }
-            Dimension size = getBounds().getSize();
-            setBounds(new Rectangle(p.x - (size.width >> 1), p.y - (size.height >> 1), size.width, size.height));
+            pLocation = p.getCopy();
         }
 
         @Override
@@ -62,24 +63,29 @@ public class AssignmentConnectionFigure extends AbstractArchimateConnectionFigur
     /**
      * @return Decoration to use on Target Node
      */
-    public static OvalDecoration createFigureTargetDecoration() {
-        return new OvalDecoration();
+    public static RotatableDecoration createFigureTargetDecoration() {
+        return new PolygonDecoration();
     }
     
     /**
      * @return Decoration to use on Source Node
      */
-    public static OvalDecoration createFigureSourceDecoration() {
-        return createFigureTargetDecoration();
+    public static RotatableDecoration createFigureSourceDecoration() {
+        return new BallEndpoint();
+    }
+    
+    private RotatableDecoration fDecoratorSource = createFigureSourceDecoration();
+    private RotatableDecoration fDecoratorTarget = createFigureTargetDecoration();
+    
+    public AssignmentConnectionFigure() {
     }
 
-    public AssignmentConnectionFigure(IDiagramModelArchimateConnection connection) {
-        super(connection);
-    }
-	
     @Override
-    protected void setFigureProperties() {
-        setSourceDecoration(createFigureSourceDecoration());
-        setTargetDecoration(createFigureTargetDecoration()); 
+    public void refreshVisuals() {
+        setSourceDecoration(usePlainJunctionSourceDecoration() ? null : fDecoratorSource);
+        setTargetDecoration(usePlainJunctionTargetDecoration() ? null : fDecoratorTarget);
+        
+        // This last
+        super.refreshVisuals();
     }
 }

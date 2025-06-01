@@ -5,15 +5,11 @@
  */
 package com.archimatetool.editor.diagram;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
-import org.eclipse.draw2d.geometry.Insets;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.gef.AutoexposeHelper;
-import org.eclipse.gef.EditPart;
 import org.eclipse.gef.GraphicalViewer;
-import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
 import org.eclipse.gef.ui.actions.ActionRegistry;
 import org.eclipse.gef.ui.palette.PaletteViewer;
 import org.eclipse.help.HelpSystem;
@@ -21,31 +17,23 @@ import org.eclipse.help.IContext;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
-import com.archimatetool.editor.diagram.actions.CreateDerivedRelationAction;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.actions.DeleteFromModelAction;
-import com.archimatetool.editor.diagram.actions.FindReplaceAction;
-import com.archimatetool.editor.diagram.actions.ShowStructuralChainsAction;
+import com.archimatetool.editor.diagram.actions.GenerateViewAction;
 import com.archimatetool.editor.diagram.actions.ViewpointAction;
 import com.archimatetool.editor.diagram.dnd.ArchimateDiagramTransferDropTargetListener;
 import com.archimatetool.editor.diagram.editparts.ArchimateDiagramEditPartFactory;
-import com.archimatetool.editor.diagram.util.ExtendedViewportAutoexposeHelper;
 import com.archimatetool.editor.model.DiagramModelUtils;
-import com.archimatetool.editor.model.viewpoints.IViewpoint;
-import com.archimatetool.editor.model.viewpoints.ViewpointsManager;
-import com.archimatetool.editor.preferences.ConnectionPreferences;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.findreplace.IFindReplaceProvider;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateDiagramModel;
-import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IDiagramModelArchimateObject;
 import com.archimatetool.model.IDiagramModelComponent;
-import com.archimatetool.model.IRelationship;
+import com.archimatetool.model.viewpoints.IViewpoint;
+import com.archimatetool.model.viewpoints.ViewpointManager;
 
 
 
@@ -57,30 +45,18 @@ import com.archimatetool.model.IRelationship;
 public class ArchimateDiagramEditor extends AbstractDiagramEditor
 implements IArchimateDiagramEditor {
     
-    /**
-     * Palette
-     */
-    private ArchimateDiagramEditorPalette fPalette;
-    
-    /**
-     * Find/Replace Provider
-     */
-    private DiagramEditorFindReplaceProvider fFindReplaceProvider;
-    
-    
     @Override
     protected void applicationPreferencesChanged(PropertyChangeEvent event) {
-        // Hide Palette elements on Viewpoint
+        // Hide/Show Palette elements on Viewpoint
         if(IPreferenceConstants.VIEWPOINTS_HIDE_PALETTE_ELEMENTS == event.getProperty()) {
-            if(Boolean.TRUE == event.getNewValue()) {
-                setPaletteViewpoint();
-            }
-            else {
-                getPaletteRoot().setViewpoint(null);
-            }
+            getPaletteRoot().updateViewpoint();
         }
-        // Hide Diagram Elements on Viewpoint
-        else if(IPreferenceConstants.VIEWPOINTS_HIDE_DIAGRAM_ELEMENTS == event.getProperty()) {
+        // Hide/Show Specialization Palette elements
+        else if(IPreferenceConstants.SHOW_SPECIALIZATIONS_IN_PALETTE == event.getProperty()) {
+            getPaletteRoot().updateSpecializations();
+        }
+        // Hide/Show Diagram Elements on Viewpoint
+        else if(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS == event.getProperty()) {
             getGraphicalViewer().setContents(getModel()); // refresh the model contents
         }
         else {
@@ -92,16 +68,11 @@ implements IArchimateDiagramEditor {
      * Set Viewpoint to current Viewpoint in model
      */
     protected void setViewpoint() {
-        setPaletteViewpoint();
-        getGraphicalViewer().setContents(getModel()); // refresh the model contents
-    }
-    
-    /**
-     * Set Palette to current Viewpoint in model if Preference set
-     */
-    protected void setPaletteViewpoint() {
-        if(Preferences.STORE.getBoolean(IPreferenceConstants.VIEWPOINTS_HIDE_PALETTE_ELEMENTS)) {
-            getPaletteRoot().setViewpoint(ViewpointsManager.INSTANCE.getViewpoint(getModel().getViewpoint()));
+        getPaletteRoot().updateViewpoint();
+        
+        // If the preference is to hide elements then refresh the model contents
+        if(!ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEWPOINTS_GHOST_DIAGRAM_ELEMENTS)) {
+            getGraphicalViewer().setContents(getModel()); 
         }
     }
     
@@ -113,11 +84,10 @@ implements IArchimateDiagramEditor {
     
     @Override
     public ArchimateDiagramEditorPalette getPaletteRoot() {
-        if(fPalette == null) {
-            fPalette = new ArchimateDiagramEditorPalette();
-            setPaletteViewpoint();
+        if(fPaletteRoot == null) {
+            fPaletteRoot = new ArchimateDiagramEditorPalette(getModel());
         }
-        return fPalette;
+        return (ArchimateDiagramEditorPalette)fPaletteRoot;
     }
 
     @Override
@@ -149,21 +119,6 @@ implements IArchimateDiagramEditor {
         PlatformUI.getWorkbench().getHelpSystem().setHelp(viewer.getControl(), PALETTE_HELP_ID);
     }
     
-    @Override
-    protected void createRootEditPart(GraphicalViewer viewer) {
-        // We'll have a Zoom Manager for our Root Edit Part
-        viewer.setRootEditPart(new ScalableFreeformRootEditPart() {
-            @SuppressWarnings("rawtypes")
-            @Override
-            public Object getAdapter(Class adapter) {
-                if(adapter == AutoexposeHelper.class) {
-                    return new ExtendedViewportAutoexposeHelper(this, new Insets(50), false);
-                }
-                return super.getAdapter(adapter);
-            }
-        });
-    }
-    
     /**
      * Set up and register the context menu
      */
@@ -175,40 +130,28 @@ implements IArchimateDiagramEditor {
     }
     
     @Override
-    public void selectElements(IArchimateElement[] elements) {
-        List<EditPart> editParts = new ArrayList<EditPart>();
+    public void selectObjects(Object[] objects) {
+        // Safety check in case this is a zombie editor part
+        if(getModel() == null) {
+            return;
+        }
+
+        Set<Object> selection = new HashSet<>();
         
-        for(IArchimateElement element : elements) {
-            // Find Diagram Components
-            for(IDiagramModelComponent dc : DiagramModelUtils.findDiagramModelComponentsForElement(getModel(), element)) {
-                EditPart editPart = (EditPart)getGraphicalViewer().getEditPartRegistry().get(dc);
-                if(editPart != null && editPart.isSelectable() && !editParts.contains(editPart)) {
-                    editParts.add(editPart);
+        for(Object object : objects) {
+            // If this is an Archimate concept replace it with diagram object instances
+            if(object instanceof IArchimateConcept) {
+                for(IDiagramModelComponent dc : DiagramModelUtils.findDiagramModelComponentsForArchimateConcept(getModel(), (IArchimateConcept)object)) {
+                    selection.add(dc);
                 }
             }
-            
-            // Find Components from nested connections
-            if(ConnectionPreferences.useNestedConnections() && element instanceof IRelationship) {
-                for(IDiagramModelArchimateObject[] list : DiagramModelUtils.findNestedComponentsForRelationship(getModel(), (IRelationship)element)) {
-                    EditPart editPart1 = (EditPart)getGraphicalViewer().getEditPartRegistry().get(list[0]);
-                    EditPart editPart2 = (EditPart)getGraphicalViewer().getEditPartRegistry().get(list[1]);
-                    if(editPart1 != null && editPart1.isSelectable() && !editParts.contains(editPart1)) {
-                        editParts.add(editPart1);
-                    }
-                    if(editPart2 != null && editPart2.isSelectable() && !editParts.contains(editPart2)) {
-                        editParts.add(editPart2);
-                    }
-                }
+            // Else add it
+            else {
+                selection.add(object);
             }
         }
         
-        if(!editParts.isEmpty()) {
-            getGraphicalViewer().setSelection(new StructuredSelection(editParts));
-            getGraphicalViewer().reveal(editParts.get(0));
-        }
-        else {
-            getGraphicalViewer().setSelection(StructuredSelection.EMPTY);
-        }
+        super.selectObjects(selection.toArray());
     }
     
     /**
@@ -222,62 +165,31 @@ implements IArchimateDiagramEditor {
         ActionRegistry registry = getActionRegistry();
         IAction action;
 
-        // Show Structural Chains
-        action = new ShowStructuralChainsAction(this);
-        registry.registerAction(action);
-        
-        // Create Derived Relation
-        action = new CreateDerivedRelationAction(this);
-        registry.registerAction(action);
-        getSelectionActions().add(action.getId());
-        
         // Delete from Model
         action = new DeleteFromModelAction(this);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
         
         // Viewpoints
-        for(IViewpoint viewPoint : ViewpointsManager.INSTANCE.getAllViewpoints()) {
+        for(IViewpoint viewPoint : ViewpointManager.INSTANCE.getAllViewpoints()) {
             action = new ViewpointAction(this, viewPoint);
             registry.registerAction(action);
         }
         
-        // Find/Replace
-        action = new FindReplaceAction(getEditorSite().getWorkbenchWindow());
+        // Generate View For
+        action = new GenerateViewAction(this);
         registry.registerAction(action);
+        getSelectionActions().add(action.getId());
     }
     
     @Override
-    protected void eCoreModelChanged(Notification msg) {
-        super.eCoreModelChanged(msg);
-        
-        if(msg.getEventType() == Notification.SET) {
-            // Diagram Model Viewpoint changed
-            if(msg.getNotifier() == getModel() && msg.getFeature() == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT) {
-                setViewpoint();
-            }
+    protected void notifyChanged(Notification msg) {
+        // Diagram Model Viewpoint changed
+        if(msg.getNotifier() == getModel() && msg.getFeature() == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT) {
+            setViewpoint();
         }
-    }
-    
-    @SuppressWarnings("rawtypes")
-    @Override
-    public Object getAdapter(Class adapter) {
-        // Find/Replace Provider
-        if(adapter == IFindReplaceProvider.class) {
-            if(fFindReplaceProvider == null) {
-                fFindReplaceProvider = new DiagramEditorFindReplaceProvider(getGraphicalViewer());
-            }
-            return fFindReplaceProvider;
-        }
-
-        return super.getAdapter(adapter);
-    }
-    
-    @Override
-    public void dispose() {
-        super.dispose();
-        if(fPalette != null) {
-            fPalette.dispose();
+        else {
+            super.notifyChanged(msg);
         }
     }
     
@@ -285,14 +197,17 @@ implements IArchimateDiagramEditor {
     //                       Contextual Help support
     // =================================================================================
     
+    @Override
     public int getContextChangeMask() {
         return NONE;
     }
 
+    @Override
     public IContext getContext(Object target) {
         return HelpSystem.getContext(HELP_ID);
     }
 
+    @Override
     public String getSearchExpression(Object target) {
         return Messages.ArchimateDiagramEditor_0;
     }

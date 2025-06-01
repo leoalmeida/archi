@@ -65,13 +65,15 @@
        </topic>
        <topic href="help/Text/view_container_nested.html" label="Container Elements and Nested Element Relationships">
        </topic>
-       <topic label="Setting the Order of Overlapping Elements">
+       <topic href="help/Text/view_z_order.html" label="Setting the Order of Overlapping Elements">
        </topic>
        <topic href="help/Text/view_copy_paste_delete.html" label="Copying, Pasting, Selecting and Deleting Elements">
        </topic>
        <topic href="help/Text/view_align_grid.html" label="Alignment Tools, Guides and the Grid">
        </topic>
        <topic href="help/Text/view_fullscreen.html" label="Showing a View in Full Screen Mode">
+       </topic>
+       <topic href="help/Text/view_export.html" label="Exporting the View as an Image">
        </topic>
     </topic>
     <topic href="help/Text/viewpoints.html" label="Viewpoints">
@@ -108,11 +110,37 @@
     </topic>
     <topic href="help/Text/outline.html" label="The Outline Window">
     </topic>
+    <topic href="help/Text/tools.html" label="Tools">
+       <topic href="help/Text/generate_view.html" label="Generating a View from an Element">
+       </topic>
+       <topic href="help/Text/properties_manager.html" label="Properties Manager">
+       </topic>
+       <topic href="help/Text/specializations_manager.html" label="Specializations Manager">
+       </topic>
+       <topic href="help/Text/validator.html" label="The Validator">
+       </topic>
+       <topic href="help/Text/preview_report.html" label="Preview HTML Report">
+       </topic>
+    </topic>
     <topic href="help/Text/open_save_print.html" label="Opening, Saving and Printing">
     </topic>
-    <topic href="help/Text/exporting.html" label="Exporting the Model and its Views">
+    <topic href="help/Text/csv.html" label="Exporting and Importing the Model in CSV Format">
+    </topic>
+    <topic href="help/Text/import-model.html" label="Importing Another Model into the Current Model">
+    </topic>
+    <topic href="help/Text/exchange-intro.html" label="The Open Group&apos;s ArchiMate Exchange Format">
+       <topic href="help/Text/exchange-export.html" label="Exporting and Settings">
+       </topic>
+       <topic href="help/Text/exchange-export_metadata.html" label="Adding Metadata">
+       </topic>
+       <topic href="help/Text/exchange-import.html" label="Importing a Model from an Open Exchange Format file">
+       </topic>
     </topic>
     <topic href="help/Text/reporting.html" label="Reporting">
+       <topic href="help/Text/reporting-html.html" label="HTML Reports">
+       </topic>
+       <topic href="help/Text/reporting-jasper.html" label="Jasper Reports">
+       </topic>
     </topic>
     <topic href="help/Text/templates.html" label="Templates">
        <topic href="help/Text/templates_new.html" label="Creating a New Template">
@@ -123,8 +151,6 @@
        </topic>
     </topic>
     <topic href="help/Text/relations_rules.html" label="Relationships">
-    </topic>
-    <topic href="help/Text/derived_rels.html" label="Derived Relationships">
     </topic>
     <topic href="help/Text/sketch_view.html" label="The Sketch View">
     </topic>
@@ -141,7 +167,7 @@
        </topic>
        <topic href="help/Text/properties_canvas_connection.html" label="Connection Properties">
        </topic>
-       <topic href="help/Text/image_chooser.html" label="Adding Images to Elements">
+       <topic href="help/Text/image_chooser.html" label="Adding Images to Objects">
        </topic>
        <topic href="help/Text/canvas_save_as_template.html" label="Saving a Canvas as a Template">
        </topic>
@@ -151,9 +177,9 @@
        </topic>
     </topic>
     <topic href="help/Text/preferences.html" label="Preferences">
-       <topic href="help/Text/prefs_canvas.html" label="Canvas Toolkit">
+       <topic href="help/Text/prefs_appearance.html" label="Appearance">
        </topic>
-       <topic href="help/Text/prefs_colours_fonts.html" label="Colours and Fonts">
+       <topic href="help/Text/prefs_canvas.html" label="Canvas Toolkit">
        </topic>
        <topic href="help/Text/prefs_connections.html" label="Connections">
        </topic>
@@ -161,9 +187,11 @@
        </topic>
        <topic href="help/Text/prefs_general.html" label="General">
        </topic>
-       <topic href="help/Text/prefs_help.html" label="Help">
-       </topic>
        <topic href="help/Text/prefs_jasper.html" label="Jasper Reports">
        </topic>
+       <topic href="help/Text/prefs_system.html" label="System">
+       </topic>
+    </topic>
+    <topic href="help/Text/plugins.html" label="Plug-ins">
     </topic>
 </toc>

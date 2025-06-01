@@ -15,12 +15,10 @@ import com.archimatetool.model.IRequirement;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Requirement</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Requirement extends MotivationElement implements IRequirement {
+public class Requirement extends ArchimateElement implements IRequirement {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

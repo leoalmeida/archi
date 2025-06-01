@@ -5,20 +5,22 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
+import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IBounds;
 import com.archimatetool.model.IDiagramModelConnection;
 import com.archimatetool.model.IDiagramModelObject;
-import com.archimatetool.model.IFontAttribute;
+import com.archimatetool.model.ITextAlignment;
 
 
 @SuppressWarnings("nls")
@@ -26,12 +28,30 @@ public abstract class DiagramModelObjectTests extends DiagramModelComponentTests
     
     private IDiagramModelObject object;
     
-    @Before
+    @BeforeEach
     public void runBeforeEachDiagramModelObjectTest() {
         object = (IDiagramModelObject)component;
     }
 
-    
+    @Test
+    public void testGetDiagramModel() {
+        assertNull(object.getDiagramModel());
+        
+        dm.getChildren().add(object);
+        assertSame(dm, object.getDiagramModel());
+    }
+
+    @Test
+    public void testGetArchimateModel() {
+        assertNull(object.getArchimateModel());
+        
+        IArchimateModel model = IArchimateFactory.eINSTANCE.createArchimateModel();
+        model.getDefaultFolderForObject(dm).getElements().add(dm);
+        dm.getChildren().add(object);
+        
+        assertSame(model, object.getArchimateModel());
+    }
+
     @Test
     public void testGetBounds() {
         assertNull(object.getBounds());
@@ -80,17 +100,49 @@ public abstract class DiagramModelObjectTests extends DiagramModelComponentTests
     }
     
     @Test
-    public void testGetTextAlignment() {
-        assertEquals(object.getDefaultTextAlignment(), object.getTextAlignment());
-        object.setTextAlignment(2);
-        assertEquals(2, object.getTextAlignment());
+    public void testGetAlpha() {
+        assertEquals(255, object.getAlpha());
+        object.setAlpha(100);
+        assertEquals(100, object.getAlpha());
     }
     
     @Test
-    public void testGetTextPosition() {
-        assertEquals(IFontAttribute.TEXT_POSITION_TOP_LEFT, object.getTextPosition());
-        object.setTextPosition(2);
-        assertEquals(2, object.getTextPosition());
+    public void testGetLineAlpha() {
+        assertEquals(255, object.getLineAlpha());
+        object.setLineAlpha(100);
+        assertEquals(100, object.getLineAlpha());
+    }
+    
+    @Test
+    public void testGradient() {
+        assertEquals(IDiagramModelObject.GRADIENT_NONE, object.getGradient());
+        object.setGradient(2);
+        assertEquals(2, object.getGradient());
+    }
+    
+    @Test
+    public void testIconVisible() {
+        assertEquals(IDiagramModelObject.FEATURE_ICON_VISIBLE_DEFAULT, object.getIconVisibleState());
+        object.setIconVisibleState(IDiagramModelObject.ICON_VISIBLE_ALWAYS);
+        assertEquals(IDiagramModelObject.ICON_VISIBLE_ALWAYS, object.getIconVisibleState());
+    }
+    
+    @Test
+    public void testIconColor() {
+        assertEquals(IDiagramModelObject.FEATURE_ICON_COLOR_DEFAULT, object.getIconColor());
+        object.setIconColor("#ffffff");
+        assertEquals("#ffffff", object.getIconColor());
+    }
+    
+    @Test
+    public void testGetDefaultTextAlignment() {
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_CENTER, object.getTextAlignment());
+    }
+    
+    @Test
+    public void testSetTextAlignment() {
+        object.setTextAlignment(ITextAlignment.TEXT_ALIGNMENT_RIGHT);
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_RIGHT, object.getTextAlignment());
     }
     
     @Test
@@ -107,9 +159,18 @@ public abstract class DiagramModelObjectTests extends DiagramModelComponentTests
         assertEquals("#ffffff", object.getLineColor());
     }
     
-    @Test(expected=IllegalArgumentException.class)
-    public void testAddConnection_Null() {
-        object.addConnection(null);
+    @Test
+    public void testGetLineStyle() {
+        assertEquals(IDiagramModelObject.LINE_STYLE_DEFAULT, object.getLineStyle());
+        object.setLineStyle(IDiagramModelObject.LINE_STYLE_SOLID);
+        assertEquals(IDiagramModelObject.LINE_STYLE_SOLID, object.getLineStyle());
+    }
+    
+    @Test
+    public void testAddConnection_Null_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            object.addConnection(null);
+        });
     }
     
     @Test
@@ -129,9 +190,11 @@ public abstract class DiagramModelObjectTests extends DiagramModelComponentTests
         assertTrue(object.getTargetConnections().contains(conn));
     }
     
-    @Test(expected=IllegalArgumentException.class)
-    public void testRemoveConnection_Null() {
-        object.removeConnection(null);
+    @Test
+    public void testRemoveConnection_Null_ThrowsException() {
+        assertThrows(IllegalArgumentException.class, () -> {
+            object.removeConnection(null);
+        });
     }
 
     @Test
@@ -156,11 +219,6 @@ public abstract class DiagramModelObjectTests extends DiagramModelComponentTests
         assertTrue(object.getTargetConnections().isEmpty());
     }
 
-    @Test
-    public void testGetDefaultTextAlignment() {
-        assertEquals(IFontAttribute.TEXT_ALIGNMENT_CENTER, object.getDefaultTextAlignment());
-    }
-    
     @Override
     @Test
     public void testGetCopy() {

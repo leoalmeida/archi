@@ -5,8 +5,6 @@
  */
 package com.archimatetool.model;
 
-import org.eclipse.emf.common.util.EList;
-
 /**
  * <!-- begin-user-doc -->
  * A representation of the model object '<em><b>Diagram Model Object</b></em>'.
@@ -14,19 +12,113 @@ import org.eclipse.emf.common.util.EList;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IDiagramModelObject#getBounds <em>Bounds</em>}</li>
- *   <li>{@link com.archimatetool.model.IDiagramModelObject#getSourceConnections <em>Source Connections</em>}</li>
- *   <li>{@link com.archimatetool.model.IDiagramModelObject#getTargetConnections <em>Target Connections</em>}</li>
  *   <li>{@link com.archimatetool.model.IDiagramModelObject#getFillColor <em>Fill Color</em>}</li>
+ *   <li>{@link com.archimatetool.model.IDiagramModelObject#getAlpha <em>Alpha</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getDiagramModelObject()
  * @model abstract="true"
  * @generated
  */
-public interface IDiagramModelObject extends IDiagramModelComponent, IFontAttribute, ILineObject {
+@SuppressWarnings("nls")
+public interface IDiagramModelObject extends IConnectable, IFontAttribute, ILineObject, ITextAlignment {
+    
+    String FEATURE_LINE_ALPHA = "lineAlpha";
+    int FEATURE_LINE_ALPHA_DEFAULT = 255;
+    
+    String FEATURE_GRADIENT = "gradient";
+    int GRADIENT_NONE = -1;
+    int FEATURE_GRADIENT_DEFAULT = GRADIENT_NONE;
+    
+    String FEATURE_ICON_VISIBLE = "iconVisible";
+    int ICON_VISIBLE_IF_NO_IMAGE_DEFINED = 0;
+    int ICON_VISIBLE_ALWAYS = 1;
+    int ICON_VISIBLE_NEVER = 2;
+    int FEATURE_ICON_VISIBLE_DEFAULT = ICON_VISIBLE_IF_NO_IMAGE_DEFINED;
+    
+    String FEATURE_ICON_COLOR = "iconColor";
+    String FEATURE_ICON_COLOR_DEFAULT = "";
+    
+    String FEATURE_DERIVE_ELEMENT_LINE_COLOR = "deriveElementLineColor";
+    boolean FEATURE_DERIVE_ELEMENT_LINE_COLOR_DEFAULT = true;
+    
+    String FEATURE_LINE_STYLE = "lineStyle";
+    int LINE_STYLE_DEFAULT = -1;
+    int LINE_STYLE_SOLID = 0;
+    int LINE_STYLE_DASHED = 1;
+    int LINE_STYLE_DOTTED = 2;
+    int LINE_STYLE_NONE = 3;
+    int FEATURE_LINE_STYLE_DEFAULT = LINE_STYLE_DEFAULT;
+    
+    /**
+     * @return the value of FEATURE_LINE_ALPHA
+     */
+    int getLineAlpha();
+    
+    /**
+     * Set the value of FEATURE_LINE_ALPHA
+     * @param value
+     */
+    void setLineAlpha(int value);
+    
+    /**
+     * @return the gradient type FEATURE_GRADIENT
+     */
+    int getGradient();
+    
+    /**
+     * Set the gradient type FEATURE_GRADIENT
+     * @param type The type
+     */
+    void setGradient(int type);
+    
+    /**
+     * @return the icon visible state
+     */
+    int getIconVisibleState();
+    
+    /**
+     * Set the value of feature FEATURE_ICON_VISIBLE
+     * @param visible the value
+     */
+    void setIconVisibleState(int value);
+    
+    /**
+     * @return The icon color feature FEATURE_ICON_COLOR
+     */
+    String getIconColor();
+    
+    /**
+     * Set the value of feature FEATURE_ICON_COLOR
+     * @param iconColor
+     */
+    void setIconColor(String iconColor);
+    
+    /**
+     * @return true if this element derives its line color from its fill color
+     */
+    boolean getDeriveElementLineColor();
+    
+    /**
+     * Set whether this element derives its line color from its fill color
+     * @param value value
+     */
+    void setDeriveElementLineColor(boolean value);
+    
+    /**
+     * @return the value of feature FEATURE_LINE_STYLE
+     */
+    int getLineStyle();
+    
+    /**
+     * Set the value of feature FEATURE_LINE_STYLE
+     * @param lineStyle
+     */
+    void setLineStyle(int lineStyle);
+    
     /**
      * Returns the value of the '<em><b>Bounds</b></em>' containment reference.
      * <!-- begin-user-doc -->
@@ -52,39 +144,6 @@ public interface IDiagramModelObject extends IDiagramModelComponent, IFontAttrib
      * @generated
      */
     void setBounds(IBounds value);
-
-    /**
-     * Returns the value of the '<em><b>Source Connections</b></em>' containment reference list.
-     * The list contents are of type {@link com.archimatetool.model.IDiagramModelConnection}.
-     * <!-- begin-user-doc -->
-     * <p>
-     * If the meaning of the '<em>Source Connections</em>' containment reference list isn't clear,
-     * there really should be more of a description here...
-     * </p>
-     * <!-- end-user-doc -->
-     * @return the value of the '<em>Source Connections</em>' containment reference list.
-     * @see com.archimatetool.model.IArchimatePackage#getDiagramModelObject_SourceConnections()
-     * @model containment="true"
-     *        extendedMetaData="name='sourceConnection' kind='element'"
-     * @generated
-     */
-    EList<IDiagramModelConnection> getSourceConnections();
-
-    /**
-     * Returns the value of the '<em><b>Target Connections</b></em>' reference list.
-     * The list contents are of type {@link com.archimatetool.model.IDiagramModelConnection}.
-     * <!-- begin-user-doc -->
-     * <p>
-     * If the meaning of the '<em>Target Connections</em>' reference list isn't clear,
-     * there really should be more of a description here...
-     * </p>
-     * <!-- end-user-doc -->
-     * @return the value of the '<em>Target Connections</em>' reference list.
-     * @see com.archimatetool.model.IArchimatePackage#getDiagramModelObject_TargetConnections()
-     * @model resolveProxies="false"
-     * @generated
-     */
-    EList<IDiagramModelConnection> getTargetConnections();
 
     /**
      * Returns the value of the '<em><b>Fill Color</b></em>' attribute.
@@ -113,20 +172,31 @@ public interface IDiagramModelObject extends IDiagramModelComponent, IFontAttrib
     void setFillColor(String value);
 
     /**
+     * Returns the value of the '<em><b>Alpha</b></em>' attribute.
+     * The default value is <code>"255"</code>.
      * <!-- begin-user-doc -->
+     * <p>
+     * If the meaning of the '<em>Alpha</em>' attribute isn't clear,
+     * there really should be more of a description here...
+     * </p>
      * <!-- end-user-doc -->
-     * @model
+     * @return the value of the '<em>Alpha</em>' attribute.
+     * @see #setAlpha(int)
+     * @see com.archimatetool.model.IArchimatePackage#getDiagramModelObject_Alpha()
+     * @model default="255"
      * @generated
      */
-    void addConnection(IDiagramModelConnection connection);
+    int getAlpha();
 
     /**
+     * Sets the value of the '{@link com.archimatetool.model.IDiagramModelObject#getAlpha <em>Alpha</em>}' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @model
+     * @param value the new value of the '<em>Alpha</em>' attribute.
+     * @see #getAlpha()
      * @generated
      */
-    void removeConnection(IDiagramModelConnection connection);
+    void setAlpha(int value);
 
     /**
      * <!-- begin-user-doc -->

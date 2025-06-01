@@ -12,11 +12,10 @@ import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 
-import com.archimatetool.editor.diagram.actions.CreateDerivedRelationAction;
+import com.archimatetool.editor.actions.ArchiActionFactory;
 import com.archimatetool.editor.diagram.actions.DeleteFromModelAction;
-import com.archimatetool.editor.diagram.actions.ShowStructuralChainsAction;
-import com.archimatetool.editor.model.viewpoints.IViewpoint;
-import com.archimatetool.editor.model.viewpoints.ViewpointsManager;
+import com.archimatetool.model.viewpoints.IViewpoint;
+import com.archimatetool.model.viewpoints.ViewpointManager;
 
 
 /**
@@ -28,7 +27,6 @@ public class ArchimateDiagramEditorContextMenuProvider extends AbstractDiagramEd
 
     public static final String ID = "ArchimateDiagramEditorContextMenuProvider"; //$NON-NLS-1$
     
-    public static final String GROUP_DERIVED = "group_derived"; //$NON-NLS-1$
     public static final String GROUP_VIEWPOINTS = "group_viewpoints"; //$NON-NLS-1$
     
     /**
@@ -50,22 +48,17 @@ public class ArchimateDiagramEditorContextMenuProvider extends AbstractDiagramEd
         super.buildContextMenu(menu);
 
         // Delete from Model
-        menu.appendToGroup(GROUP_EDIT, new Separator());
         menu.appendToGroup(GROUP_EDIT, actionRegistry.getAction(DeleteFromModelAction.ID));
+        
+        // Generate View For Element
+        menu.appendToGroup(GROUP_RENAME, actionRegistry.getAction(ArchiActionFactory.GENERATE_VIEW.getId()));
 
         // Viewpoints
         menu.appendToGroup(GROUP_CONNECTIONS, new Separator(GROUP_VIEWPOINTS));
         IMenuManager viewPointMenu = new MenuManager(Messages.ArchimateDiagramEditorContextMenuProvider_0);
         menu.appendToGroup(GROUP_VIEWPOINTS, viewPointMenu);
-        for(IViewpoint viewPoint : ViewpointsManager.INSTANCE.getAllViewpoints()) {
-            viewPointMenu.add(actionRegistry.getAction(viewPoint.getClass().toString()));
+        for(IViewpoint viewPoint : ViewpointManager.INSTANCE.getAllViewpoints()) {
+            viewPointMenu.add(actionRegistry.getAction(viewPoint.toString()));
         }
-        
-        // Derived Relations
-        menu.appendToGroup(GROUP_VIEWPOINTS, new Separator(GROUP_DERIVED));
-        IMenuManager derivedRelationsMenu = new MenuManager(Messages.ArchimateDiagramEditorContextMenuProvider_1);
-        menu.appendToGroup(GROUP_DERIVED, derivedRelationsMenu);
-        derivedRelationsMenu.add(actionRegistry.getAction(ShowStructuralChainsAction.ID));
-        derivedRelationsMenu.add(actionRegistry.getAction(CreateDerivedRelationAction.ID));
     }
 }

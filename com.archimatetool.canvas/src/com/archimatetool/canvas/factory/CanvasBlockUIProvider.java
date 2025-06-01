@@ -9,23 +9,24 @@ import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.gef.EditPart;
 import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 
 import com.archimatetool.canvas.ICanvasImages;
+import com.archimatetool.canvas.editparts.CanvasBlockEditPart;
 import com.archimatetool.canvas.model.ICanvasPackage;
-import com.archimatetool.editor.diagram.editparts.diagram.DiagramImageEditPart;
-import com.archimatetool.editor.ui.ColorFactory;
-import com.archimatetool.editor.ui.factory.diagram.DiagramImageUIProvider;
+import com.archimatetool.editor.ui.factory.AbstractGraphicalObjectUIProvider;
+import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.ITextAlignment;
 
 
 
 /**
- * Canvas Image UI Provider
+ * Canvas Block UI Provider
  * 
  * @author Phillip Beauvoir
  */
-public class CanvasBlockUIProvider extends DiagramImageUIProvider {
+public class CanvasBlockUIProvider extends AbstractGraphicalObjectUIProvider {
 
     @Override
     public EClass providerFor() {
@@ -34,12 +35,12 @@ public class CanvasBlockUIProvider extends DiagramImageUIProvider {
     
     @Override
     public EditPart createEditPart() {
-        return new DiagramImageEditPart();
+        return new CanvasBlockEditPart();
     }
 
     @Override
     public String getDefaultName() {
-        return "Block"; //$NON-NLS-1$
+        return Messages.CanvasBlockUIProvider_0;
     }
 
     @Override
@@ -49,16 +50,28 @@ public class CanvasBlockUIProvider extends DiagramImageUIProvider {
 
     @Override
     public Image getImage() {
-        return ICanvasImages.ImageFactory.getImage(ICanvasImages.ICON_CANVAS_BLOCK_16);
+        return ICanvasImages.ImageFactory.getImage(ICanvasImages.ICON_CANVAS_BLOCK);
     }
 
     @Override
     public ImageDescriptor getImageDescriptor() {
-        return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_BLOCK_16);
+        return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_BLOCK);
+    }
+    
+    @Override
+    public boolean shouldExposeFeature(String featureName) {
+        if(featureName == IArchimatePackage.Literals.LINE_OBJECT__LINE_COLOR.getName() ||
+                featureName == IDiagramModelObject.FEATURE_GRADIENT ||
+                featureName == IDiagramModelObject.FEATURE_DERIVE_ELEMENT_LINE_COLOR) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public int getDefaultTextAlignment() {
+        return ITextAlignment.TEXT_ALIGNMENT_LEFT;
     }
 
-    @Override
-    public Color getDefaultColor() {
-        return ColorFactory.get(255, 255, 255);
-    }
 }

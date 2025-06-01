@@ -10,24 +10,25 @@ import java.util.List;
 
 import org.eclipse.gef.EditPart;
 import org.eclipse.gef.GraphicalViewer;
-import org.eclipse.jface.viewers.ISelection;
+import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TreeViewer;
+import org.eclipse.ui.IEditorPart;
+import org.eclipse.ui.IEditorReference;
+import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
-import com.archimatetool.editor.diagram.IArchimateDiagramEditor;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.IDiagramModelEditor;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.editor.ui.components.PartListenerAdapter;
-import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IDiagramModel;
-import com.archimatetool.model.IDiagramModelArchimateConnection;
-import com.archimatetool.model.IDiagramModelArchimateObject;
+import com.archimatetool.model.IDiagramModelArchimateComponent;
+import com.archimatetool.model.IDiagramModelReference;
 
 
 
@@ -38,149 +39,219 @@ import com.archimatetool.model.IDiagramModelArchimateObject;
  */
 public class TreeSelectionSynchroniser implements ISelectionChangedListener {
 
-    public static TreeSelectionSynchroniser INSTANCE = new TreeSelectionSynchroniser();
+    private TreeModelViewer fTreeViewer;
     
-    private ITreeModelView fTreeView;
+    private boolean isSelecting = false;
+    private boolean doSync = true; // This can suspend sync without disabling and unregistering listeners
     
-    /**
-     * List of active editors
-     */
-    private List<IDiagramModelEditor> fDiagramEditors = new ArrayList<IDiagramModelEditor>();
+    // Store last selection event so a selection can be made when this is re-enabled
+    private SelectionChangedEvent lastSelectionEvent;
     
-    private boolean isDispatching = false;
+    // Store last activated Editor Part in order to not trigger spurious selections
+    private IDiagramModelEditor lastActiveEditor;
     
-    private boolean fDoSync = true;
-    
-    private SelectionChangedEvent fLastEvent;
-    
-    private TreeSelectionSynchroniser() {
-        IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
-        window.getPartService().addPartListener(new PartListenerAdapter() {
-            @Override
-            public void partActivated(IWorkbenchPart part) {
-                if(part instanceof IDiagramModelEditor) {
-                    IDiagramModelEditor diagramEditor = (IDiagramModelEditor)part;
-                    if(!fDiagramEditors.contains(diagramEditor)) {
-                        GraphicalViewer viewer = (GraphicalViewer)diagramEditor.getAdapter(GraphicalViewer.class);
-                        if(viewer != null) {
-                            viewer.addSelectionChangedListener(TreeSelectionSynchroniser.this);
-                            fDiagramEditors.add(diagramEditor);
-                        }
-                    }
-                    
-                    // Select in tree
-                    if(Preferences.doLinkView() && fDoSync) {
-                        fTreeView.getViewer().setSelection(new StructuredSelection(diagramEditor.getModel()), true);
-                    }
-                }
+    private PartListenerAdapter partListenerAdapter = new PartListenerAdapter() {
+        @Override
+        public void partOpened(IWorkbenchPart part) {
+            if(part instanceof IDiagramModelEditor editor) {
+                registerEditor(editor);
+            }
+        }
+        
+        @Override
+        public void partClosed(IWorkbenchPart part) {
+            if(part instanceof IDiagramModelEditor editor) {
+                unregisterEditor(editor);
             }
             
-            @Override
-            public void partClosed(IWorkbenchPart part) {
-                if(part instanceof IDiagramModelEditor) {
-                    IDiagramModelEditor diagramEditor = (IDiagramModelEditor)part;
-                    if(fDiagramEditors.contains(diagramEditor)) { // important guard
-                        GraphicalViewer viewer = (GraphicalViewer)diagramEditor.getAdapter(GraphicalViewer.class);
-                        if(viewer != null) { // could be null under some circumstances
-                            viewer.removeSelectionChangedListener(TreeSelectionSynchroniser.this);
-                        }
-                        fDiagramEditors.remove(diagramEditor);
-                    }
-                }
+            // This is important for garbage collection!
+            // If we hold a reference to an IDiagramModelEditor it can't be disposed and neither can its IDiagramModel
+            if(part == lastActiveEditor) {
+                lastActiveEditor = null;
             }
+        }
+        
+        @Override
+        public void partActivated(IWorkbenchPart part) {
+            if(part == lastActiveEditor) {
+                return;
+            }
+            
+            // Select all types of diagram in Tree
+            if(part instanceof IDiagramModelEditor editor) {
+                // Editor model could be null if model's file was deleted/renamed and app opened (zombie editor part)
+                if(editor.getModel() != null && doSync()) {
+                    fTreeViewer.setSelection(new StructuredSelection(editor.getModel()), true);
+                }
+                
+                lastActiveEditor = editor;
+            }                
+        }
+    };
+    
+    private IPropertyChangeListener prefsListener = event -> {
+        if(event.getProperty().equals(IPreferenceConstants.LINK_VIEW) && event.getNewValue() == Boolean.TRUE) {
+            updateSelection();
+        }
+    };
+
+    TreeSelectionSynchroniser(TreeModelViewer treeViewer) {
+        fTreeViewer = treeViewer;
+        registerListeners();
+        
+        treeViewer.getTree().addDisposeListener(e -> {
+            unregisterListeners();
+            
+            // Ensure this stuff can be garbage collected
+            fTreeViewer = null;
+            lastActiveEditor = null;
+            lastSelectionEvent = null;
+            partListenerAdapter = null;
+            prefsListener = null;
         });
     }
     
-    void setTreeModelView(ITreeModelView treeView) {
-        if(treeView != fTreeView) {
-            fTreeView = treeView;
-            fTreeView.getViewer().addSelectionChangedListener(this);
+    /**
+     * Setting to false will pause sync
+     * @param set
+     */
+    public void setSynchronise(boolean set) {
+        doSync = set;
+    }
+    
+    private boolean doSync() {
+        return doSync && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.LINK_VIEW);
+    }
+    
+    /**
+     * Update with the last known selections
+     */
+    private void updateSelection() {
+        // In this case we have created a new TreeViewer and synchroniser, so create a new selection event
+        if(lastSelectionEvent == null) {
+            IEditorPart activeEditor = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().getActiveEditor();
+            if(activeEditor instanceof IDiagramModelEditor editor && editor.getGraphicalViewer() != null) { // check this is not a zombie editor part
+                selectionChanged(new SelectionChangedEvent(editor.getGraphicalViewer(), editor.getGraphicalViewer().getSelection()));
+            }
         }
-    }
-    
-    void removeTreeModelView() {
-        if(fTreeView != null) {
-            fTreeView.getViewer().removeSelectionChangedListener(this);
-            fTreeView = null;
-        }
-    }
-    
-    void setSynchronise(boolean set) {
-        fDoSync = set;
-    }
-    
-    public void refresh() {
-        if(fLastEvent != null) {
-            selectionChanged(fLastEvent);
+        else {
+            selectionChanged(lastSelectionEvent);
         }
     }
 
     @Override
     public void selectionChanged(SelectionChangedEvent event) {
-        if(isDispatching) {
+        if(isSelecting) {
             return;
         }
         
-        fLastEvent = event;
+        // Store this even if we are not syncing
+        lastSelectionEvent = event;
 
-        if(!Preferences.doLinkView() || !fDoSync) {
+        if(!doSync()) {
             return;
         }
         
-        isDispatching = true;
+        isSelecting = true;
         
-        ISelection selection = event.getSelection();
         Object source = event.getSource();
+        Object[] selectedObjects = event.getStructuredSelection().toArray();
         
-        // Selection from Diagram Editor, so update the Tree if it is showing
-        if(source instanceof GraphicalViewer && fTreeView != null) {
-            List<Object> list = new ArrayList<Object>();
+        // Selection from a Diagram Editor, so select objects in the Tree
+        if(source instanceof GraphicalViewer) {
+            List<Object> selected = new ArrayList<>();
             
-            for(Object o : ((IStructuredSelection)selection).toArray()) {
-                if(o instanceof EditPart) {
-                    Object model = ((EditPart)o).getModel();
-                    // Archimate element
-                    if(model instanceof IDiagramModelArchimateObject) {
-                        model = ((IDiagramModelArchimateObject)model).getArchimateElement();
-                        list.add(model);
+            for(Object o : selectedObjects) {
+                if(o instanceof EditPart editPart) {
+                    Object model = editPart.getModel();
+                    // Archimate concept
+                    if(model instanceof IDiagramModelArchimateComponent dmc) {
+                        selected.add(dmc.getArchimateConcept());
                     }
-                    // Archimate connection
-                    else if(model instanceof IDiagramModelArchimateConnection) {
-                        model = ((IDiagramModelArchimateConnection)model).getRelationship();
-                        list.add(model);
+                    // Diagram model reference
+                    else if (model instanceof IDiagramModelReference dmr) {
+                        selected.add(dmr.getReferencedModel());
                     }
                     // Diagram model
                     else if(model instanceof IDiagramModel) {
-                        list.add(model);
+                        selected.add(model);
                     }
                 }
             }
             
             // Select in tree
-            fTreeView.getViewer().setSelection(new StructuredSelection(list), true);
+            fTreeViewer.setSelection(new StructuredSelection(selected), true);
         }
-        
-        // Archimate objects selection from Tree View, so update any Archimate Diagram Editors
+        // Selection from Tree, so select objects in any open Archimate Diagram Editors
         else if(source instanceof TreeViewer) {
-            List<IArchimateElement> list = new ArrayList<IArchimateElement>();
-            
-            // Archimate elements
-            for(Object o : ((IStructuredSelection)selection).toArray()) {
-                if(o instanceof IArchimateElement) {
-                    list.add((IArchimateElement)o);
-                }
-            }
-            
-            // Select these in the Diagram Editors
-            for(IDiagramModelEditor diagramEditor : fDiagramEditors) {
-                if(diagramEditor instanceof IArchimateDiagramEditor) {
-                    ((IArchimateDiagramEditor)diagramEditor).selectElements(list.toArray(new IArchimateElement[list.size()]));
-                }
+            // Select these (or an empty selection) in the Diagram Editors
+            for(IDiagramModelEditor editor : getOpenEditors()) {
+                editor.selectObjects(selectedObjects);
             }
         }
         
-        isDispatching = false;
+        isSelecting = false;
     }
     
+    private void registerListeners() {
+        // Part listener
+        IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        window.getPartService().addPartListener(partListenerAdapter);
+     
+        // Tree listener
+        fTreeViewer.addSelectionChangedListener(this);
+        
+        // Open Editors
+        for(IDiagramModelEditor editor : getOpenEditors()) {
+            registerEditor(editor);
+        }
+        
+        // Preference listener
+        ArchiPlugin.getInstance().getPreferenceStore().addPropertyChangeListener(prefsListener);
+    }
     
+    private void unregisterListeners() {
+        // Part listener
+        IWorkbenchWindow window = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+        window.getPartService().removePartListener(partListenerAdapter);
+     
+        // Tree listener
+        fTreeViewer.removeSelectionChangedListener(this);
+        
+        // Open Editors
+        for(IDiagramModelEditor editor : getOpenEditors()) {
+            unregisterEditor(editor);
+        }
+        
+        // Preference listener
+        ArchiPlugin.getInstance().getPreferenceStore().removePropertyChangeListener(prefsListener);
+    }
+
+    private void registerEditor(IDiagramModelEditor editor) {
+        GraphicalViewer viewer = editor.getGraphicalViewer();
+        if(viewer != null) {
+            viewer.addSelectionChangedListener(this);
+        }
+    }
+    
+    private void unregisterEditor(IDiagramModelEditor editor) {
+        GraphicalViewer viewer = editor.getGraphicalViewer();
+        if(viewer != null) {
+            viewer.removeSelectionChangedListener(this);
+        }
+    }
+
+    private List<IDiagramModelEditor> getOpenEditors() {
+        List<IDiagramModelEditor> list = new ArrayList<>();
+        
+        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        for(IEditorReference ref : page.getEditorReferences()) {
+            // Editor model could be null if model's file was deleted/renamed and app opened (zombie editor part)
+            if(ref.getEditor(false) instanceof IDiagramModelEditor editor && editor.getModel() != null) {
+                list.add(editor);
+            }
+        }
+        
+        return list;
+    }
 }

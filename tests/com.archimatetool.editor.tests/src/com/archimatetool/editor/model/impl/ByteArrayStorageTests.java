@@ -5,21 +5,19 @@
  */
 package com.archimatetool.editor.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 
-import junit.framework.JUnit4TestAdapter;
-
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 
@@ -33,11 +31,7 @@ public class ByteArrayStorageTests {
     
     private String entry1 = "entry1", entry2 = "entry2";
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ByteArrayStorageTests.class);
-    }
-    
-    @Before
+    @BeforeEach
     public void runBeforeEachTest() {
         storage = new ByteArrayStorage();
         img1File = new File(TestSupport.getTestDataFolder(), "/img/img1.png");

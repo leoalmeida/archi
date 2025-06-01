@@ -6,21 +6,18 @@
 package com.archimatetool.editor.views.tree;
 
 import java.io.File;
-import java.util.ArrayList;
-import java.util.Hashtable;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Map.Entry;
 
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.ui.IMemento;
 
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
-import com.archimatetool.model.IIdentifier;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.util.ArchimateModelUtils;
+import com.archimatetool.model.util.Logger;
 
 
 
@@ -29,139 +26,107 @@ import com.archimatetool.model.util.ArchimateModelUtils;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class TreeStateHelper {
     
     public static TreeStateHelper INSTANCE = new TreeStateHelper();
     
-    private static final String ELEMENT_SEP_CHAR = " "; //$NON-NLS-1$
+    private static final String ELEMENT_SEP_CHAR = " ";
     
-    private static final String MEMENTO_EXPANDED = "expanded"; //$NON-NLS-1$
-    private static final String MEMENTO_MODEL = "model"; //$NON-NLS-1$
-    private static final String MEMENTO_FILE = "file"; //$NON-NLS-1$
-    private static final String MEMENTO_ELEMENTS = "elements"; //$NON-NLS-1$
+    private static final String MEMENTO_EXPANDED = "expanded";
+    private static final String MEMENTO_MODEL = "model";
+    private static final String MEMENTO_FILE = "file";
+    private static final String MEMENTO_ELEMENTS = "elements";
     
-    // Expanded tree elements or element ids for the session
-    private List<Object> fExpandedElements = new ArrayList<Object>();
+    private IMemento memento;
     
-    private TreeViewer fTreeViewer;
-    
-    private class FileMap {
-        File file;
-        String[] elements;
+    private TreeStateHelper() {}
+
+    /**
+     * Set the Memento when the tree is first created.
+     * We will restore any expanded elements later in restoreExpandedTreeElements.
+     * This is called from {@link TreeModelView#init(org.eclipse.ui.IViewSite, IMemento)}.
+     */
+    void setMemento(IMemento memento) {
+        this.memento = memento;
     }
 
     /**
-     * Set the Memento on Application Open
-     * @param memento
+     * Restore expanded elements on TreeView part creation.
+     * This is called from {@link TreeModelView#doCreatePartControl(org.eclipse.swt.widgets.Composite)
      */
-    void setMemento(IMemento memento) {
+    void restoreExpandedTreeElements(TreeModelViewer viewer) {
         if(memento == null) {
             return;
         }
         
-        // Store expanded elements as ids now, as the tree has not been created yet
-        for(IMemento expandedMem : memento.getChildren(MEMENTO_EXPANDED)) {
-            for(IMemento elementMem : expandedMem.getChildren(MEMENTO_MODEL)) {
-                String file = elementMem.getString(MEMENTO_FILE);
-                String elements = elementMem.getString(MEMENTO_ELEMENTS);
-                if(file != null && elements != null) {
-                    FileMap fm = new FileMap();
-                    fm.file = new File(file);
-                    fm.elements = elements.split(ELEMENT_SEP_CHAR);
-                    fExpandedElements.add(fm);
-                }
-            }
-        }
-    }
-
-    /**
-     * Restore expanded elements on TreeView creation
-     */
-    void restoreExpandedTreeElements(TreeViewer viewer) {
-        fTreeViewer = viewer;
-        addDisposeListener();
+        IMemento expandedMem = memento.getChild(MEMENTO_EXPANDED);
         
-        if(fExpandedElements.isEmpty()) {
-            return;
-        }
-        
-        for(Object o : fExpandedElements) {
-            // Actual object
-            if(o instanceof IArchimateModelElement) {
-                fTreeViewer.expandToLevel(o, 1);
-            }
-            
-            // String ids
-            if(o instanceof FileMap) {
-                try {
-                    File file = ((FileMap)o).file;
-                    String[] elements = ((FileMap)o).elements;
-                    for(IArchimateModel model : IEditorModelManager.INSTANCE.getModels()) {
-                        if(file.equals(model.getFile())) {
-                            for(String id : elements) {
-                                EObject element = ArchimateModelUtils.getObjectByID(model, id);
-                                if(element != null) {
-                                    fTreeViewer.expandToLevel(element, 1);
+        if(expandedMem != null) {
+            try {
+                for(IMemento elementMem : expandedMem.getChildren(MEMENTO_MODEL)) {
+                    String filePath = elementMem.getString(MEMENTO_FILE);
+                    String elements = elementMem.getString(MEMENTO_ELEMENTS);
+                    if(filePath != null && elements != null) {
+                        File file = new File(filePath);
+                        for(IArchimateModel model : IEditorModelManager.INSTANCE.getModels()) {
+                            // Get model from file
+                            if(file.equals(model.getFile())) {
+                                // Get object ID map
+                                Map<String, EObject> objectMap = ArchimateModelUtils.getObjectIDMap(model);
+                                // Get objects from IDs
+                                for(String id : elements.split(ELEMENT_SEP_CHAR)) {
+                                    EObject object = objectMap.get(id);
+                                    if(object != null) {
+                                        viewer.expandToLevel(object, 1);
+                                    }
                                 }
+                                break;
                             }
-                            break; // found model
                         }
                     }
                 }
-                catch(Exception ex) {
-                    // We don't want to fail just for some stupid string operation
-                    ex.printStackTrace();
-                }
+            }
+            // We don't want to fail at this point
+            catch(Exception ex) {
+                Logger.logError("Error restoring tree state", ex);
             }
         }
-    }
-    
-    /**
-     * Store expanded tree elements if View is closed
-     */
-    private void addDisposeListener() {
-        fTreeViewer.getTree().addDisposeListener(new DisposeListener() {
-            @Override
-            public void widgetDisposed(DisposeEvent e) {
-                fExpandedElements.clear();
-                for(Object element : fTreeViewer.getVisibleExpandedElements()) {
-                    fExpandedElements.add(element);
-                }
-            }
-        });
-    }
-    
-    /**
-     * Save expanded state of tree elements on Application close
-     * @param memento
-     */
-    void saveStateOnApplicationClose(IMemento memento) {
-        Hashtable<File, String> map = new Hashtable<File, String>();
-        
-        IMemento expandedMem = memento.createChild(MEMENTO_EXPANDED);
 
-        for(Object element : fTreeViewer.getVisibleExpandedElements()) {
-            if(element instanceof IIdentifier && element instanceof IArchimateModelElement) {
-                // Only store if saved in a file
-                File file = ((IArchimateModelElement)element).getArchimateModel().getFile();
+        memento = null;
+    }
+    
+    /**
+     * Save expanded state of tree elements to a memento.
+     * This is called from {@link TreeModelView#saveState(IMemento)}
+     */
+    void saveStateToMemento(TreeModelViewer viewer, IMemento memento) {
+        Map<File, String> map = new HashMap<>();
+        
+        for(Object object : viewer.getRootVisibleExpandedElements()) {
+            if(object instanceof IArchimateModelObject modelObject && modelObject.getArchimateModel() != null) { // Check it wasn't deleted
+                // Only store if model has been saved to file
+                File file = modelObject.getArchimateModel().getFile();
                 if(file != null) {
-                    String id = ((IIdentifier)element).getId();
+                    // Create a string of character separated IDs
+                    String id = modelObject.getId();
                     String string = map.get(file);
-                    if(string == null) {
-                        string = id;
-                    }
-                    else {
-                        string += ELEMENT_SEP_CHAR + id;
-                    }
+                    string = string == null ? id : string + ELEMENT_SEP_CHAR + id;
                     map.put(file, string);
                 }
             }
         }
         
-        for(File file : map.keySet()) {
+        if(map.isEmpty()) {
+            return;
+        }
+        
+        IMemento expandedMem = memento.createChild(MEMENTO_EXPANDED);
+
+        for(Entry<File, String> entry : map.entrySet()) {
             IMemento elementMem = expandedMem.createChild(MEMENTO_MODEL);
-            elementMem.putString(MEMENTO_FILE, file.getAbsolutePath());
-            elementMem.putString(MEMENTO_ELEMENTS, map.get(file));
+            elementMem.putString(MEMENTO_FILE, entry.getKey().getAbsolutePath());
+            elementMem.putString(MEMENTO_ELEMENTS, entry.getValue());
         }
     }
 }

@@ -5,18 +5,15 @@
  */
 package com.archimatetool.editor.actions;
 
-import junit.framework.TestSuite;
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
-@SuppressWarnings("nls")
+@Suite
+@SelectClasses({
+    CheckForNewVersionActionTests.class,
+    MRUMenuManagerTests.class
+})
+@SuiteDisplayName("All Actions Tests")
 public class AllActionsTests {
-
-    public static junit.framework.Test suite() {
-        TestSuite suite = new TestSuite("com.archimatetool.editor.actions");
-
-        suite.addTest(CheckForNewVersionActionTests.suite());
-        suite.addTest(MRUMenuManagerTests.suite());
-
-        return suite;
-    }
-
 }

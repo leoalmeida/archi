@@ -5,12 +5,11 @@
  */
 package com.archimatetool.editor.diagram.figures;
 
-import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.geometry.Rectangle;
+import org.eclipse.swt.graphics.Pattern;
 
-import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.model.IDiagramModelObject;
 
 
 
@@ -21,9 +20,7 @@ import com.archimatetool.editor.preferences.Preferences;
  */
 public class EllipseFigureDelegate extends AbstractFigureDelegate {
     
-    protected static final int SHADOW_OFFSET = 2;
-    
-    public EllipseFigureDelegate(IDiagramModelObjectFigure owner) {
+    public EllipseFigureDelegate(AbstractDiagramModelObjectFigure owner) {
         super(owner);
     }
     
@@ -32,42 +29,44 @@ public class EllipseFigureDelegate extends AbstractFigureDelegate {
         graphics.pushState();
         
         Rectangle bounds = getBounds();
-        
-        boolean drawShadows = Preferences.STORE.getBoolean(IPreferenceConstants.SHOW_SHADOWS);
 
-        if(isEnabled()) {
-            if(drawShadows) {
-                graphics.setAlpha(100);
-                graphics.setBackgroundColor(ColorConstants.black);
-                graphics.fillOval(new Rectangle(bounds.x + SHADOW_OFFSET, bounds.y + SHADOW_OFFSET, bounds.width - SHADOW_OFFSET, bounds.height - SHADOW_OFFSET));
-                graphics.setAlpha(255);
-            }
+        bounds.width--;
+        bounds.height--;
+
+        boolean drawOutline = getLineStyle() != IDiagramModelObject.LINE_STYLE_NONE;
+        
+        if(drawOutline) {
+            // Set line width here so that the whole figure is constrained, otherwise SVG graphics will have overspill
+            setLineWidth(graphics, bounds);
+            setLineStyle(graphics);
         }
-        else {
+        
+        graphics.setAlpha(getAlpha());
+        
+        if(!isEnabled()) {
             setDisabledState(graphics);
         }
         
-        int shadow_offset = drawShadows ? SHADOW_OFFSET : 0;
-        
-        bounds.width -= shadow_offset;
-        bounds.height -= shadow_offset;
-            
         graphics.setBackgroundColor(getFillColor());
+        
+        Pattern gradient = applyGradientPattern(graphics, bounds);
+        
         graphics.fillOval(bounds);
+        
+        disposeGradientPattern(graphics, gradient);
 
         // Outline
-        bounds.width--;
-        bounds.height--;
-        graphics.setForegroundColor(getLineColor());
-        graphics.drawOval(bounds);
+        if(drawOutline) {
+            graphics.setAlpha(getLineAlpha());
+            graphics.setForegroundColor(getLineColor());
+            graphics.drawOval(bounds);
+        }
         
+        // Image Icon
+        Rectangle imageArea = new Rectangle(bounds.x + (bounds.width / 6), bounds.y + (bounds.height / 6),
+                bounds.width - (bounds.width / 3), bounds.height - (bounds.height / 3));
+        getOwner().drawIconImage(graphics, bounds, imageArea, 0, 0, 0, 0);
+
         graphics.popState();
-    }
-    
-    @Override
-    public Rectangle calculateTextControlBounds() {
-        Rectangle bounds = getBounds();
-        bounds.y += 10;
-        return bounds;
     }
 }

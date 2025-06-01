@@ -16,8 +16,9 @@ import org.eclipse.gef.commands.CommandStackEvent;
 import org.eclipse.gef.commands.CommandStackEventListener;
 import org.eclipse.gef.commands.CompoundCommand;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.commands.IAnimatableCommand;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 
 
 
@@ -27,13 +28,20 @@ import com.archimatetool.editor.preferences.Preferences;
  * @author Phillip Beauvoir
  */
 public final class AnimationUtil {
+    
+    /**
+     * @return True if OS and version supports animation
+     */
+    public static boolean supportsAnimation() {
+        return true;
+    }
 
     public static boolean doAnimate() {
-        return Preferences.doAnimate();
+       return ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.ANIMATE_VIEW);
     }
     
     public static int animationSpeed() {
-        return Preferences.getAnimationSpeed();
+        return ArchiPlugin.getInstance().getPreferenceStore().getInt(IPreferenceConstants.ANIMATION_VIEW_TIME);
     }
 
     /**
@@ -41,25 +49,30 @@ public final class AnimationUtil {
      * @param stack
      */
     public static void registerCommandStack(CommandStack stack) {
+        if(!supportsAnimation()) {
+            return;
+        }
+        
         stack.addCommandStackEventListener(new CommandStackEventListener() {
+            @Override
             public void stackChanged(CommandStackEvent event) {
                 if(doAnimate()) {
                     if(event.getDetail() == CommandStack.PRE_UNDO || event.getDetail() == CommandStack.PRE_REDO) {
-                        if(isAllowedCommand(event.getCommand())) {
+                        if(isAnimatableCommand(event.getCommand())) {
                             Animation.markBegin();
                         }
                     }
                     
                     else if(event.getDetail() == CommandStack.POST_UNDO || event.getDetail() == CommandStack.POST_REDO) {
-                        if(isAllowedCommand(event.getCommand())) {
+                        if(isAnimatableCommand(event.getCommand())) {
                             Animation.run(animationSpeed());
                         }
                     }
                 }
             }
             
-            private boolean isAllowedCommand(Command cmd) {
-                if(cmd instanceof CompoundCommand) {
+            private boolean isAnimatableCommand(Command cmd) {
+                if(cmd instanceof CompoundCommand && ((CompoundCommand)cmd).canExecute()) {
                     for(Object command : ((CompoundCommand)cmd).getCommands()) {
                         if(!(command instanceof IAnimatableCommand)) {
                             return false;
@@ -67,9 +80,8 @@ public final class AnimationUtil {
                     }
                     return true;
                 }
-                else {
-                    return cmd instanceof IAnimatableCommand;
-                }
+                
+                return cmd instanceof IAnimatableCommand;
             }
         });
     }
@@ -79,7 +91,9 @@ public final class AnimationUtil {
      * @param figure
      */
     public static void addFigureForAnimation(IFigure figure) {
-        figure.addLayoutListener(LayoutAnimator.getDefault());
+        if(supportsAnimation()) {
+            figure.addLayoutListener(LayoutAnimator.getDefault());
+        }
     }
     
     /**
@@ -87,6 +101,8 @@ public final class AnimationUtil {
      * @param connection
      */
     public static void addConnectionForRoutingAnimation(PolylineConnection connection) {
-        connection.addRoutingListener(RoutingAnimator.getDefault());
+        if(supportsAnimation()) {
+            connection.addRoutingListener(RoutingAnimator.getDefault());
+        }
     }
 }

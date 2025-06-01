@@ -5,57 +5,81 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.gef.EditPart;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
 import com.archimatetool.editor.diagram.commands.TextAlignmentCommand;
-import com.archimatetool.editor.diagram.editparts.ITextAlignedEditPart;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.diagram.commands.TextPositionCommand;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.utils.PlatformUtils;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IFontAttribute;
-import com.archimatetool.model.ILockable;
+import com.archimatetool.model.IDiagramModelComponent;
+import com.archimatetool.model.ITextAlignment;
+import com.archimatetool.model.ITextPosition;
 
 
 
 /**
- * Property Section for a Diagram Model Object Appearance->Text Alignment
+ * Property Section for a Text Alignment and/or Text Position object
  * 
  * @author Phillip Beauvoir
  */
-public class TextAlignmentSection extends AbstractArchimatePropertySection {
+public class TextAlignmentSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.elementPropertySection"; //$NON-NLS-1$
     
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
+    /**
+     * Filter to show or reject this section depending on input value
      */
-    private Adapter eAdapter = new AdapterImpl() {
+    public static class Filter extends ObjectFilter {
         @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Alignment event (From Undo/Redo and here)
-            if(feature == IArchimatePackage.Literals.FONT_ATTRIBUTE__TEXT_ALIGNMENT ||
-                    feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
-                refreshControls();
-            }
+        public boolean isRequiredType(Object object) {
+            return (object instanceof ITextAlignment && shouldExposeFeature((EObject)object, IArchimatePackage.Literals.TEXT_ALIGNMENT__TEXT_ALIGNMENT.getName()))
+                    || (object instanceof ITextPosition && shouldExposeFeature((EObject)object, IArchimatePackage.Literals.TEXT_POSITION__TEXT_POSITION.getName()));
         }
-    };
-    
-    private IFontAttribute fFontObject;
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return IDiagramModelComponent.class;
+        }
+    }
+
+    private Composite parentComposite;
+    private Composite textPositionComposite;
     
     private Button[] fAlignmentButtons = new Button[3];
+    private Button[] fPositionButtons = new Button[3];
     
     @Override
-    protected void createControls(final Composite parent) {
+    protected void createControls(Composite parent) {
+        parentComposite = parent;
+        
+        ((GridLayout)parent.getLayout()).horizontalSpacing = 30;
+        
+        Composite textAlignmentComposite = createComposite(parent, 2, false);
+        createTextAlignmentControls(textAlignmentComposite);
+        
+        textPositionComposite = createComposite(parent, 2, false);
+        createTextPositionControls(textPositionComposite);
+        
+        // Allow setting 1 or 2 columns
+        GridLayoutColumnHandler.create(parent, 2).updateColumns();
+        
+        // Help
+        PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
+    }
+    
+    private void createTextAlignmentControls(Composite parent) {
         SelectionAdapter adapter = new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
@@ -66,13 +90,19 @@ public class TextAlignmentSection extends AbstractArchimatePropertySection {
                     // Command
                     if(fAlignmentButtons[i] == e.widget) {
                         int alignment = (Integer)fAlignmentButtons[i].getData();
-                        if(fFontObject.getTextAlignment() != alignment) {
-                            if(isAlive()) {
-                                fIsExecutingCommand = true;
-                                getCommandStack().execute(new TextAlignmentCommand(fFontObject, alignment));
-                                fIsExecutingCommand = false;
+                        
+                        CompoundCommand result = new CompoundCommand();
+                        
+                        for(EObject textAlignment : getEObjects()) {
+                            if(((ITextAlignment)textAlignment).getTextAlignment() != alignment && isAlive(textAlignment)) {
+                                Command cmd = new TextAlignmentCommand((ITextAlignment)textAlignment, alignment);
+                                if(cmd.canExecute()) {
+                                    result.add(cmd);
+                                }
                             }
                         }
+
+                        executeCommand(result.unwrap());
                     }
                 }
             }
@@ -84,64 +114,160 @@ public class TextAlignmentSection extends AbstractArchimatePropertySection {
         
         for(int i = 0; i < fAlignmentButtons.length; i++) {
             fAlignmentButtons[i] = new Button(client, SWT.TOGGLE | SWT.FLAT);
-            getWidgetFactory().adapt(fAlignmentButtons[i], true, true); // Need to do it this way for Mac
+            if(!PlatformUtils.isLinux()) { // Doesn't show focus on Linux
+                getWidgetFactory().adapt(fAlignmentButtons[i], true, true);
+            }
             fAlignmentButtons[i].addSelectionListener(adapter);
         }
         
         // Left Button
-        fAlignmentButtons[0].setImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.ICON_ALIGN_TEXT_LEFT));
-        fAlignmentButtons[0].setData(IFontAttribute.TEXT_ALIGNMENT_LEFT);
+        fAlignmentButtons[0].setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ALIGN_TEXT_LEFT));
+        fAlignmentButtons[0].setData(ITextAlignment.TEXT_ALIGNMENT_LEFT);
 
         // Center Button
-        fAlignmentButtons[1].setImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.ICON_ALIGN_TEXT_CENTER));
-        fAlignmentButtons[1].setData(IFontAttribute.TEXT_ALIGNMENT_CENTER);
+        fAlignmentButtons[1].setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ALIGN_TEXT_CENTER));
+        fAlignmentButtons[1].setData(ITextAlignment.TEXT_ALIGNMENT_CENTER);
 
         // Right Button
-        fAlignmentButtons[2].setImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.ICON_ALIGN_TEXT_RIGHT));
-        fAlignmentButtons[2].setData(IFontAttribute.TEXT_ALIGNMENT_RIGHT);
+        fAlignmentButtons[2].setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ALIGN_TEXT_RIGHT));
+        fAlignmentButtons[2].setData(ITextAlignment.TEXT_ALIGNMENT_RIGHT);
+    }
+    
+    private void createTextPositionControls(Composite parent) {
+        SelectionAdapter adapter = new SelectionAdapter() {
+            @Override
+            public void widgetSelected(SelectionEvent e) {
+                for(int i = 0; i < fPositionButtons.length; i++) {
+                    // Select/deselects
+                    fPositionButtons[i].setSelection(e.widget == fPositionButtons[i]);
+                    
+                    // Commands
+                    if(fPositionButtons[i] == e.widget) {
+                        int position = (Integer)fPositionButtons[i].getData();
+                        
+                        CompoundCommand result = new CompoundCommand();
+                        
+                        for(EObject eObject : getEObjects()) {
+                            if(eObject instanceof ITextPosition) {
+                                ITextPosition textPosition = (ITextPosition)eObject;
+                                if(textPosition.getTextPosition() != position && isAlive(textPosition)) {
+                                    Command cmd = new TextPositionCommand(textPosition, position);
+                                    if(cmd.canExecute()) {
+                                        result.add(cmd);
+                                    }
+                                }
+                            }
+                        }
+
+                        executeCommand(result.unwrap());
+                    }
+                }
+            }
+        };
+
+        createLabel(parent, Messages.TextPositionSection_3 + ":", ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER); //$NON-NLS-1$
         
-        // Help
-        PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
+        Composite client = createComposite(parent, 3);
+        
+        for(int i = 0; i < fPositionButtons.length; i++) {
+            fPositionButtons[i] = new Button(client, SWT.TOGGLE | SWT.FLAT);
+            if(!PlatformUtils.isLinux()) { // Doesn't show focus on Linux
+                getWidgetFactory().adapt(fPositionButtons[i], true, true);
+            }
+            fPositionButtons[i].addSelectionListener(adapter);
+        }
+        
+        // Top Button
+        fPositionButtons[0].setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ALIGN_TEXT_TOP));
+        fPositionButtons[0].setData(ITextPosition.TEXT_POSITION_TOP);
+
+        // Middle Button
+        fPositionButtons[1].setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ALIGN_TEXT_MIDDLE));
+        fPositionButtons[1].setData(ITextPosition.TEXT_POSITION_CENTRE);
+
+        // Bottom Button
+        fPositionButtons[2].setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ALIGN_TEXT_BOTTOM));
+        fPositionButtons[2].setData(ITextPosition.TEXT_POSITION_BOTTOM);
     }
     
     @Override
-    protected void setElement(Object element) {
-        if(element instanceof ITextAlignedEditPart && ((EditPart)element).getModel() instanceof IFontAttribute) {
-            fFontObject = (IFontAttribute)((EditPart)element).getModel();
-            if(fFontObject == null) {
-                throw new RuntimeException("Font Object was null"); //$NON-NLS-1$
-            }
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+
+        if(feature == IArchimatePackage.Literals.TEXT_ALIGNMENT__TEXT_ALIGNMENT) {
+            updateTextAlignmentControls();
         }
-        else {
-            throw new RuntimeException("Should have been an IFontAttribute"); //$NON-NLS-1$
+        else if(feature == IArchimatePackage.Literals.TEXT_POSITION__TEXT_POSITION) {
+            updateTextPositionControls();
         }
-        
-        refreshControls();
+        else if(feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
+            update();
+        }
+    }
+
+    @Override
+    protected void update() {
+        updateTextAlignmentControls();
+        updateTextPositionControls();
     }
     
-    protected void refreshControls() {
+    private void updateTextAlignmentControls() {
         if(fIsExecutingCommand) {
             return; 
         }
         
-        for(int i = 0; i < fAlignmentButtons.length; i++) {
-            fAlignmentButtons[i].setSelection(fAlignmentButtons[i] == getAlignmentButton());
-            boolean enabled = fFontObject instanceof ILockable ? !((ILockable)fFontObject).isLocked() : true;
-            fAlignmentButtons[i].setEnabled(enabled);
+        IArchimateModelObject firstSelected = getFirstSelectedObject();
+
+        if(firstSelected instanceof ITextAlignment) {
+            for(int i = 0; i < fAlignmentButtons.length; i++) {
+                fAlignmentButtons[i].setSelection(fAlignmentButtons[i] == getAlignmentButton());
+                fAlignmentButtons[i].setEnabled(!isLocked(firstSelected));
+            }
+        }
+    }
+    
+    private void updateTextPositionControls() {
+        if(fIsExecutingCommand) {
+            return; 
+        }
+        
+        boolean shouldShow = true;
+        
+        for(IArchimateModelObject eObject : getEObjects()) {
+            if(!(eObject instanceof ITextPosition)) {
+                shouldShow = false;
+                break;
+            }
+        }
+        
+        if(shouldShow) {
+            if(textPositionComposite == null) {
+                textPositionComposite = createComposite(parentComposite, 2, false);
+                createTextPositionControls(textPositionComposite);
+            }
+
+            for(int i = 0; i < fPositionButtons.length; i++) {
+                fPositionButtons[i].setSelection(fPositionButtons[i] == getPositionButton());
+                fPositionButtons[i].setEnabled(!isLocked(getFirstSelectedObject()));
+            }
+        }
+        else if(textPositionComposite != null) {
+            textPositionComposite.dispose();
+            textPositionComposite = null;
         }
     }
     
     private Button getAlignmentButton() {
-        int alignment = fFontObject.getTextAlignment();
+        int alignment = ((ITextAlignment)getFirstSelectedObject()).getTextAlignment();
         
         switch(alignment) {
-            case IFontAttribute.TEXT_ALIGNMENT_LEFT:
+            case ITextAlignment.TEXT_ALIGNMENT_LEFT:
                 return fAlignmentButtons[0];
 
-            case IFontAttribute.TEXT_ALIGNMENT_CENTER:
+            case ITextAlignment.TEXT_ALIGNMENT_CENTER:
                 return fAlignmentButtons[1];
 
-            case IFontAttribute.TEXT_ALIGNMENT_RIGHT:
+            case ITextAlignment.TEXT_ALIGNMENT_RIGHT:
                 return fAlignmentButtons[2];
 
             default:
@@ -149,13 +275,26 @@ public class TextAlignmentSection extends AbstractArchimatePropertySection {
         }
     }
     
-    @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
-    }
+    private Button getPositionButton() {
+        int position = ((ITextPosition)getFirstSelectedObject()).getTextPosition();
+        
+        switch(position) {
+            case ITextPosition.TEXT_POSITION_TOP:
+                return fPositionButtons[0];
 
+            case ITextPosition.TEXT_POSITION_CENTRE:
+                return fPositionButtons[1];
+
+            case ITextPosition.TEXT_POSITION_BOTTOM:
+                return fPositionButtons[2];
+
+            default:
+                return fPositionButtons[1];
+        }
+    }
+    
     @Override
-    protected EObject getEObject() {
-        return fFontObject;
+    protected IObjectFilter getFilter() {
+        return new Filter();
     }
 }

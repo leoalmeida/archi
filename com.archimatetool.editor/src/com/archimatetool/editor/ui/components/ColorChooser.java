@@ -13,19 +13,16 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.preference.PreferenceDialog;
-import org.eclipse.jface.resource.JFaceResources;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.accessibility.AccessibleAdapter;
 import org.eclipse.swt.accessibility.AccessibleEvent;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
 import org.eclipse.swt.graphics.GC;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Point;
@@ -33,15 +30,16 @@ import org.eclipse.swt.graphics.RGB;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.ColorDialog;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.forms.widgets.FormToolkit;
 
-import com.archimatetool.editor.preferences.ColoursFontsPreferencePage;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.preferences.ColoursPreferencePage;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.ImageFactory;
 
 
 
@@ -65,15 +63,9 @@ public class ColorChooser extends EventManager {
      */
     public static final String PROP_COLORDEFAULT = "colorDefault"; //$NON-NLS-1$
 
-    private Image fImage;
-    
     private Composite fComposite;
     private Button fColorButton;
     private Button fMenuButton;
-    
-    private Color fColor;
-    
-    private Point fExtent;
     
     private RGB fColorValue;
     
@@ -81,11 +73,16 @@ public class ColorChooser extends EventManager {
     
     protected boolean fDoShowDefaultMenuItem = true;
     protected boolean fDoShowPreferencesMenuItem = true;
-    protected boolean fDoShowColorImage = true;;
+    protected boolean fDoShowColorImage = true;
     
     private List<IAction> fExtraActionsList = new ArrayList<IAction>();
     
-
+    public ColorChooser(Composite parent, FormToolkit toolkit) {
+        this(parent);
+        toolkit.adapt(fColorButton, true, true);
+        toolkit.adapt(fMenuButton, true, true);
+    }
+    
     public ColorChooser(Composite parent) {
         fComposite = new Composite(parent, SWT.NULL);
         fComposite.setBackgroundMode(SWT.INHERIT_FORCE);
@@ -97,19 +94,7 @@ public class ColorChooser extends EventManager {
         
         fColorButton = new Button(fComposite, SWT.FLAT);
         
-        fExtent = computeImageSize(parent);
-        
-        GridData gd = new GridData();
-        gd.widthHint = fExtent.x + 20;
-        fColorButton.setLayoutData(gd);
-        
-        fImage = new Image(parent.getDisplay(), fExtent.x, fExtent.y);
-        GC gc = new GC(fImage);
-        gc.setBackground(fColorButton.getBackground());
-        gc.fillRectangle(0, 0, fExtent.x, fExtent.y);
-        gc.dispose();
-        
-        fColorButton.setImage(fImage);
+        GridDataFactory.create(SWT.NONE).hint(60, SWT.DEFAULT).applyTo(fColorButton);
         
         fColorButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -118,16 +103,9 @@ public class ColorChooser extends EventManager {
             }
         });
         
-        fColorButton.addDisposeListener(new DisposeListener() {
-            public void widgetDisposed(DisposeEvent event) {
-                if(fImage != null) {
-                    fImage.dispose();
-                    fImage = null;
-                }
-                if(fColor != null) {
-                    fColor.dispose();
-                    fColor = null;
-                }
+        fColorButton.addDisposeListener((e) -> {
+            if(fColorButton.getImage() != null) {
+                fColorButton.getImage().dispose();
             }
         });
         
@@ -140,8 +118,8 @@ public class ColorChooser extends EventManager {
         
         fMenuButton = new Button(fComposite, SWT.FLAT);
         fMenuButton.setLayoutData(new GridData(GridData.FILL_VERTICAL));        
-        fMenuButton.setImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.MENU_ARROW));
-
+        fMenuButton.setImage(IArchiImages.ImageFactory.getImage(IArchiImages.MENU_ARROW));
+        
         fMenuButton.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent event) {
@@ -221,10 +199,8 @@ public class ColorChooser extends EventManager {
                 @Override
                 public void run() {
                     PreferenceDialog dialog = PreferencesUtil.createPreferenceDialogOn(getControl().getShell(),
-                            ColoursFontsPreferencePage.ID, null, null);
+                            ColoursPreferencePage.ID, null, null);
                     if(dialog != null) {
-                        ColoursFontsPreferencePage page = (ColoursFontsPreferencePage)dialog.getSelectedPage();
-                        page.selectColoursTab();
                         dialog.open();
                     }
                 }
@@ -249,8 +225,10 @@ public class ColorChooser extends EventManager {
      *            The new color.
      */
     public void setColorValue(RGB rgb) {
-        fColorValue = rgb;
-        updateColorImage();
+        if(rgb != null && !rgb.equals(fColorValue)) {
+            fColorValue = rgb;
+            updateColorImage();
+        }
     }
 
     /**
@@ -261,6 +239,8 @@ public class ColorChooser extends EventManager {
      */
     public void setEnabled(boolean state) {
         getControl().setEnabled(state);
+        fColorButton.setEnabled(state);
+        fMenuButton.setEnabled(state);
     }
 
     /**
@@ -268,10 +248,11 @@ public class ColorChooser extends EventManager {
      * dialog to appear and wait for user input.
      */
     public void chooseColor() {
-        ColorDialog colorDialog = new ColorDialog(fColorButton.getShell());
+        CustomColorDialog colorDialog = new CustomColorDialog(fColorButton.getShell());
         colorDialog.setRGB(fColorValue);
+        
         RGB newColor = colorDialog.open();
-        if(newColor != null) {
+        if(newColor != null && !newColor.equals(fColorValue)) {
             RGB oldValue = fColorValue;
             fColorValue = newColor;
             fireActionListenerEvent(PROP_COLORCHANGE, oldValue, newColor);
@@ -285,31 +266,41 @@ public class ColorChooser extends EventManager {
      */
     protected void updateColorImage() {
         Display display = fColorButton.getDisplay();
-        GC gc = new GC(fImage);
-        gc.setForeground(display.getSystemColor(SWT.COLOR_BLACK));
-        gc.drawRectangle(0, 2, fExtent.x - 1, fExtent.y - 4);
+        final int width = 40;
+        final int height = 15;
         
-        if(fColor != null) {
-            fColor.dispose();
-        }
-        fColor = new Color(display, fColorValue);
+        // Draw the color rectangle onto an Image
+        Image image = new Image(display, width, height);
+        GC gc = new GC(image);
         
         if(fDoShowColorImage) {
-            gc.setBackground(fColor);
-            gc.fillRectangle(1, 3, fExtent.x - 2, fExtent.y - 5);            
+            Color color = new Color(display, fColorValue);
+            gc.setBackground(color);
+            gc.fillRectangle(0, 0, width, height);            
         }
         else {
             gc.setAntialias(SWT.ON);
             gc.setBackground(display.getSystemColor(SWT.COLOR_WHITE));
-            gc.fillRectangle(1, 3, fExtent.x - 2, fExtent.y - 5);            
-            gc.drawLine(0, 2, fExtent.x - 1, fExtent.y - 4);
+            gc.fillRectangle(0, 0, width, height);            
+            gc.drawLine(0, 1, width - 1, height - 2);
         }
         
+        gc.setForeground(display.getSystemColor(SWT.COLOR_BLACK));
+        gc.drawRectangle(0, 0, width - 1, height - 1);
+
         gc.dispose();
         
-        fColorButton.setImage(fImage);
-    }
+        // Dispose of previous button's image (after setting the new one to be on the safe side)
+        Image oldImage = fColorButton.getImage();
 
+        // Replace with autoscaled image (this is needed on Linux)
+        fColorButton.setImage(ImageFactory.getAutoScaledImage(image));
+
+        if(oldImage != null) {
+            oldImage.dispose();
+        }
+    }
+    
     /**
      * Adds a property change listener to this <code>ColorSelector</code>.
      * Events are fired when the color in the control changes via the user
@@ -350,22 +341,4 @@ public class ColorChooser extends EventManager {
             }
         }
     }
-     
-    /**
-     * Compute the size of the image to be displayed.
-     * 
-     * @param window -
-     *            the window used to calculate
-     * @return <code>Point</code>
-     */
-    protected Point computeImageSize(Control window) {
-        GC gc = new GC(window);
-        Font f = JFaceResources.getFontRegistry().get(JFaceResources.DIALOG_FONT);
-        gc.setFont(f);
-        int height = gc.getFontMetrics().getHeight();
-        gc.dispose();
-        Point p = new Point(height * 3 - 6, height);
-        return p;
-    }
-
 }

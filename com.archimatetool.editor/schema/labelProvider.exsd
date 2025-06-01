@@ -57,17 +57,17 @@
          <attribute name="id" type="string" use="required">
             <annotation>
                <documentation>
-                  The identifier of this factory
+                  The identifier of this provider
                </documentation>
             </annotation>
          </attribute>
          <attribute name="class" type="string" use="required">
             <annotation>
                <documentation>
-                  The name of a Java class that implements com.archimatetool.editor.ui.IEditorLabelProvider
+                  The name of a Java class that implementscom.archimatetool.editor.ui.IArchiLabelProvider
                </documentation>
                <appinfo>
-                  <meta.attribute kind="java" basedOn=":com.archimatetool.editor.ui.IEditorLabelProvider"/>
+                  <meta.attribute kind="java" basedOn=":com.archimatetool.editor.ui.IArchiLabelProvider"/>
                </appinfo>
             </annotation>
          </attribute>

@@ -5,17 +5,18 @@
  */
 package com.archimatetool.templates.dialog;
 
+import java.text.Collator;
 import java.util.List;
 
 import org.eclipse.jface.viewers.ITreeContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TreeViewer;
 import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerSorter;
+import org.eclipse.jface.viewers.ViewerComparator;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Composite;
 
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.templates.model.ITemplate;
 import com.archimatetool.templates.model.ITemplateGroup;
 
@@ -34,9 +35,10 @@ public class TemplatesTreeViewer extends TreeViewer {
      */
     public TemplatesTreeViewer(Composite parent, int style) {
         super(parent, style);
+        
         setContentProvider(new TemplatesTreeViewerContentProvider());
         setLabelProvider(new TemplatesTreeViewerLabelProvider());
-        setSorter(new ViewerSorter());
+        setComparator(new ViewerComparator(Collator.getInstance()));
     }
 
     /**
@@ -44,16 +46,20 @@ public class TemplatesTreeViewer extends TreeViewer {
      */
     private class TemplatesTreeViewerContentProvider implements ITreeContentProvider {
         
+        @Override
         public void inputChanged(Viewer v, Object oldInput, Object newInput) {
         }
         
+        @Override
         public void dispose() {
         }
         
+        @Override
         public Object[] getElements(Object parent) {
             return getChildren(parent);
         }
 
+        @Override
         public Object[] getChildren(Object parentElement) {
             if(parentElement instanceof List<?>) {
                 return ((List<?>)parentElement).toArray();
@@ -66,10 +72,12 @@ public class TemplatesTreeViewer extends TreeViewer {
             return new Object[0];
         }
 
+        @Override
         public Object getParent(Object element) {
             return null;
         }
 
+        @Override
         public boolean hasChildren(Object element) {
             if(element instanceof ITemplateGroup) {
                 return getChildren(element).length > 0;
@@ -95,7 +103,7 @@ public class TemplatesTreeViewer extends TreeViewer {
         @Override
         public Image getImage(Object element) {
             if(element instanceof ITemplateGroup) {
-                return IArchimateImages.ImageFactory.getImage(IArchimateImages.ECLIPSE_IMAGE_FOLDER);
+                return IArchiImages.ImageFactory.getImage(IArchiImages.ICON_FOLDER_DEFAULT);
             }
             if(element instanceof ITemplate) {
                 return ((ITemplate)element).getImage();

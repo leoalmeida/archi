@@ -16,16 +16,17 @@ import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.ui.actions.ActionFactory;
 
-import com.archimatetool.editor.diagram.actions.BringForwardAction;
-import com.archimatetool.editor.diagram.actions.BringToFrontAction;
+import com.archimatetool.editor.actions.ArchiActionFactory;
 import com.archimatetool.editor.diagram.actions.ConnectionRouterAction;
 import com.archimatetool.editor.diagram.actions.DefaultEditPartSizeAction;
+import com.archimatetool.editor.diagram.actions.DeleteContainerAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageToClipboardAction;
 import com.archimatetool.editor.diagram.actions.LockObjectAction;
+import com.archimatetool.editor.diagram.actions.ObjectPositionAction;
+import com.archimatetool.editor.diagram.actions.ObjectPositionAction.ObjectPositionActionDefinition;
+import com.archimatetool.editor.diagram.actions.ResetAspectRatioAction;
 import com.archimatetool.editor.diagram.actions.SelectElementInTreeAction;
-import com.archimatetool.editor.diagram.actions.SendBackwardAction;
-import com.archimatetool.editor.diagram.actions.SendToBackAction;
 
 
 /**
@@ -81,11 +82,22 @@ public abstract class AbstractDiagramEditorContextMenuProvider extends ContextMe
         action = actionRegistry.getAction(ActionFactory.COPY.getId());
         menu.appendToGroup(GROUP_EDIT, action);
         
+        action = actionRegistry.getAction(ExportAsImageToClipboardAction.ID);
+        menu.appendToGroup(GROUP_EDIT, action);
+
         action = actionRegistry.getAction(ActionFactory.PASTE.getId());
         menu.appendToGroup(GROUP_EDIT, action);
         
+        action = actionRegistry.getAction(ArchiActionFactory.PASTE_SPECIAL.getId());
+        menu.appendToGroup(GROUP_EDIT, action);
+        
+        menu.appendToGroup(GROUP_EDIT, new Separator());
+        
         action = actionRegistry.getAction(ActionFactory.DELETE.getId());
         menu.appendToGroup(GROUP_EDIT, action);
+        
+        // Delete Container
+        menu.appendToGroup(GROUP_EDIT, actionRegistry.getAction(DeleteContainerAction.ID));
         
         action = actionRegistry.getAction(LockObjectAction.ID);
         if(action.isEnabled()) {
@@ -101,20 +113,18 @@ public abstract class AbstractDiagramEditorContextMenuProvider extends ContextMe
         // Select Element in Tree
         menu.appendToGroup(GROUP_RENAME, new Separator());
         menu.appendToGroup(GROUP_RENAME, actionRegistry.getAction(SelectElementInTreeAction.ID));
- 
+        
         menu.add(new Separator(GROUP_EXPORT));
         IMenuManager exportMenu = new MenuManager(Messages.AbstractDiagramEditorContextMenuProvider_0, "menu_export"); //$NON-NLS-1$
         menu.add(exportMenu);
         exportMenu.add(actionRegistry.getAction(ExportAsImageAction.ID));
-        exportMenu.add(actionRegistry.getAction(ExportAsImageToClipboardAction.ID));
         
         menu.add(new Separator(GROUP_ORDER));
         IMenuManager orderMenu = new MenuManager(Messages.AbstractDiagramEditorContextMenuProvider_1, "menu_order"); //$NON-NLS-1$
         menu.add(orderMenu);
-        orderMenu.add(actionRegistry.getAction(BringToFrontAction.ID));
-        orderMenu.add(actionRegistry.getAction(BringForwardAction.ID));
-        orderMenu.add(actionRegistry.getAction(SendToBackAction.ID));
-        orderMenu.add(actionRegistry.getAction(SendBackwardAction.ID));
+        for(ObjectPositionActionDefinition def : ObjectPositionAction.getActionDefinitions()) {
+            orderMenu.add(actionRegistry.getAction(def.id()));
+        }
         
         menu.add(new GroupMarker(GROUP_POSITION));
         IMenuManager alignmentMenu = new MenuManager(Messages.AbstractDiagramEditorContextMenuProvider_2, "menu_position"); //$NON-NLS-1$
@@ -134,15 +144,18 @@ public abstract class AbstractDiagramEditorContextMenuProvider extends ContextMe
 
         alignmentMenu.add(actionRegistry.getAction(GEFActionConstants.MATCH_WIDTH));
         alignmentMenu.add(actionRegistry.getAction(GEFActionConstants.MATCH_HEIGHT));
+        alignmentMenu.add(actionRegistry.getAction(GEFActionConstants.MATCH_SIZE));
         
         alignmentMenu.add(new Separator());
         alignmentMenu.add(actionRegistry.getAction(DefaultEditPartSizeAction.ID));
+        alignmentMenu.add(actionRegistry.getAction(ResetAspectRatioAction.ID));
         
         menu.add(new Separator(GROUP_CONNECTIONS));
         IMenuManager connectionMenu = new MenuManager(Messages.AbstractDiagramEditorContextMenuProvider_3, "menu_connection_router"); //$NON-NLS-1$
         menu.appendToGroup(GROUP_CONNECTIONS, connectionMenu);
         connectionMenu.add(actionRegistry.getAction(ConnectionRouterAction.BendPointConnectionRouterAction.ID));
-        connectionMenu.add(actionRegistry.getAction(ConnectionRouterAction.ShortestPathConnectionRouterAction.ID));
+// Doesn't work with Connection to Connection
+//      connectionMenu.add(actionRegistry.getAction(ConnectionRouterAction.ShortestPathConnectionRouterAction.ID));
         connectionMenu.add(actionRegistry.getAction(ConnectionRouterAction.ManhattanConnectionRouterAction.ID));
         
         menu.add(new Separator(GROUP_PROPERTIES));

@@ -5,28 +5,26 @@
  */
 package com.archimatetool.editor.views.tree;
 
-import org.eclipse.jface.util.IPropertyChangeListener;
-import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.jface.viewers.TreeViewer;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
+import java.util.Objects;
+
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IPartListener;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchPart;
+import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.IArchimateDiagramEditor;
-import com.archimatetool.editor.model.viewpoints.IViewpoint;
-import com.archimatetool.editor.model.viewpoints.ViewpointsManager;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.ColorFactory;
+import com.archimatetool.editor.ui.components.PartListenerAdapter;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateElement;
-import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IRelationship;
+import com.archimatetool.model.IArchimateRelationship;
+import com.archimatetool.model.viewpoints.IViewpoint;
+import com.archimatetool.model.viewpoints.ViewpointManager;
 
 
 
@@ -35,156 +33,100 @@ import com.archimatetool.model.IRelationship;
  * 
  * @author Phillip Beauvoir
  */
-public class TreeViewpointFilterProvider implements IPartListener {
+public class TreeViewpointFilterProvider {
 
-    /**
-     * Active Diagram Model
-     */
-    private IArchimateDiagramModel fActiveDiagramModel;
+    private IArchimateDiagramModel activeDiagramModel;
+    private TreeModelViewer treeViewer;
+    private IWorkbenchWindow workbenchWindow;
     
-    /**
-     * Tree Viewer
-     */
-    private TreeViewer fViewer;
+    private Color colorGrey = new Color(128, 128, 128);
     
-    /**
-     * Application Preferences Listener
-     */
-    private IPropertyChangeListener prefsListener = new IPropertyChangeListener() {
+    private IPartListener partListener = new PartListenerAdapter() {
         @Override
-        public void propertyChange(PropertyChangeEvent event) {
-            if(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE.equals(event.getProperty())) {
-                fViewer.refresh();
+        public void partActivated(IWorkbenchPart part) {
+            if(part instanceof IEditorPart) {
+                // Track active part even if the filter is not on, so we have them if it is turned on in preferences
+                
+                // Previous active diagram model
+                IArchimateDiagramModel previousDiagramModel = activeDiagramModel;
+                
+                // If Part is an Archimate editor store active diagram model or else null
+                activeDiagramModel = (part instanceof IArchimateDiagramEditor diagramEditor) ? (IArchimateDiagramModel)diagramEditor.getModel() : null;
+                
+                if(isActive()) {
+                    // If the diagram models are in the same model...
+                    if(activeDiagramModel != null && previousDiagramModel != null
+                            && activeDiagramModel.getArchimateModel() == previousDiagramModel.getArchimateModel()) {
+                        
+                        // ...and have different viewpoints
+                        if(!Objects.equals(previousDiagramModel.getViewpoint(), activeDiagramModel.getViewpoint())) {
+                            treeViewer.updateInBackground(activeDiagramModel.getArchimateModel());
+                        }
+                    }
+                    else {
+                        if(previousDiagramModel != null) {
+                            treeViewer.updateInBackground(previousDiagramModel.getArchimateModel());
+                        }
+                        if(activeDiagramModel != null) {
+                            treeViewer.updateInBackground(activeDiagramModel.getArchimateModel());
+                        }
+                    }
+                }
+            }
+        }
+
+        @Override
+        public void partClosed(IWorkbenchPart part) {
+            // If no editors are open in the workbench then update the tree
+            if(part instanceof IEditorPart) {
+                IWorkbenchPage page = workbenchWindow.getActivePage();
+                if(page != null && page.getActiveEditor() == null) {
+                    activeDiagramModel = null;
+                    if(isActive()) {
+                        treeViewer.updateInBackground();
+                    }
+                }
             }
         }
     };
-    
-    TreeViewpointFilterProvider(TreeViewer viewer) {
-        fViewer = viewer;
+
+    TreeViewpointFilterProvider(TreeModelViewer viewer) {
+        treeViewer = viewer;
 
         // Listen to Part selections
         if(PlatformUI.isWorkbenchRunning()) {
-            PlatformUI.getWorkbench().getActiveWorkbenchWindow().getPartService().addPartListener(this);
+            workbenchWindow = PlatformUI.getWorkbench().getActiveWorkbenchWindow();
+            workbenchWindow.getPartService().addPartListener(partListener);
         }
         
-        // Listen to Preferences
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
-
-        fViewer.getControl().addDisposeListener(new DisposeListener() {
-            @Override
-            public void widgetDisposed(DisposeEvent e) {
-            	if(PlatformUI.isWorkbenchRunning() && PlatformUI.getWorkbench().getActiveWorkbenchWindow() != null) {
-            		PlatformUI.getWorkbench().getActiveWorkbenchWindow().getPartService().removePartListener(TreeViewpointFilterProvider.this);
-            	}
-                
-                Preferences.STORE.removePropertyChangeListener(prefsListener);
+        // Dispose and clean up
+        treeViewer.getControl().addDisposeListener(event -> {
+            if(workbenchWindow != null) {
+                workbenchWindow.getPartService().removePartListener(partListener);
             }
+
+            activeDiagramModel = null;
+            treeViewer = null;
+            workbenchWindow = null;
         });
     }
     
     /**
-     * Refresh the Archimate model in the tree
+     * @return grey text color if the given concept is disallowed in a Viewpoint for the active model, or else null
      */
-    private void refreshTreeModel(IArchimateDiagramModel dm) {
-        if(dm != null && isActive()) {
-            IArchimateModel model = dm.getArchimateModel();
-            fViewer.refresh(model);
-        }
-    }
-
-    @Override
-    public void partActivated(IWorkbenchPart part) {
-        /*
-         * Refresh Tree only if an IEditorPart is activated.
-         * 
-         * If we call refresh() when a ViewPart is activated then a problem occurs when:
-         * 1. User adds a new Diagram View to the Tree
-         * 2. Element is added to model - refresh() is called on Tree
-         * 3. Diagram Editor is opened and activated
-         * 4. This is notified of Diagram Editor Part activation and calls refresh() on Tree
-         * 5. NewDiagramCommand.execute() calls TreeModelViewer.editElement() to edit the cell name
-         * 6. The Tree is then activated and This is notified of Diagram Editor Part activation and calls refresh() on Tree
-         * 7. TreeModelViewer.refresh(element) then cancels editing
-         */
-        if(part instanceof IEditorPart) {
-            IArchimateDiagramModel previous = fActiveDiagramModel;
-
-            // Archimate editor
-            if(part instanceof IArchimateDiagramEditor) {
-                IArchimateDiagramModel dm = (IArchimateDiagramModel)((IArchimateDiagramEditor)part).getModel();
-                
-                if(previous == dm) {
-                    return;
-                }
-                
-                fActiveDiagramModel = dm;
-            }
-            // Other type of editor (sketch, canvas)
-            else {
-                fActiveDiagramModel = null;
-            }
-            
-            // Refresh previous model
-            refreshTreeModel(previous);
-
-            // Refresh selected model
-            refreshTreeModel(fActiveDiagramModel);
-        }
-    }
-
-    @Override
-    public void partBroughtToTop(IWorkbenchPart part) {
-    }
-
-    @Override
-    public void partClosed(IWorkbenchPart part) {
-        // Check if no editors open
-        if(part instanceof IEditorPart) {
-        	if(PlatformUI.getWorkbench().getActiveWorkbenchWindow() != null) {
-        		IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-                if(page != null && page.getActiveEditor() == null) {
-                    fActiveDiagramModel = null;
-                    if(isActive()) {
-                        fViewer.refresh();
-                    }
-                }
-        	}
-        }
-    }
-
-    @Override
-    public void partDeactivated(IWorkbenchPart part) {
-    }
-
-    @Override
-    public void partOpened(IWorkbenchPart part) {
-    }
-
-    /**
-     * If the element is disallowed in a Viewpoint grey it out
-     * @param element
-     * @return Color or null
-     */
-    public Color getTextColor(Object element) {
-        if(isActive() && fActiveDiagramModel != null && element instanceof IArchimateElement) {
-            int index = fActiveDiagramModel.getViewpoint();
-            IViewpoint viewpoint = ViewpointsManager.INSTANCE.getViewpoint(index);
+    Color getTextColor(Object object) {
+        if(isActive() && activeDiagramModel != null && object instanceof IArchimateConcept concept
+                      && concept.getArchimateModel() == activeDiagramModel.getArchimateModel()) { // From same model as active diagram
+            IViewpoint viewpoint = ViewpointManager.INSTANCE.getViewpoint(activeDiagramModel.getViewpoint());
             if(viewpoint != null) {
-                // From same model as active diagram
-                IArchimateModel model = ((IArchimateElement)element).getArchimateModel();
-                if(model == fActiveDiagramModel.getArchimateModel()) {
-                    if(element instanceof IRelationship) {
-                        IArchimateElement source = ((IRelationship)element).getSource();
-                        IArchimateElement target = ((IRelationship)element).getTarget();
-                        if(!viewpoint.isAllowedType(source.eClass()) || !viewpoint.isAllowedType(target.eClass())) {
-                            return ColorFactory.get(128, 128, 128);
-                        }
-                    }
-                    else {
-                        if(!viewpoint.isAllowedType(((IArchimateElement)element).eClass())) {
-                            return ColorFactory.get(128, 128, 128);
-                        }
-                    }
+                if(concept instanceof IArchimateRelationship relation) {
+                    IArchimateConcept source = relation.getSource();
+                    IArchimateConcept target = relation.getTarget();
+                    return viewpoint.isAllowedConcept(source.eClass())
+                            && viewpoint.isAllowedConcept(target.eClass()) ? null : colorGrey;
+                }
+                else if(object instanceof IArchimateElement element) {
+                    return viewpoint.isAllowedConcept(element.eClass()) ? null : colorGrey;
                 }
             }
         }
@@ -193,6 +135,6 @@ public class TreeViewpointFilterProvider implements IPartListener {
     }
     
     boolean isActive() {
-        return Preferences.STORE.getBoolean(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE);
+        return ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE);
     }
 }

@@ -38,12 +38,12 @@ import org.eclipse.gef.Request;
 import org.eclipse.gef.requests.CreateConnectionRequest;
 import org.eclipse.gef.requests.ReconnectRequest;
 
-import com.archimatetool.editor.diagram.figures.AbstractTextFlowFigure;
+import com.archimatetool.editor.diagram.figures.AbstractDiagramModelObjectFigure;
+import com.archimatetool.editor.diagram.figures.FigureUtils;
 import com.archimatetool.editor.diagram.figures.IFigureDelegate;
 import com.archimatetool.editor.diagram.figures.IRoundedRectangleFigure;
-import com.archimatetool.editor.diagram.figures.RoundedRectangleFigureDelegate;
-import com.archimatetool.editor.diagram.figures.business.BusinessInterfaceFigure;
-import com.archimatetool.editor.diagram.figures.business.BusinessValueFigure;
+import com.archimatetool.editor.diagram.figures.elements.ValueFigure;
+import com.archimatetool.model.IDiagramModelArchimateObject;
 
 
 /**
@@ -210,7 +210,10 @@ public class OrthogonalAnchor extends ChopboxAnchor {
 		
 		// Find reference point relative position
 		int pos = 0;
+		
 		Dimension corner = getCornerDimensions(getOwner());
+		corner = corner.scale(FigureUtils.getFigureScale(getOwner()));
+		
 		// Check X axis
 		if (reference.x < figureBBox.x)
 			pos = LEFT;
@@ -235,6 +238,8 @@ public class OrthogonalAnchor extends ChopboxAnchor {
 			pos |= BOTTOM;
 		
 		// Now compute anchor's position
+		// But first resize figureBBox, this will avoid anchors 1px outside from right and bottom borders
+		figureBBox.resize(-1, -1);
 		switch (pos) {
 		case LEFT | TOP:
 			return (new Point(figureBBox.x + corner.width / 2 -
@@ -330,10 +335,14 @@ public class OrthogonalAnchor extends ChopboxAnchor {
 		
         switch(fAnchorType) {
             case CONNECTION_SRC:
-                fRemoteFig = ((GraphicalEditPart)fAnchorConnection.getTarget()).getFigure();
+            	fRemoteFig = (fAnchorConnection != null && fAnchorConnection.getTarget() != null)
+            			? ((GraphicalEditPart)fAnchorConnection.getTarget()).getFigure()
+            			: null;
                 break;
             case CONNECTION_TGT:
-                fRemoteFig = ((GraphicalEditPart)fAnchorConnection.getSource()).getFigure();
+                fRemoteFig = (fAnchorConnection != null && fAnchorConnection.getSource() != null)
+                		? ((GraphicalEditPart)fAnchorConnection.getSource()).getFigure()
+                		: null;
                 break;
             case RECONREQ_SRC:
                 fRemoteFig = (((ReconnectRequest)fRequest).getConnectionEditPart().getTarget() != null)
@@ -362,31 +371,28 @@ public class OrthogonalAnchor extends ChopboxAnchor {
 	 * @return corner dimension
 	 */
 	private Dimension getCornerDimensions(IFigure figure) {
-		// Default is pure rectangle
-		Dimension corner = new Dimension(0, 0);
-		IFigureDelegate figureDelegate = null;
-		
-		try {
-			figureDelegate = ((AbstractTextFlowFigure)figure).getFigureDelegate();
-		} catch (Exception e) {
-		}
-		
-		if (figureDelegate instanceof RoundedRectangleFigureDelegate) {
-			// roundedRectangle case
-			corner = ((IRoundedRectangleFigure) figureDelegate).getArc();
-		} else if (figure instanceof IRoundedRectangleFigure) {
-			// roundedRectangle case
-            corner = ((IRoundedRectangleFigure) figure).getArc();
-        } else if (figure instanceof RoundedRectangle) {
-        	// roundedRectangle case
-			corner = ((RoundedRectangle) figure).getCornerDimensions();
-		} else if(figure instanceof BusinessValueFigure) {
-			// ellipse case
+        // Default is pure rectangle
+        Dimension corner = new Dimension(0, 0);
+        
+        // roundedRectangle case
+        if(figure instanceof AbstractDiagramModelObjectFigure) {
+            IFigureDelegate figureDelegate = ((AbstractDiagramModelObjectFigure)figure).getFigureDelegate();
+            if(figureDelegate instanceof IRoundedRectangleFigure) {
+                return ((IRoundedRectangleFigure)figureDelegate).getArc();
+            }
+        }
+        
+        if(figure instanceof IRoundedRectangleFigure) {
+            // roundedRectangle case
+            corner = ((IRoundedRectangleFigure)figure).getArc();
+        }
+        else if(figure instanceof RoundedRectangle) {
+            // roundedRectangle case
+            corner = ((RoundedRectangle)figure).getCornerDimensions();
+        }
+        else if(figure instanceof ValueFigure && ((IDiagramModelArchimateObject)((ValueFigure)figure).getDiagramModelObject()).getType() == 1) {
+            // ellipse case
             corner = figure.getSize();
-        } else if(figure instanceof BusinessInterfaceFigure) {
-        	// ellipse case
-            if (((BusinessInterfaceFigure)figure).getDiagramModelObject().getType() != 0)
-            	corner = figure.getSize();
         }
 		
 		return corner;

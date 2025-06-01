@@ -21,10 +21,10 @@ import com.archimatetool.model.IArchimatePackage;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.ArchimateDiagramModel#getViewpoint <em>Viewpoint</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -37,7 +37,7 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
      * @generated
      * @ordered
      */
-    protected static final int VIEWPOINT_EDEFAULT = 0;
+    protected static final String VIEWPOINT_EDEFAULT = ""; //$NON-NLS-1$
 
     /**
      * The cached value of the '{@link #getViewpoint() <em>Viewpoint</em>}' attribute.
@@ -47,7 +47,7 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
      * @generated
      * @ordered
      */
-    protected int viewpoint = VIEWPOINT_EDEFAULT;
+    protected String viewpoint = VIEWPOINT_EDEFAULT;
 
     /**
      * <!-- begin-user-doc -->
@@ -73,7 +73,8 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
      * <!-- end-user-doc -->
      * @generated
      */
-    public int getViewpoint() {
+    @Override
+    public String getViewpoint() {
         return viewpoint;
     }
 
@@ -82,8 +83,9 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
      * <!-- end-user-doc -->
      * @generated
      */
-    public void setViewpoint(int newViewpoint) {
-        int oldViewpoint = viewpoint;
+    @Override
+    public void setViewpoint(String newViewpoint) {
+        String oldViewpoint = viewpoint;
         viewpoint = newViewpoint;
         if (eNotificationRequired())
             eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT, oldViewpoint, viewpoint));
@@ -112,7 +114,7 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
     public void eSet(int featureID, Object newValue) {
         switch (featureID) {
             case IArchimatePackage.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT:
-                setViewpoint((Integer)newValue);
+                setViewpoint((String)newValue);
                 return;
         }
         super.eSet(featureID, newValue);
@@ -142,7 +144,7 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
     public boolean eIsSet(int featureID) {
         switch (featureID) {
             case IArchimatePackage.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT:
-                return viewpoint != VIEWPOINT_EDEFAULT;
+                return VIEWPOINT_EDEFAULT == null ? viewpoint != null : !VIEWPOINT_EDEFAULT.equals(viewpoint);
         }
         return super.eIsSet(featureID);
     }
@@ -156,7 +158,7 @@ public class ArchimateDiagramModel extends DiagramModel implements IArchimateDia
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (viewpoint: "); //$NON-NLS-1$
         result.append(viewpoint);
         result.append(')');

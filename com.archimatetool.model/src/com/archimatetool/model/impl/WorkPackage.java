@@ -15,12 +15,10 @@ import com.archimatetool.model.IWorkPackage;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Work Package</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class WorkPackage extends ImplementationMigrationElement implements IWorkPackage {
+public class WorkPackage extends ArchimateElement implements IWorkPackage {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

@@ -23,6 +23,7 @@ public class RenameAction extends ViewerAction {
     public RenameAction(TreeModelViewer selectionProvider) {
         super(selectionProvider);
         setText(Messages.RenameAction_0);
+        setId("rename"); //$NON-NLS-1$
         setEnabled(false);
         setActionDefinitionId(IWorkbenchCommandConstants.FILE_RENAME); // register key binding
     }
@@ -41,8 +42,8 @@ public class RenameAction extends ViewerAction {
     }
 
     @Override
-    public void update(IStructuredSelection selection) {
-        setEnabled(selection.size() == 1 && RenameCommandHandler.canRename(selection.getFirstElement()));
+    public void update() {
+        setEnabled(getSelection().size() == 1 && RenameCommandHandler.canRename(getSelection().getFirstElement()));
     }
 
 }

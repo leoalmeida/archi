@@ -5,16 +5,18 @@
  */
 package com.archimatetool.zest;
 
+import org.eclipse.draw2d.Viewport;
 import org.eclipse.jface.util.IPropertyChangeListener;
-import org.eclipse.jface.util.PropertyChangeEvent;
-import org.eclipse.swt.events.DisposeEvent;
-import org.eclipse.swt.events.DisposeListener;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.events.MouseEvent;
+import org.eclipse.swt.events.MouseWheelListener;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.zest.core.viewers.GraphViewer;
-import org.eclipse.zest.core.widgets.ZestStyles;
 
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.diagram.util.AnimationUtil;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ui.ThemeUtils;
 
 
 
@@ -28,15 +30,13 @@ public class ZestGraphViewer extends GraphViewer {
     /**
      * Application Preferences Listener
      */
-    private IPropertyChangeListener prefsListener = new IPropertyChangeListener() {
-        @Override
-        public void propertyChange(PropertyChangeEvent event) {
+    private IPropertyChangeListener prefsListener = event -> {
+        if(AnimationUtil.supportsAnimation()) {
             if(IPreferenceConstants.ANIMATE_VISUALISER_NODES.equals(event.getProperty())) {
-                Object input = getInput(); // save this
-                setInput(null); // can't set node style if input is not null
-                setNodeStyle(Preferences.STORE.getBoolean(IPreferenceConstants.ANIMATE_VISUALISER_NODES) ? 0 : ZestStyles.NODES_NO_LAYOUT_ANIMATION);
-                setInput(input); // reset
-                doApplyLayout(); // and layout again
+                getGraphControl().setAnimationEnabled(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.ANIMATE_VISUALISER_NODES));
+            }
+            else if(IPreferenceConstants.ANIMATE_VISUALISER_TIME.equals(event.getProperty())) {
+                getGraphControl().setAnimationTime(ArchiPlugin.getInstance().getPreferenceStore().getInt(IPreferenceConstants.ANIMATE_VISUALISER_TIME));
             }
         }
     };
@@ -46,18 +46,53 @@ public class ZestGraphViewer extends GraphViewer {
         setContentProvider(new ZestViewerContentProvider());
         setLabelProvider(new ZestViewerLabelProvider());
         
-        if(!Preferences.STORE.getBoolean(IPreferenceConstants.ANIMATE_VISUALISER_NODES)) {
-            setNodeStyle(ZestStyles.NODES_NO_LAYOUT_ANIMATION);
+        // Animate nodes
+        if(AnimationUtil.supportsAnimation()) {
+            getGraphControl().setAnimationEnabled(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.ANIMATE_VISUALISER_NODES));
+            getGraphControl().setAnimationTime(ArchiPlugin.getInstance().getPreferenceStore().getInt(IPreferenceConstants.ANIMATE_VISUALISER_TIME));
         }
         
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
+        // Preference listener
+        ArchiPlugin.getInstance().getPreferenceStore().addPropertyChangeListener(prefsListener);
         
-        getGraphControl().addDisposeListener(new DisposeListener() {
+        // Un-Preference listener
+        getGraphControl().addDisposeListener(e -> {
+            ArchiPlugin.getInstance().getPreferenceStore().removePropertyChangeListener(prefsListener);
+        });
+        
+        // Mouse Wheel listener
+        getGraphControl().addMouseWheelListener(new MouseWheelListener() {
+            // Scrolling down scrolls to the right
+            private static final int DIRECTION = -1;
+            
+            // How many pixels to scroll
+            private static final int DELTA = 30;
+            
             @Override
-            public void widgetDisposed(DisposeEvent e) {
-                Preferences.STORE.removePropertyChangeListener(prefsListener);
+            public void mouseScrolled(MouseEvent event) {
+                // Zoom in and out with Ctrl Key and mouse wheel - need better icons for this to look good
+//                if((event.stateMask & SWT.MOD1) != 0) {
+//                    if(event.count < 0) {
+//                        getZoomManager().zoomOut();
+//                    }
+//                    else if(event.count > 0) {
+//                        getZoomManager().zoomIn();
+//                    }
+//                }
+                
+                // Scroll left/right with mouse wheel and Shift key
+                if((event.stateMask & SWT.MOD2) != 0) {
+                    Viewport viewPort = getGraphControl().getViewport();
+                    viewPort.setViewLocation(viewPort.getViewLocation().translate(event.count * DELTA * DIRECTION, 0));
+                }
             }
         });
+        
+        // Set CSS ID
+        ThemeUtils.registerCssId(getGraphControl(), "ArchiGraph"); //$NON-NLS-1$
+        
+        // Set background color in case CSS theming is disabled
+        ThemeUtils.setBackgroundColorIfCssThemingDisabled(getGraphControl(), IPreferenceConstants.VISUALISER_BACKGROUND_COLOR);
     }
     
     void doApplyLayout() {

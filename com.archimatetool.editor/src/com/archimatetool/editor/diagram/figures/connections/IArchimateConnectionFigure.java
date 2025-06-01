@@ -5,13 +5,19 @@
  */
 package com.archimatetool.editor.diagram.figures.connections;
 
-
+import com.archimatetool.model.IDiagramModelArchimateConnection;
 
 /**
- * Connection Figure for an Archimate type connection
+ * IArchimateConnectionFigure
  * 
  * @author Phillip Beauvoir
  */
 public interface IArchimateConnectionFigure extends IDiagramConnectionFigure {
-
+    
+    /**
+     * @return The casted getModelConnection()
+     */
+    default IDiagramModelArchimateConnection getDiagramModelArchimateConnection() {
+        return (IDiagramModelArchimateConnection)getModelConnection();
+    }
 }

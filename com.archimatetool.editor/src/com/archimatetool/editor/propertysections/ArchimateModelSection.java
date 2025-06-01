@@ -7,10 +7,9 @@ package com.archimatetool.editor.propertysections;
 
 import java.io.File;
 
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.gef.commands.Command;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Text;
@@ -28,35 +27,25 @@ import com.archimatetool.model.IArchimatePackage;
  * 
  * @author Phillip Beauvoir
  */
-public class ArchimateModelSection extends AbstractArchimatePropertySection {
+public class ArchimateModelSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.archimateModelSection"; //$NON-NLS-1$
 
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
+    /**
+     * Filter to show or reject this section depending on input value
      */
-    private Adapter eAdapter = new AdapterImpl() {
+    public static class Filter extends ObjectFilter {
         @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Model Name event (Undo/Redo and here!)
-            if(feature == IArchimatePackage.Literals.NAMEABLE__NAME) {
-                refreshNameField();
-                fPage.labelProviderChanged(null); // Update Main label
-            }
-            // Model File
-            else if(feature == IArchimatePackage.Literals.ARCHIMATE_MODEL__FILE) {
-                refreshFileField();
-            }
-            // Model Purpose event (Undo/Redo and here!)
-            else if(feature == IArchimatePackage.Literals.ARCHIMATE_MODEL__PURPOSE) {
-                refreshPurposeField();
-            }
+        public boolean isRequiredType(Object object) {
+            return object instanceof IArchimateModel;
         }
-    };
-    
-    private IArchimateModel fModel;
-    
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return IArchimateModel.class;
+        }
+    }
+
     private PropertySectionTextControl fTextName;
     private Text fTextFile;
     private PropertySectionTextControl fTextPurpose;
@@ -85,34 +74,45 @@ public class ArchimateModelSection extends AbstractArchimatePropertySection {
 
         // Text
         StyledTextControl styledTextControl = createStyledTextControl(parent, SWT.NONE);
+        styledTextControl.setMessage(Messages.ArchimateModelSection_4);
         
         fTextPurpose = new PropertySectionTextControl(styledTextControl.getControl(), IArchimatePackage.Literals.ARCHIMATE_MODEL__PURPOSE) {
             @Override
             protected void textChanged(String oldText, String newText) {
-                if(isAlive()) {
-                    fIsExecutingCommand = true;
-                    getCommandStack().execute(new EObjectFeatureCommand(Messages.ArchimateModelSection_3, fModel,
-                                                    IArchimatePackage.Literals.ARCHIMATE_MODEL__PURPOSE, newText));
-                    fIsExecutingCommand = false;
+                EObject model = getFirstSelectedObject();
+
+                if(isAlive(model)) {
+                    Command cmd = new EObjectFeatureCommand(Messages.ArchimateModelSection_3, getFirstSelectedObject(),
+                            IArchimatePackage.Literals.ARCHIMATE_MODEL__PURPOSE, newText);
+                    if(cmd.canExecute()) {
+                        executeCommand(cmd);
+                    }
                 }
             }
         };
-        fTextPurpose.setHint(Messages.ArchimateModelSection_4);
     }
 
     @Override
-    protected void setElement(Object element) {
-        if(element instanceof IArchimateModel) {
-            fModel = (IArchimateModel)element;
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+
+        // Model Name
+        if(feature == IArchimatePackage.Literals.NAMEABLE__NAME) {
+            refreshNameField();
+            updatePropertiesLabel(); // Update Main label
         }
-        else {
-            System.err.println("Section wants to display for " + element); //$NON-NLS-1$
+        // Model File
+        else if(feature == IArchimatePackage.Literals.ARCHIMATE_MODEL__FILE) {
+            refreshFileField();
         }
-        
-        refreshControls();
+        // Model Purpose
+        else if(feature == IArchimatePackage.Literals.ARCHIMATE_MODEL__PURPOSE) {
+            refreshPurposeField();
+        }
     }
     
-    protected void refreshControls() {
+    @Override
+    protected void update() {
         refreshNameField();
         refreshFileField();
         refreshPurposeField();
@@ -122,11 +122,11 @@ public class ArchimateModelSection extends AbstractArchimatePropertySection {
         if(fIsExecutingCommand) {
             return; 
         }
-        fTextName.refresh(fModel);
+        fTextName.refresh(getFirstSelectedObject());
     }
     
     protected void refreshFileField() {
-        File file = fModel.getFile();
+        File file = ((IArchimateModel)getFirstSelectedObject()).getFile();
         if(file != null) {
             fTextFile.setText(file.getAbsolutePath());
         }
@@ -139,17 +139,12 @@ public class ArchimateModelSection extends AbstractArchimatePropertySection {
         if(fIsExecutingCommand) {
             return; 
         }
-        fTextPurpose.refresh(fModel);
+        fTextPurpose.refresh(getFirstSelectedObject());
     }
 
     @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
-    }
-
-    @Override
-    protected EObject getEObject() {
-        return fModel;
+    protected IObjectFilter getFilter() {
+        return new Filter();
     }
     
     @Override

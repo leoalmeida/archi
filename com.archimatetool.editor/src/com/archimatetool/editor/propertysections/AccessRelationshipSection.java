@@ -5,12 +5,10 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import org.eclipse.core.runtime.IAdaptable;
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.jface.viewers.IFilter;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -21,7 +19,6 @@ import org.eclipse.ui.PlatformUI;
 
 import com.archimatetool.editor.model.commands.EObjectFeatureCommand;
 import com.archimatetool.model.IAccessRelationship;
-import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimatePackage;
 
 
@@ -31,37 +28,24 @@ import com.archimatetool.model.IArchimatePackage;
  * 
  * @author Phillip Beauvoir
  */
-public class AccessRelationshipSection extends AbstractArchimatePropertySection {
+public class AccessRelationshipSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.elementPropertySection"; //$NON-NLS-1$
     
     /**
      * Filter to show or reject this section depending on input value
      */
-    public static class Filter implements IFilter {
+    public static class Filter extends ObjectFilter {
         @Override
-        public boolean select(Object object) {
-            return object instanceof IAccessRelationship ||
-                (object instanceof IAdaptable &&
-                        ((IAdaptable)object).getAdapter(IArchimateElement.class) instanceof IAccessRelationship);
+        public boolean isRequiredType(Object object) {
+            return object instanceof IAccessRelationship;
+        }
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return IAccessRelationship.class;
         }
     }
-
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
-     */
-    private Adapter eAdapter = new AdapterImpl() {
-        @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Element Access type event (Undo/Redo and here)
-            if(feature == IArchimatePackage.Literals.ACCESS_RELATIONSHIP__ACCESS_TYPE) {
-                refreshControls();
-            }
-        }
-    };
-    
-    private IAccessRelationship fAccessRelationship;
 
     private Combo fComboType;
     
@@ -83,20 +67,28 @@ public class AccessRelationshipSection extends AbstractArchimatePropertySection 
     @Override
     protected void createControls(Composite parent) {
         createLabel(parent, Messages.AccessRelationshipSection_4, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
+        
         fComboType = new Combo(parent, SWT.READ_ONLY);
+        getWidgetFactory().adapt(fComboType, true, true);
         fComboType.setItems(fComboTypeItems);
         fComboType.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        
         fComboType.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if(isAlive()) {
-                    fIsExecutingCommand = true;
-                    getCommandStack().execute(new EObjectFeatureCommand(Messages.AccessRelationshipSection_5,
-                                                        fAccessRelationship,
-                                                        IArchimatePackage.Literals.ACCESS_RELATIONSHIP__ACCESS_TYPE,
-                                                        fTypeValues[fComboType.getSelectionIndex()]));
-                    fIsExecutingCommand = false;
+                CompoundCommand result = new CompoundCommand();
+
+                for(EObject relationship : getEObjects()) {
+                    if(isAlive(relationship)) {
+                        Command cmd = new EObjectFeatureCommand(Messages.AccessRelationshipSection_5, relationship,
+                                IArchimatePackage.Literals.ACCESS_RELATIONSHIP__ACCESS_TYPE, fTypeValues[fComboType.getSelectionIndex()]);
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
                 }
+
+                executeCommand(result.unwrap());
             }
         });
 
@@ -105,42 +97,32 @@ public class AccessRelationshipSection extends AbstractArchimatePropertySection 
     }
 
     @Override
-    protected void setElement(Object element) {
-        // IAccessRelationship
-        if(element instanceof IAccessRelationship) {
-            fAccessRelationship = (IAccessRelationship)element;
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+        if(feature == IArchimatePackage.Literals.ACCESS_RELATIONSHIP__ACCESS_TYPE) {
+            update();
         }
-        // IAccessRelationship in a GEF Edit Part
-        else if(element instanceof IAdaptable) {
-            fAccessRelationship = (IAccessRelationship)((IAdaptable)element).getAdapter(IArchimateElement.class);
-        }
-        else {
-            System.err.println("AccessRelationshipSection wants to display for " + element); //$NON-NLS-1$
-        }
-        
-        refreshControls();
     }
-    
-    protected void refreshControls() {
+
+    @Override
+    protected void update() {
         if(fIsExecutingCommand) {
             return; 
         }
         
-        int type = fAccessRelationship.getAccessType();
+        int type = ((IAccessRelationship)getFirstSelectedObject()).getAccessType();
+        
         if(type < IAccessRelationship.WRITE_ACCESS || type > IAccessRelationship.READ_WRITE_ACCESS) {
             type = IAccessRelationship.WRITE_ACCESS;
         }
+        
         type = fTypeValues[type]; // map theirs to ours
+        
         fComboType.select(type);
-    }
-
-    @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
     }
     
     @Override
-    protected EObject getEObject() {
-        return fAccessRelationship;
+    protected IObjectFilter getFilter() {
+        return new Filter();
     }
 }

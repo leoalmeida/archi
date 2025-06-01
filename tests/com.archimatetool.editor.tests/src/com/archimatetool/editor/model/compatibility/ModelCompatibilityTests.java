@@ -5,19 +5,18 @@
  */
 package com.archimatetool.editor.model.compatibility;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
 import java.io.IOException;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.Resource.Diagnostic;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.model.IArchimateModel;
@@ -27,32 +26,34 @@ import com.archimatetool.model.util.ArchimateResourceFactory;
 @SuppressWarnings("nls")
 public class ModelCompatibilityTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ModelCompatibilityTests.class);
-    }
-    
     private ModelCompatibility mc;
     private Resource resource;
     
     File file1 = new File(TestSupport.getTestDataFolder(), "models/compatibility_test1.archimate");
     File file2 = new File(TestSupport.getTestDataFolder(), "models/compatibility_test2.archimate");
     
-    @Test(expected=IOException.class)
-    public void testShouldThrowException1() throws IOException {
+    @Test
+    public void testShouldThrowException1() {
         resource = ArchimateResourceFactory.createNewResource(file1);
-        resource.load(null);
+        assertThrows(IOException.class, () -> {
+            resource.load(null);
+        });
     }
 
-    @Test(expected=IOException.class)
-    public void testShouldThrowException2() throws IOException {
+    @Test
+    public void testShouldThrowException2() {
         resource = ArchimateResourceFactory.createNewResource(file2);
-        resource.load(null);
+        assertThrows(IOException.class, () -> {
+            resource.load(null);
+        });
     }
 
-    @Test(expected=IncompatibleModelException.class)
-    public void testCheckErrors_ThrowsException() throws IncompatibleModelException {
+    @Test
+    public void testCheckErrors_ThrowsException() {
         createResource(file2);
-        mc.checkErrors();
+        assertThrows(IncompatibleModelException.class, () -> {
+            mc.checkErrors();
+        });
     }
     
     @Test

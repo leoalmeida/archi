@@ -7,14 +7,14 @@ package com.archimatetool.jasperreports;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Locale;
 
-import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.wizard.Wizard;
-import org.eclipse.swt.widgets.Display;
 
+import com.archimatetool.jasperreports.JasperReportsExporter.CancelledException;
 import com.archimatetool.model.IArchimateModel;
 
 
@@ -31,6 +31,13 @@ public class ExportJasperReportsWizard extends Wizard {
     private ExportJasperReportsWizardPage1 fPage1;
     private ExportJasperReportsWizardPage2 fPage2;
     
+    private File mainTemplateFile;
+    private Locale locale;
+    private File exportFolder;
+    private String exportFileName;
+    private String reportTitle;
+    private int exportOptions;
+
     public ExportJasperReportsWizard(IArchimateModel model) {
         setWindowTitle(Messages.ExportJasperReportsWizard_0);
         fModel = model;
@@ -48,7 +55,7 @@ public class ExportJasperReportsWizard extends Wizard {
     public boolean performFinish() {
         fPage1.storePreferences();
         
-        final File mainTemplateFile = fPage2.getMainTemplateFile();
+        mainTemplateFile = fPage2.getMainTemplateFile();
         
         // Check this exists
         if(mainTemplateFile == null || !mainTemplateFile.exists()) {
@@ -56,10 +63,12 @@ public class ExportJasperReportsWizard extends Wizard {
             return false;
         }
         
-        final File exportFolder = fPage1.getExportFolder();
-        final String exportFileName = fPage1.getExportFilename();
-        final String reportTitle = fPage1.getReportTitle();
-        final int exportOptions = fPage1.getExportOptions();
+        locale = fPage2.getLocale();
+        
+        exportFolder = fPage1.getExportFolder();
+        exportFileName = fPage1.getExportFilename();
+        reportTitle = fPage1.getReportTitle();
+        exportOptions = fPage1.getExportOptions();
         
         // Check valid dir and file name
         try {
@@ -72,36 +81,40 @@ public class ExportJasperReportsWizard extends Wizard {
             return false;
         }
         
-        Display.getCurrent().asyncExec(new Runnable() {
-            @Override
-            public void run() {
-                ProgressMonitorDialog dialog = new ProgressMonitorDialog(getShell());
-                try {
-                    dialog.run(false, true, new IRunnableWithProgress() {
-                        @Override
-                        public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-                            try {
-                                JasperReportsExporter exporter = new JasperReportsExporter(fModel, exportFolder, exportFileName, mainTemplateFile,
-                                        reportTitle, exportOptions);
-                                exporter.export(monitor);
-                            }
-                            catch(Exception ex) {
-                                ex.printStackTrace();
-                                MessageDialog.openError(getShell(), Messages.ExportJasperReportsWizard_5, ex.getMessage());
-                            }
-                            finally {
-                                monitor.done();
-                            }
-                        }
-                    });
-                }
-                catch(Exception ex) {
-                    ex.printStackTrace();
-                }
-            }
-        });
-        
         return true;
     }
 
+    // Since this can take a while, show the progress monitor
+    public void runWithProgress() {
+        Throwable[] exception = new Throwable[1];
+        
+        IRunnableWithProgress runnable = monitor -> {
+            try {
+                JasperReportsExporter exporter = new JasperReportsExporter(fModel, exportFolder, exportFileName, mainTemplateFile,
+                        reportTitle, locale, exportOptions);
+                exporter.export(monitor);
+            }
+            catch(Throwable ex) { // Catch SWT and OOM exceptions
+                if(!(ex instanceof CancelledException)) {
+                    ex.printStackTrace();
+                    exception[0] = ex;
+                }
+            }
+        };
+
+        ProgressMonitorDialog dialog = new ProgressMonitorDialog(getShell());
+        
+        try {
+            dialog.run(false, true, runnable); // Set fork to false because of threading issues on Linux
+        }
+        catch(InvocationTargetException | InterruptedException ex) {
+            ex.printStackTrace();
+            MessageDialog.openError(getShell(), Messages.ExportJasperReportsWizard_5, ex.getMessage());
+        }
+        
+        if(exception[0] != null) {
+            exception[0].printStackTrace();
+            MessageDialog.openError(getShell(), Messages.ExportJasperReportsWizard_5, exception[0].getMessage());
+        }
+    }
 }

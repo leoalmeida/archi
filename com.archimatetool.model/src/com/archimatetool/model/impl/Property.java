@@ -20,11 +20,11 @@ import com.archimatetool.model.IProperty;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.Property#getKey <em>Key</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.Property#getValue <em>Value</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -165,7 +165,7 @@ public class Property extends EObjectImpl implements IProperty {
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (key: "); //$NON-NLS-1$
         result.append(key);
         result.append(", value: "); //$NON-NLS-1$
@@ -179,6 +179,7 @@ public class Property extends EObjectImpl implements IProperty {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getKey() {
         return key;
     }
@@ -188,6 +189,7 @@ public class Property extends EObjectImpl implements IProperty {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setKey(String newKey) {
         String oldKey = key;
         key = newKey;
@@ -200,6 +202,7 @@ public class Property extends EObjectImpl implements IProperty {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getValue() {
         return value;
     }
@@ -209,6 +212,7 @@ public class Property extends EObjectImpl implements IProperty {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setValue(String newValue) {
         String oldValue = value;
         value = newValue;

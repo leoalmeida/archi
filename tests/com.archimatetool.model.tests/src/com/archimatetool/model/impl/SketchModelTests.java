@@ -5,10 +5,9 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
@@ -17,10 +16,6 @@ import com.archimatetool.model.ISketchModel;
 
 
 public class SketchModelTests extends DiagramModelTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(SketchModelTests.class);
-    }
     
     private ISketchModel sm;
     

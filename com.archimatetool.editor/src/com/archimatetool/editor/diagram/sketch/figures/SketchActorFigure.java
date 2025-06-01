@@ -12,7 +12,7 @@ import org.eclipse.swt.SWT;
 
 import com.archimatetool.editor.diagram.figures.AbstractLabelFigure;
 import com.archimatetool.editor.diagram.figures.ToolTipFigure;
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.model.ISketchModelActor;
 
 
@@ -32,12 +32,14 @@ public class SketchActorFigure extends AbstractLabelFigure {
     protected void paintFigure(Graphics graphics) {
         super.paintFigure(graphics);
         
+        graphics.setAlpha(getAlpha());
+        
         graphics.setForegroundColor(getFillColor());
         
         graphics.setAntialias(SWT.ON);
         Rectangle bounds = getBounds().getCopy();
         
-        graphics.setLineWidth(2);
+        graphics.setLineWidth(getLineWidth() + 1);
         
         bounds.height -= getLabel().getPreferredSize().height;
         
@@ -79,7 +81,7 @@ public class SketchActorFigure extends AbstractLabelFigure {
             return null;
         }
         
-        String text = ArchimateLabelProvider.INSTANCE.getLabel(getDiagramModelObject());
+        String text = ArchiLabelProvider.INSTANCE.getLabel(getDiagramModelObject());
         tooltip.setText(text);
         tooltip.setType(Messages.SketchActorFigure_0);
         

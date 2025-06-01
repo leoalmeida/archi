@@ -5,12 +5,7 @@
  */
 package com.archimatetool.canvas;
 
-import org.eclipse.draw2d.geometry.Insets;
-import org.eclipse.gef.AutoexposeHelper;
 import org.eclipse.gef.GraphicalViewer;
-import org.eclipse.gef.RootEditPart;
-import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
-import org.eclipse.gef.palette.PaletteRoot;
 import org.eclipse.help.HelpSystem;
 import org.eclipse.help.IContext;
 import org.eclipse.jface.action.MenuManager;
@@ -19,9 +14,9 @@ import org.eclipse.ui.PlatformUI;
 
 import com.archimatetool.canvas.dnd.CanvasDiagramTransferDropTargetListener;
 import com.archimatetool.canvas.dnd.FileTransferDropTargetListener;
+import com.archimatetool.canvas.dnd.URLTransferDropTargetListener;
 import com.archimatetool.canvas.editparts.CanvasModelEditPartFactory;
 import com.archimatetool.editor.diagram.AbstractDiagramEditor;
-import com.archimatetool.editor.diagram.util.ExtendedViewportAutoexposeHelper;
 
 
 
@@ -33,11 +28,6 @@ import com.archimatetool.editor.diagram.util.ExtendedViewportAutoexposeHelper;
 public class CanvasEditor extends AbstractDiagramEditor
 implements ICanvasEditor {
     
-    /**
-     * Palette
-     */
-    private CanvasEditorPalette fPalette;
-    
     @Override
     public void doCreatePartControl(Composite parent) {
         // Register Help Context
@@ -45,11 +35,11 @@ implements ICanvasEditor {
     }
     
     @Override
-    public PaletteRoot getPaletteRoot() {
-        if(fPalette == null) {
-            fPalette = new CanvasEditorPalette();
+    public CanvasEditorPalette getPaletteRoot() {
+        if(fPaletteRoot == null) {
+            fPaletteRoot = new CanvasEditorPalette();
         }
-        return fPalette;
+        return (CanvasEditorPalette)fPaletteRoot;
     }
 
     @Override
@@ -69,26 +59,9 @@ implements ICanvasEditor {
 
         // File DnD
         viewer.addDropTargetListener(new FileTransferDropTargetListener(viewer));
-    }
-    
-    @Override
-    protected void createRootEditPart(GraphicalViewer viewer) {
-        /*
-         * We'll have a Zoom Manager using ScalableFreeformRootEditPart
-         */
-        RootEditPart rootPart = new ScalableFreeformRootEditPart() {
-            @SuppressWarnings("rawtypes")
-            @Override
-            public Object getAdapter(Class adapter) {
-                if(adapter == AutoexposeHelper.class) {
-                    return new ExtendedViewportAutoexposeHelper(this, new Insets(50), false);
-                }
-                return super.getAdapter(adapter);
-            }
-
-        };
         
-        viewer.setRootEditPart(rootPart);
+        // URL DnD
+        viewer.addDropTargetListener(new URLTransferDropTargetListener(viewer));
     }
     
     /**
@@ -100,27 +73,22 @@ implements ICanvasEditor {
         viewer.setContextMenu(provider);
         getSite().registerContextMenu(CanvasEditorContextMenuProvider.ID, provider, viewer);
     }
-    
-    @Override
-    public void dispose() {
-        super.dispose();
-        if(fPalette != null) {
-            fPalette.dispose();
-        }
-    }
-    
+
     // =================================================================================
     //                       Contextual Help support
     // =================================================================================
     
+    @Override
     public int getContextChangeMask() {
         return NONE;
     }
 
+    @Override
     public IContext getContext(Object target) {
         return HelpSystem.getContext(HELP_ID);
     }
 
+    @Override
     public String getSearchExpression(Object target) {
         return Messages.CanvasEditor_0;
     }

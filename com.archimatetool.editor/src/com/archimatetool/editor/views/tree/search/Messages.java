@@ -23,7 +23,35 @@ public class Messages extends NLS {
 
     public static String SearchWidget_13;
 
+    public static String SearchWidget_14;
+
+    public static String SearchWidget_15;
+
+    public static String SearchWidget_16;
+
+    public static String SearchWidget_17;
+
+    public static String SearchWidget_18;
+
+    public static String SearchWidget_19;
+
     public static String SearchWidget_2;
+
+    public static String SearchWidget_20;
+
+    public static String SearchWidget_21;
+
+    public static String SearchWidget_22;
+
+    public static String SearchWidget_23;
+
+    public static String SearchWidget_24;
+
+    public static String SearchWidget_25;
+
+    public static String SearchWidget_26;
+
+    public static String SearchWidget_27;
 
     public static String SearchWidget_3;
 

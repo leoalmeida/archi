@@ -9,13 +9,14 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.eclipse.gef.EditPart;
-import org.eclipse.gef.ui.actions.Clipboard;
 import org.eclipse.gef.ui.actions.SelectionAction;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
 
+import com.archimatetool.editor.ui.LocalClipboard;
+import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.ILockable;
 
@@ -39,6 +40,7 @@ public class CopyAction extends SelectionAction {
     protected void init() {
         setText(Messages.CopyAction_0);
         setId(ActionFactory.COPY.getId());
+        setActionDefinitionId(ActionFactory.COPY.getCommandId());
         ISharedImages sharedImages = PlatformUI.getWorkbench().getSharedImages();
         setImageDescriptor(sharedImages.getImageDescriptor(ISharedImages.IMG_TOOL_COPY));
         setDisabledImageDescriptor(sharedImages.getImageDescriptor(ISharedImages.IMG_TOOL_COPY_DISABLED));
@@ -72,7 +74,7 @@ public class CopyAction extends SelectionAction {
 
     @Override
     public void run() {
-        List<IDiagramModelObject> modelObjectsSelected = new ArrayList<IDiagramModelObject>();
+        List<IDiagramModelComponent> selected = new ArrayList<IDiagramModelComponent>();
         
         for(Object object : getSelectedObjects()) {
             if(object instanceof EditPart) {
@@ -80,14 +82,14 @@ public class CopyAction extends SelectionAction {
                 if(model instanceof ILockable && ((ILockable)model).isLocked()) {
                     continue;
                 }
-                if(model instanceof IDiagramModelObject) {
-                    modelObjectsSelected.add((IDiagramModelObject)model);
+                if(model instanceof IDiagramModelComponent) {
+                    selected.add((IDiagramModelComponent)model);
                 }
             }
         }
         
-        CopySnapshot clipBoardCopy = new CopySnapshot(modelObjectsSelected);
-        Clipboard.getDefault().setContents(clipBoardCopy);
+        CopySnapshot clipBoardCopy = new CopySnapshot(selected);
+        LocalClipboard.getDefault().setContents(clipBoardCopy);
         
         // Reset Paste Action
         fPasteAction.reset();

@@ -15,12 +15,10 @@ import com.archimatetool.model.IConstraint;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Constraint</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Constraint extends MotivationElement implements IConstraint {
+public class Constraint extends ArchimateElement implements IConstraint {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

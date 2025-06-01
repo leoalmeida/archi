@@ -5,41 +5,60 @@
  */
 package com.archimatetool.editor.ui.factory;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.stream.Stream;
 
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.gef.EditPart;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.params.provider.Arguments;
 
+import com.archimatetool.editor.ParamsTest;
 import com.archimatetool.editor.diagram.editparts.diagram.DiagramImageEditPart;
 import com.archimatetool.editor.ui.factory.diagram.DiagramImageUIProvider;
+import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IDiagramModelImage;
+import com.archimatetool.model.IDiagramModelObject;
 
-public class DiagramModelImageUIProviderTests extends AbstractElementUIProviderTests {
+public class DiagramModelImageUIProviderTests extends AbstractGraphicalObjectUIProviderTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelImageUIProviderTests.class);
+    static Stream<Arguments> getParams() {
+        return Stream.of(
+                getParam(new DiagramImageUIProvider(), IArchimatePackage.eINSTANCE.getDiagramModelImage())
+        );
     }
-    
-    @Before
-    public void runOnceBeforeAllTests() {
-        provider = new DiagramImageUIProvider();
-        expectedClass = IArchimatePackage.eINSTANCE.getDiagramModelImage();
-    }
-    
+
     @Override
-    public void testCreateEditPart() {
+    @ParamsTest
+    public void testCreateEditPart(IObjectUIProvider provider) {
         EditPart editPart = provider.createEditPart();
         assertTrue(editPart instanceof DiagramImageEditPart);
     }
+
+    @Override
+    @ParamsTest
+    public void testGetDefaultSize(IGraphicalObjectUIProvider provider) {
+        assertEquals(new Dimension(200, 150), provider.getDefaultSize());
+    }
+
+    @Override
+    @ParamsTest
+    public void testShouldExposeFeature(IObjectUIProvider provider) {
+        assertTrue(provider.shouldExposeFeature(IArchimatePackage.Literals.BORDER_OBJECT__BORDER_COLOR.getName()));
+        assertFalse(provider.shouldExposeFeature((String)null));
+    }
     
     @Override
-    @Test
-    public void testGetDefaultSize() {
-        assertEquals(new Dimension(200, 150), provider.getDefaultSize());
+    @ParamsTest
+    public void testGetFeatureValue(IObjectUIProvider provider) {
+        super.testGetFeatureValue(provider);
+        IDiagramModelImage dmi = IArchimateFactory.eINSTANCE.createDiagramModelImage();
+        ((AbstractObjectUIProvider)provider).setInstance(dmi);
+        
+        assertEquals(IDiagramModelObject.LINE_STYLE_SOLID, provider.getFeatureValue(IDiagramModelObject.FEATURE_LINE_STYLE));
     }
 
 }

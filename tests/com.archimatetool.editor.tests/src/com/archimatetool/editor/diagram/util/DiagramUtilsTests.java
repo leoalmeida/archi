@@ -5,15 +5,13 @@
  */
 package com.archimatetool.editor.diagram.util;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
-
-import junit.framework.JUnit4TestAdapter;
 
 import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.FreeformLayer;
@@ -23,8 +21,8 @@ import org.eclipse.gef.ui.parts.GraphicalViewerImpl;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.Rectangle;
 import org.eclipse.swt.widgets.Shell;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.editor.diagram.editparts.ArchimateDiagramEditPartFactory;
@@ -42,14 +40,10 @@ import com.archimatetool.testingtools.ArchimateTestModel;
  */
 public class DiagramUtilsTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramUtilsTests.class);
-    }
-    
     private static ArchimateTestModel tm;
     private static IArchimateModel model;
     
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() throws IOException {
         tm = new ArchimateTestModel(TestSupport.TEST_MODEL_FILE_1);
         model = tm.loadModel();
@@ -152,15 +146,16 @@ public class DiagramUtilsTests {
         
         Shell shell = new Shell();
         GraphicalViewerImpl viewer = DiagramUtils.createViewer(dm, shell);
-        shell.dispose();
         
         Image img = DiagramUtils.createImage(viewer, 1, 0);
         assertNotNull(img);
+
         img.dispose();
+        shell.dispose();
     }
     
     @Test
-    public void testCreateImage_Figure() {
+    public void testCreateImage_FigureWithChildren() {
         IFigure rootFigure = new FreeformLayer();
         org.eclipse.draw2d.geometry.Rectangle rect1 = new org.eclipse.draw2d.geometry.Rectangle(0, 0, 1000, 1000);
         rootFigure.setBounds(rect1);
@@ -185,6 +180,15 @@ public class DiagramUtilsTests {
         img.dispose();
     }
     
+    @Test
+    public void testCreateImage_SimpleFigure() {
+        IFigure figure = new Figure();
+        figure.setSize(230, 190);
+        Image img = DiagramUtils.createImage(figure, 1, 0);
+        assertEquals(new Rectangle(0, 0, 230, 190), img.getBounds());
+        img.dispose();
+    }
+
     @Test
     public void testCreateImage_Is_Scaled() {
         IFigure rootFigure = new FreeformLayer();
@@ -249,7 +253,7 @@ public class DiagramUtilsTests {
     }
 
     @Test
-    public void testGetMinimumBounds() {
+    public void testGetMinimumBounds_FreeformLayer() {
         IFigure rootFigure = new FreeformLayer();
         org.eclipse.draw2d.geometry.Rectangle rect1 = new org.eclipse.draw2d.geometry.Rectangle(0, 0, 1000, 1000);
         rootFigure.setBounds(rect1);
@@ -267,4 +271,12 @@ public class DiagramUtilsTests {
         
         assertEquals(new org.eclipse.draw2d.geometry.Rectangle(10, 10, 290, 310), DiagramUtils.getMinimumBounds(rootFigure));
     }
+    
+    @Test
+    public void testGetMinimumBounds_SimpleFigure() {
+        IFigure figure = new Figure();
+        figure.setSize(50, 50);
+        assertEquals(new org.eclipse.draw2d.geometry.Rectangle(0, 0, 50, 50), DiagramUtils.getMinimumBounds(figure));
+    }
+
 }

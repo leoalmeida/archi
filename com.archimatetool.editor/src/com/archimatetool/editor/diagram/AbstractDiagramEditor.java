@@ -5,19 +5,23 @@
  */
 package com.archimatetool.editor.diagram;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.EventObject;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.PositionConstants;
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Point;
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.ecore.util.EContentAdapter;
 import org.eclipse.gef.DefaultEditDomain;
 import org.eclipse.gef.EditPart;
+import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.MouseWheelHandler;
 import org.eclipse.gef.MouseWheelZoomHandler;
@@ -25,7 +29,10 @@ import org.eclipse.gef.SnapToGeometry;
 import org.eclipse.gef.SnapToGrid;
 import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.gef.dnd.TemplateTransferDragSourceListener;
+import org.eclipse.gef.editparts.ScalableFreeformRootEditPart;
 import org.eclipse.gef.editparts.ZoomManager;
+import org.eclipse.gef.internal.InternalGEFPlugin;
+import org.eclipse.gef.palette.CreationToolEntry;
 import org.eclipse.gef.palette.PaletteListener;
 import org.eclipse.gef.palette.ToolEntry;
 import org.eclipse.gef.requests.CreationFactory;
@@ -35,6 +42,7 @@ import org.eclipse.gef.ui.actions.ActionRegistry;
 import org.eclipse.gef.ui.actions.AlignmentAction;
 import org.eclipse.gef.ui.actions.DirectEditAction;
 import org.eclipse.gef.ui.actions.MatchHeightAction;
+import org.eclipse.gef.ui.actions.MatchSizeAction;
 import org.eclipse.gef.ui.actions.MatchWidthAction;
 import org.eclipse.gef.ui.actions.UpdateAction;
 import org.eclipse.gef.ui.actions.ZoomInAction;
@@ -47,12 +55,16 @@ import org.eclipse.gef.ui.parts.GraphicalEditorWithFlyoutPalette;
 import org.eclipse.gef.ui.parts.GraphicalViewerKeyHandler;
 import org.eclipse.help.IContextProvider;
 import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IStatusLineManager;
 import org.eclipse.jface.commands.ActionHandler;
+import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.events.MouseAdapter;
@@ -63,62 +75,72 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
-import org.eclipse.swt.widgets.Label;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.IEditorSite;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.actions.ActionFactory;
+import org.eclipse.ui.contexts.IContextActivation;
+import org.eclipse.ui.contexts.IContextService;
 import org.eclipse.ui.handlers.IHandlerService;
 import org.eclipse.ui.views.contentoutline.IContentOutlinePage;
 import org.eclipse.ui.views.properties.IPropertySheetPage;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertySheetPageContributor;
 import org.eclipse.ui.views.properties.tabbed.TabbedPropertySheetPage;
 
-import com.archimatetool.editor.ArchimateEditorPlugin;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.actions.BorderColorAction;
-import com.archimatetool.editor.diagram.actions.BringForwardAction;
-import com.archimatetool.editor.diagram.actions.BringToFrontAction;
-import com.archimatetool.editor.diagram.actions.ConnectionLineWidthAction;
 import com.archimatetool.editor.diagram.actions.ConnectionRouterAction;
 import com.archimatetool.editor.diagram.actions.CopyAction;
 import com.archimatetool.editor.diagram.actions.CutAction;
 import com.archimatetool.editor.diagram.actions.DefaultEditPartSizeAction;
+import com.archimatetool.editor.diagram.actions.DeleteContainerAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageAction;
 import com.archimatetool.editor.diagram.actions.ExportAsImageToClipboardAction;
 import com.archimatetool.editor.diagram.actions.FillColorAction;
+import com.archimatetool.editor.diagram.actions.FindReplaceAction;
 import com.archimatetool.editor.diagram.actions.FontAction;
 import com.archimatetool.editor.diagram.actions.FontColorAction;
 import com.archimatetool.editor.diagram.actions.FullScreenAction;
 import com.archimatetool.editor.diagram.actions.LineColorAction;
+import com.archimatetool.editor.diagram.actions.LineWidthAction;
 import com.archimatetool.editor.diagram.actions.LockObjectAction;
+import com.archimatetool.editor.diagram.actions.ObjectPositionAction;
+import com.archimatetool.editor.diagram.actions.OpacityAction;
+import com.archimatetool.editor.diagram.actions.OutlineOpacityAction;
 import com.archimatetool.editor.diagram.actions.PasteAction;
+import com.archimatetool.editor.diagram.actions.PasteSpecialAction;
 import com.archimatetool.editor.diagram.actions.PrintDiagramAction;
 import com.archimatetool.editor.diagram.actions.PropertiesAction;
 import com.archimatetool.editor.diagram.actions.ResetAspectRatioAction;
 import com.archimatetool.editor.diagram.actions.SelectAllAction;
 import com.archimatetool.editor.diagram.actions.SelectElementInTreeAction;
-import com.archimatetool.editor.diagram.actions.SendBackwardAction;
-import com.archimatetool.editor.diagram.actions.SendToBackAction;
 import com.archimatetool.editor.diagram.actions.TextAlignmentAction;
 import com.archimatetool.editor.diagram.actions.TextPositionAction;
 import com.archimatetool.editor.diagram.actions.ToggleGridEnabledAction;
 import com.archimatetool.editor.diagram.actions.ToggleGridVisibleAction;
 import com.archimatetool.editor.diagram.actions.ToggleSnapToAlignmentGuidesAction;
+import com.archimatetool.editor.diagram.actions.ZoomNormalAction;
 import com.archimatetool.editor.diagram.dnd.PaletteTemplateTransferDropTargetListener;
+import com.archimatetool.editor.diagram.figures.ITextFigure;
 import com.archimatetool.editor.diagram.tools.FormatPainterInfo;
 import com.archimatetool.editor.diagram.tools.FormatPainterToolEntry;
+import com.archimatetool.editor.diagram.tools.MouseWheelHorizontalScrollHandler;
+import com.archimatetool.editor.model.DiagramModelUtils;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
+import com.archimatetool.editor.ui.ThemeUtils;
+import com.archimatetool.editor.ui.findreplace.IFindReplaceProvider;
 import com.archimatetool.editor.ui.services.ComponentSelectionManager;
+import com.archimatetool.editor.ui.services.EditorManager;
+import com.archimatetool.editor.ui.textrender.TextRenderer;
 import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModel;
-import com.archimatetool.model.IDiagramModelArchimateConnection;
-import com.archimatetool.model.IDiagramModelArchimateObject;
+import com.archimatetool.model.IDiagramModelComponent;
+import com.archimatetool.model.util.LightweightAdapter;
 
 
 
@@ -130,6 +152,7 @@ import com.archimatetool.model.IDiagramModelArchimateObject;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("restriction")
 public abstract class AbstractDiagramEditor extends GraphicalEditorWithFlyoutPalette
 implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContributor {
 
@@ -152,11 +175,27 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     /**
      * Listen to User Preferences Changes
      */
-    protected IPropertyChangeListener appPreferencesListener = new IPropertyChangeListener() {
-        public void propertyChange(PropertyChangeEvent event) {
-            applicationPreferencesChanged(event);
-        }
-    };
+    protected IPropertyChangeListener appPreferencesListener = this::applicationPreferencesChanged;
+    
+    /**
+     * Listen to ecore changes for model/view name change
+     */
+    private LightweightAdapter eCoreAdapter = new LightweightAdapter(this::notifyChanged);
+    
+    /**
+     * Find/Replace Provider
+     */
+    private DiagramEditorFindReplaceProvider fFindReplaceProvider;
+    
+    /**
+     * Palette Root
+     */
+    protected AbstractPaletteRoot fPaletteRoot;
+    
+    /**
+     * Context for key bindngs
+     */
+    private IContextActivation fContextActivation;
     
     /**
      * Application Preference changed
@@ -177,17 +216,6 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         }
     }
     
-    /**
-     * Adapter class to respond to Archimate Model notifications.
-     */
-    protected Adapter eCoreAdapter = new EContentAdapter() {
-        @Override
-        public void notifyChanged(Notification msg) {
-            super.notifyChanged(msg);
-            eCoreModelChanged(msg);
-        }
-    };
-    
     @Override
     public void init(IEditorSite site, IEditorInput input) throws PartInitException {
         if(input instanceof NullDiagramEditorInput) {
@@ -198,6 +226,8 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         }
         else {
             super.init(site, input);
+            // Activate our context
+            activateContext();
         }
     }
     
@@ -208,8 +238,8 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         // This first - set model
         fDiagramModel = ((DiagramEditorInput)input).getDiagramModel();
         
-        // Listen to its notifications
-        fDiagramModel.getArchimateModel().eAdapters().add(eCoreAdapter);
+        // Listen to notifications from diagram model and main model for name changes to update part
+        eCoreAdapter.add(fDiagramModel, fDiagramModel.getArchimateModel());
         
         // Edit Domain before init
         // Use CommandStack from Model
@@ -231,7 +261,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         setPartName(input.getName());
 
         // Listen to App Prefs changes
-        Preferences.STORE.addPropertyChangeListener(appPreferencesListener);
+        ArchiPlugin.getInstance().getPreferenceStore().addPropertyChangeListener(appPreferencesListener);
     }
 
     @Override
@@ -254,19 +284,25 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         fErrorComposite = new Composite(parent, SWT.NULL);
         fErrorComposite.setLayout(new GridLayout());
         fErrorComposite.setLayoutData(new GridData(GridData.FILL_BOTH));
-        String message1 = Messages.AbstractDiagramEditor_0;
-        String message2 = Messages.AbstractDiagramEditor_1;
-        CLabel imageLabel = new CLabel(fErrorComposite, SWT.NULL);
-        imageLabel.setImage(Display.getDefault().getSystemImage(SWT.ICON_INFORMATION));
-        imageLabel.setText(message1);
+        
+        String errorMessage = Messages.AbstractDiagramEditor_0 + " "; //$NON-NLS-1$
+        
         String fileName = fNullInput.getFileName();
         if(fileName != null) {
-            message2 += " " + fileName; //$NON-NLS-1$
+            if(!new File(fileName).exists()) {
+                errorMessage += NLS.bind(Messages.AbstractDiagramEditor_1, fileName);
+            }
+            else {
+                errorMessage += NLS.bind(Messages.AbstractDiagramEditor_3, fileName);
+            }
         }
-        Label l = new Label(fErrorComposite, SWT.NULL);
-        l.setText(message2);
+
+        CLabel imageLabel = new CLabel(fErrorComposite, SWT.NULL);
+        imageLabel.setImage(Display.getDefault().getSystemImage(SWT.ICON_INFORMATION));
+        imageLabel.setText(errorMessage);
     }
     
+    @Override
     public IDiagramModel getModel() {
         return fDiagramModel;
     }
@@ -284,8 +320,9 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     /**
      * Create the Root Edit Part
      */
-    protected abstract void createRootEditPart(GraphicalViewer viewer);
-    
+    protected void createRootEditPart(GraphicalViewer viewer) {
+        viewer.setRootEditPart(new ScalableFreeformRootEditPart(false));
+    }
     
     @Override
     protected void configureGraphicalViewer() {
@@ -313,32 +350,23 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         // Set some Properties
         setProperties();
         
-        // Update status bar on selection
-        hookStatusLineSelectionListener();
+        // Listen to selections
+        hookSelectionListener();
+        
+        // Set CSS ID
+        ThemeUtils.registerCssId(viewer.getControl(), "ArchiFigureCanvas"); //$NON-NLS-1$
+        
+        // Set background color in case CSS theming is disabled
+        ThemeUtils.setBackgroundColorIfCssThemingDisabled(viewer.getControl(), IPreferenceConstants.VIEW_BACKGROUND_COLOR);
     }
     
-    // Update status bar on selection
-    private void hookStatusLineSelectionListener() {
-        getGraphicalViewer().addSelectionChangedListener(new ISelectionChangedListener() {   
+    private void hookSelectionListener() {
+        getGraphicalViewer().addSelectionChangedListener(new ISelectionChangedListener() {
+            @Override
             public void selectionChanged(SelectionChangedEvent event) {
+                // Update status bar on selection
                 Object selected = ((IStructuredSelection)event.getSelection()).getFirstElement();
-                if(selected instanceof EditPart) {
-                    selected = ((EditPart)selected).getModel(); // get model diagram object
-                    
-                    if(selected instanceof IDiagramModelArchimateObject) {
-                        selected = ((IDiagramModelArchimateObject)selected).getArchimateElement(); // get archimate model object
-                    }
-                    if(selected instanceof IDiagramModelArchimateConnection) {
-                        selected = ((IDiagramModelArchimateConnection)selected).getRelationship(); // get archimate model object
-                    }
-                    
-                    Image image = ArchimateLabelProvider.INSTANCE.getImage(selected);
-                    String text = ArchimateLabelProvider.INSTANCE.getLabel(selected);
-                    getEditorSite().getActionBars().getStatusLineManager().setMessage(image, text);
-                }
-                else {
-                    getEditorSite().getActionBars().getStatusLineManager().setMessage(null, ""); //$NON-NLS-1$
-                }
+                updateStatusBarWithSelection(selected);
             }
         });
     }
@@ -350,6 +378,40 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         }
         else {
             super.setFocus();
+            updateShellTitleBarWithFileName(); // Shell title
+        }
+    }
+    
+    /**
+     * Update Status Bar with selected image and text
+     * @param selected
+     */
+    protected void updateStatusBarWithSelection(Object selected) {
+        IStatusLineManager status = getEditorSite().getActionBars().getStatusLineManager();
+        
+        if(selected instanceof EditPart) {
+            selected = ((EditPart)selected).getModel();
+            Image image = ArchiLabelProvider.INSTANCE.getImage(selected);
+            String text = ArchiLabelProvider.INSTANCE.getLabelNormalised(selected);
+            status.setMessage(image, text);
+        }
+        else {
+            status.setMessage(null, ""); //$NON-NLS-1$
+        }
+    }
+    
+    /**
+     * Update Shell title bar with file name of current model
+     */
+    protected void updateShellTitleBarWithFileName() {
+        String appname = ArchiPlugin.getInstance().getProductName();
+        File file = getModel().getArchimateModel().getFile();
+        
+        if(file != null) {
+            getEditorSite().getShell().setText(appname + " - " + file.getPath()); //$NON-NLS-1$
+        }
+        else {
+            getEditorSite().getShell().setText(appname);
         }
     }
     
@@ -377,24 +439,29 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         
         // Ctrl + Scroll wheel Zooms
         getGraphicalViewer().setProperty(MouseWheelHandler.KeyGenerator.getKey(SWT.MOD1), MouseWheelZoomHandler.SINGLETON);
+        
+        // Shift + Scroll wheel horizontal scroll
+        getGraphicalViewer().setProperty(MouseWheelHandler.KeyGenerator.getKey(SWT.MOD2), MouseWheelHorizontalScrollHandler.SINGLETON);
     }
 
     /**
      * Apply grid Prefs
      */
     protected void applyUserGridPreferences() {
+        IPreferenceStore store = ArchiPlugin.getInstance().getPreferenceStore();
+        
         // Grid Spacing
-        int gridSize = Preferences.getGridSize();
+        int gridSize = store.getInt(IPreferenceConstants.GRID_SIZE);
         getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_SPACING, new Dimension(gridSize, gridSize));
         
         // Grid Visible
-        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_VISIBLE, Preferences.isGridVisible());
+        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_VISIBLE, store.getBoolean(IPreferenceConstants.GRID_VISIBLE));
         
         // Grid Enabled
-        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_ENABLED, Preferences.isGridSnap());
+        getGraphicalViewer().setProperty(SnapToGrid.PROPERTY_GRID_ENABLED, store.getBoolean(IPreferenceConstants.GRID_SNAP));
 
         // Snap to Guidelines
-        getGraphicalViewer().setProperty(SnapToGeometry.PROPERTY_SNAP_ENABLED, Preferences.doShowGuideLines());
+        getGraphicalViewer().setProperty(SnapToGeometry.PROPERTY_SNAP_ENABLED, store.getBoolean(IPreferenceConstants.GRID_SHOW_GUIDELINES));
     }
 
     /**
@@ -404,7 +471,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     @Override
     protected PaletteViewerProvider createPaletteViewerProvider() {
         // Ensure palette is showing or not
-        boolean showPalette = Preferences.doShowPalette();
+        boolean showPalette = ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.PALETTE_STATE);
         getPalettePreferences().setPaletteState(showPalette ? FlyoutPaletteComposite.STATE_PINNED_OPEN : FlyoutPaletteComposite.STATE_COLLAPSED);
 
         return new PaletteViewerProvider(getEditDomain()) {
@@ -422,9 +489,15 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     protected void configurePaletteViewer(final PaletteViewer viewer) {
         PaletteViewerPreferences prefs = viewer.getPaletteViewerPreferences();
         
+        // Don't use large icons
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_ICONS, false);
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_COLUMNS, false);
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_DETAILS, false);
+        prefs.setUseLargeIcons(PaletteViewerPreferences.LAYOUT_LIST, false);
+        
         // First time use so set to icons layout
-        if(!Preferences.STORE.getBoolean("paletteSet")) { //$NON-NLS-1$
-            Preferences.STORE.setValue("paletteSet", true); //$NON-NLS-1$
+        if(!InternalGEFPlugin.getDefault().getPreferenceStore().getBoolean("com.archimatetool.paletteSet")) { //$NON-NLS-1$
+            InternalGEFPlugin.getDefault().getPreferenceStore().setValue("com.archimatetool.paletteSet", true); //$NON-NLS-1$
             prefs.setLayoutSetting(PaletteViewerPreferences.LAYOUT_ICONS);
             prefs.setCurrentUseLargeIcons(false);
         }
@@ -468,20 +541,25 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
             @Override
             public void mouseDown(MouseEvent e) {
                 ToolEntry toolEntry = findToolEntryAt(viewer, new Point(e.x, e.y));
-                if(toolEntry != null) {
-                    boolean shiftKey = (e.stateMask & SWT.SHIFT) != 0;
+                if(toolEntry instanceof CreationToolEntry) { // Don't apply to other tools like marquee selection
+                    boolean shiftKey = (e.stateMask & SWT.SHIFT) != 0; 
                     toolEntry.setToolProperty(AbstractTool.PROPERTY_UNLOAD_WHEN_FINISHED, !shiftKey);
                 }
             }
             
             /*
-             * Double-click on Format Painter
+             * Double-click
              */
             @Override
             public void mouseDoubleClick(MouseEvent e) {
+                // Format Painter reset
                 ToolEntry toolEntry = findToolEntryAt(viewer, new Point(e.x, e.y));
                 if(toolEntry instanceof FormatPainterToolEntry) {
                     FormatPainterInfo.INSTANCE.reset();
+                }
+                // Set Tool Entry sticky
+                else if(toolEntry instanceof CreationToolEntry) { // Don't apply to other tools like marquee selection
+                    toolEntry.setToolProperty(AbstractTool.PROPERTY_UNLOAD_WHEN_FINISHED, false);
                 }
             }
         });
@@ -503,6 +581,8 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         super.commandStackChanged(event);
         updateCommandStackActions(); // Need to update these too
         setDirty(getCommandStack().isDirty());
+        
+        refreshFiguresWithLabelFeature(); // Refresgh Figures with Label Features
     }
     
     /**
@@ -519,6 +599,25 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     
     protected List<UpdateAction> getUpdateCommandStackActions() {
         return fUpdateCommandStackActions;
+    }
+    
+    /**
+     * Refresh all figures with label features
+     */
+    protected void refreshFiguresWithLabelFeature() {
+        for(Object editPart : getGraphicalViewer().getEditPartRegistry().values()) {
+            if(editPart instanceof GraphicalEditPart) {
+                IFigure figure = ((GraphicalEditPart)editPart).getFigure();
+                Object model = ((GraphicalEditPart)editPart).getModel();
+
+                // If it is a text figure and has a label render feature update text
+                if(model instanceof IDiagramModelComponent
+                                        && TextRenderer.getDefault().hasFormatExpression((IDiagramModelComponent)model)
+                                        && figure instanceof ITextFigure) {
+                    ((ITextFigure)figure).setText();
+                }
+            }
+        }
     }
     
     @Override
@@ -544,20 +643,6 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         return false;
     }
     
-    /// Workaround for e4 bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=428664
-    /// EditorPart#isSaveOnCloseNeeded() not called when closing Editor Parts via "Close All" or "Close Others"
-    /// So we always return false for isDirty()
-    /// Side effect is that open and dirty editors will not show * asterisk on Part name
-    //////////////////////////////////////////////
-    
-    @Override
-    public boolean isDirty() {
-        return false;
-    }
-    
-    //////////////////////////////////////////////
-    /// End Workaround
-
     /**
      * Add some extra Actions - *after* the graphical viewer has been created
      */
@@ -567,7 +652,7 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         IAction action;
         
         // Zoom Manager tweaking
-        ZoomManager zoomManager = (ZoomManager)getAdapter(ZoomManager.class);
+        ZoomManager zoomManager = getAdapter(ZoomManager.class);
         double[] zoomLevels = { .25, .5, .75, 1, 1.5, 2, 3, 4, 6, 8 };
         zoomManager.setZoomLevels(zoomLevels);
         List<String> zoomContributionLevels = new ArrayList<String>();
@@ -579,13 +664,16 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         // Zoom Actions
         IAction zoomIn = new ZoomInAction(zoomManager);
         IAction zoomOut = new ZoomOutAction(zoomManager);
+        IAction zoomNormal = new ZoomNormalAction(zoomManager);
         registry.registerAction(zoomIn);
         registry.registerAction(zoomOut);
+        registry.registerAction(zoomNormal);
         
         // Add these zoom actions to the key binding service
-        IHandlerService service = (IHandlerService)getEditorSite().getService(IHandlerService.class);
+        IHandlerService service = getEditorSite().getService(IHandlerService.class);
         service.activateHandler(zoomIn.getActionDefinitionId(), new ActionHandler(zoomIn));
         service.activateHandler(zoomOut.getActionDefinitionId(), new ActionHandler(zoomOut));
+        service.activateHandler(zoomNormal.getActionDefinitionId(), new ActionHandler(zoomNormal));
      
         // Add our own Select All Action so we can select connections as well
         action = new SelectAllAction(this);
@@ -598,6 +686,8 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         // Direct Edit Rename
         action = new DirectEditAction(this);
         action.setId(ActionFactory.RENAME.getId()); // Set this for Global Handler
+        action.setText(Messages.AbstractDiagramEditor_4); // Externalise this one
+        action.setToolTipText(Messages.AbstractDiagramEditor_13);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
         getUpdateCommandStackActions().add((UpdateAction)action);
@@ -608,11 +698,21 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         action.setToolTipText(action.getText());
         getUpdateCommandStackActions().add((UpdateAction)action);
         
+        // Delete Container
+        action = new DeleteContainerAction(this);
+        registry.registerAction(action);
+        getSelectionActions().add(action.getId());
+        
         // Paste
         PasteAction pasteAction = new PasteAction(this, viewer);
         registry.registerAction(pasteAction);
         getSelectionActions().add(pasteAction.getId());
         
+        // Paste Special
+        PasteSpecialAction pasteSpecialAction = new PasteSpecialAction(this, viewer);
+        registry.registerAction(pasteSpecialAction);
+        getSelectionActions().add(pasteSpecialAction.getId());
+
         // Cut
         action = new CutAction(this, pasteAction);
         registry.registerAction(action);
@@ -642,34 +742,56 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         //registry.registerAction(showRulers);
         
         action = new MatchWidthAction(this);
+        action.setText(Messages.AbstractDiagramEditor_5); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_14);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
         
         action = new MatchHeightAction(this);
         registry.registerAction(action);
+        action.setText(Messages.AbstractDiagramEditor_6); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_15);
+        getSelectionActions().add(action.getId());
+
+        action = new MatchSizeAction(this);
+        registry.registerAction(action);
+        action.setText(Messages.AbstractDiagramEditor_22); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_23);
         getSelectionActions().add(action.getId());
 
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.LEFT);
+        action.setText(Messages.AbstractDiagramEditor_7); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_16);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
 
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.RIGHT);
+        action.setText(Messages.AbstractDiagramEditor_8); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_17);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
 
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.TOP);
+        action.setText(Messages.AbstractDiagramEditor_9); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_18);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
 
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.BOTTOM);
+        action.setText(Messages.AbstractDiagramEditor_10); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_19);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
 
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.CENTER);
+        action.setText(Messages.AbstractDiagramEditor_11); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_20);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
 
         action = new AlignmentAction((IWorkbenchPart)this, PositionConstants.MIDDLE);
+        action.setText(Messages.AbstractDiagramEditor_12); // Externalise string as it's internal to GEF
+        action.setToolTipText(Messages.AbstractDiagramEditor_21);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
         
@@ -696,8 +818,8 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         getSelectionActions().add(action.getId());
         getUpdateCommandStackActions().add((UpdateAction)action);
         
-        // Connection Line Width
-        action = new ConnectionLineWidthAction(this);
+        // Line Width
+        action = new LineWidthAction(this);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
         getUpdateCommandStackActions().add((UpdateAction)action);
@@ -719,46 +841,39 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
         getUpdateCommandStackActions().add((UpdateAction)action);
+        
+        // Fill Opacity
+        action = new OpacityAction(this);
+        registry.registerAction(action);
+        getSelectionActions().add(action.getId());
+        getUpdateCommandStackActions().add((UpdateAction)action);
+
+        // Outline Opacity
+        action = new OutlineOpacityAction(this);
+        registry.registerAction(action);
+        getSelectionActions().add(action.getId());
+        getUpdateCommandStackActions().add((UpdateAction)action);
 
         // Export As Image
-        action = new ExportAsImageAction(viewer);
+        action = new ExportAsImageAction(this);
         registry.registerAction(action);
         
         // Export As Image to Clipboard
-        action = new ExportAsImageToClipboardAction(viewer);
+        action = new ExportAsImageToClipboardAction(this);
         registry.registerAction(action);
         
         // Connection Router types
         action = new ConnectionRouterAction.BendPointConnectionRouterAction(this);
         registry.registerAction(action);
-        action = new ConnectionRouterAction.ShortestPathConnectionRouterAction(this);
-        registry.registerAction(action);
         action = new ConnectionRouterAction.ManhattanConnectionRouterAction(this);
         registry.registerAction(action);
         
-        // Send Backward
-        action = new SendBackwardAction(this);
-        registry.registerAction(action);
-        getSelectionActions().add(action.getId());
-        getUpdateCommandStackActions().add((UpdateAction)action);
-        
-        // Bring Forward
-        action = new BringForwardAction(this);
-        registry.registerAction(action);
-        getSelectionActions().add(action.getId());
-        getUpdateCommandStackActions().add((UpdateAction)action);
-        
-        // Send to Back
-        action = new SendToBackAction(this);
-        registry.registerAction(action);
-        getSelectionActions().add(action.getId());
-        getUpdateCommandStackActions().add((UpdateAction)action);
-        
-        // Bring To Front
-        action = new BringToFrontAction(this);
-        registry.registerAction(action);
-        getSelectionActions().add(action.getId());
-        getUpdateCommandStackActions().add((UpdateAction)action);
+        // Object Position Actions
+        for(ObjectPositionAction a : ObjectPositionAction.createActions(this)) {
+            registry.registerAction(a);
+            getSelectionActions().add(a.getId());
+            getUpdateCommandStackActions().add(a);
+        }
         
         // Text Alignment Actions
         for(TextAlignmentAction a : TextAlignmentAction.createActions(this)) {
@@ -796,35 +911,111 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
         action = new SelectElementInTreeAction(this);
         registry.registerAction(action);
         getSelectionActions().add(action.getId());
+        
+        // Find/Replace
+        action = new FindReplaceAction(getEditorSite().getWorkbenchWindow());
+        registry.registerAction(action);
+    }
+    
+    /**
+     * Disable all actions
+     * We need to do this when closing the Editor
+     */
+    protected void disableActions() {
+        Iterator<?> actions = getActionRegistry().getActions();
+        while(actions.hasNext()) {
+            IAction action = (IAction)actions.next();
+            action.setEnabled(false);
+        }
+    }
+    
+    /**
+     * Activate the context for key bindings for this site
+     */
+    public IContextActivation activateContext() {
+        if(fContextActivation == null) {
+            fContextActivation = getSite().getService(IContextService.class).activateContext("com.archimatetool.editor.diagram.context"); //$NON-NLS-1$
+        }
+        return fContextActivation;
+    }
+    
+    /**
+     * De-activate the context for key bindings for this site
+     */
+    public void deactivateContext() {
+        if(fContextActivation != null) {
+            fContextActivation.getContextService().deactivateContext(fContextActivation);
+            fContextActivation = null;
+        }
     }
     
     @Override
-    public String getContributorId() {
-        return ArchimateEditorPlugin.PLUGIN_ID;
+    public void selectObjects(Object[] objects) {
+        // Safety check in case this is called via Display#asyncExec()
+        if(getGraphicalViewer() == null || getGraphicalViewer().getControl() == null || getModel() == null) {
+            return;
+        }
+        
+        Set<Object> selection = new HashSet<>();
+        
+        for(Object object : objects) {
+            // Diagram Model so replace with diagram reference objects
+            if(object instanceof IDiagramModel) {
+                for(IDiagramModelComponent dc : DiagramModelUtils.findDiagramModelReferences(getModel(), (IDiagramModel)object)) {
+                    selection.add(dc);
+                }
+            }
+            // Else add it
+            else {
+                selection.add(object);
+            }
+        }
+        
+        List<EditPart> editParts = new ArrayList<EditPart>();
+        
+        for(Object object : selection) {
+            EditPart editPart = (EditPart)getGraphicalViewer().getEditPartRegistry().get(object);
+            if(editPart != null && editPart.isSelectable() && !editParts.contains(editPart)) {
+                editParts.add(editPart);
+            }
+        }
+        
+        if(!editParts.isEmpty()) {
+            getGraphicalViewer().setSelection(new StructuredSelection(editParts));
+            getGraphicalViewer().reveal(editParts.get(0));
+        }
+        else {
+            getGraphicalViewer().setSelection(StructuredSelection.EMPTY);
+        }
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
-    public Object getAdapter(Class adapter) {
+    public String getContributorId() {
+        return ArchiPlugin.PLUGIN_ID;
+    }
+
+    @Override
+    public <T> T getAdapter(Class<T> adapter) {
         /*
          * Return the Zoom Manager
          */
         if(adapter == ZoomManager.class && getGraphicalViewer() != null) {
-            return getGraphicalViewer().getProperty(ZoomManager.class.toString());
+            return adapter.cast(getGraphicalViewer().getProperty(ZoomManager.class.toString()));
         }
 
         /*
-         * Return the singleton Outline Page
+         * Return the Outline Page
          */
-        if(adapter == IContentOutlinePage.class && getGraphicalViewer() != null) {
-            return new OverviewOutlinePage(this);
+        if(adapter == IContentOutlinePage.class && getGraphicalViewer() != null
+                                                && getGraphicalViewer().getRootEditPart() instanceof ScalableFreeformRootEditPart editPart) {
+            return adapter.cast(new OverviewOutlinePage(editPart));
         }
         
         /*
          * Return the Property Sheet Page
          */
         if(adapter == IPropertySheetPage.class) {
-            return new TabbedPropertySheetPage(this);
+            return adapter.cast(new TabbedPropertySheetPage(this));
         }
 
         /*
@@ -832,16 +1023,24 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
          * DO NOT REMOVE! SaveAction requires this
          */
         if(adapter == IArchimateModel.class && getModel() != null) {
-            return getModel().getArchimateModel();
+            return adapter.cast(getModel().getArchimateModel());
         }
         
         /*
          * Return the Diagram Model
          */
         if(adapter == IDiagramModel.class) {
-            return getModel();
+            return adapter.cast(getModel());
         }
 
+        // Find/Replace Provider
+        if(adapter == IFindReplaceProvider.class) {
+            if(fFindReplaceProvider == null && getGraphicalViewer() != null) {
+                fFindReplaceProvider = new DiagramEditorFindReplaceProvider(getGraphicalViewer());
+            }
+            return adapter.cast(fFindReplaceProvider);
+        }
+        
         return super.getAdapter(adapter);
     }
     
@@ -849,14 +1048,10 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
      * The eCore Model changed
      * @param msg
      */
-    protected void eCoreModelChanged(Notification msg) {
-        if(msg.getEventType() == Notification.SET) {
-            // Archimate Model or Diagram Model name changed
-            if(msg.getNotifier() == getModel() || msg.getNotifier() == getModel().getArchimateModel()) {
-                if(msg.getFeature() == IArchimatePackage.Literals.NAMEABLE__NAME) {
-                    setPartName(getEditorInput().getName());
-                }
-            }
+    protected void notifyChanged(Notification msg) {
+        // Archimate Model or Diagram Model name changed
+        if(msg.getFeature() == IArchimatePackage.Literals.NAMEABLE__NAME) {
+            setPartName(getEditorInput().getName());
         }
     }
     
@@ -864,11 +1059,35 @@ implements IDiagramModelEditor, IContextProvider, ITabbedPropertySheetPageContri
     public void dispose() {
         super.dispose();
         
-        // Remove listeners
-        Preferences.STORE.removePropertyChangeListener(appPreferencesListener);
+        // Remove Preference listener
+        ArchiPlugin.getInstance().getPreferenceStore().removePropertyChangeListener(appPreferencesListener);
         
-        if(getModel() != null && getModel().getArchimateModel() != null) {
-            getModel().getArchimateModel().eAdapters().remove(eCoreAdapter);
+        // Remove eCore adapter listener objects
+        eCoreAdapter.remove(getModel(), getModel() != null ? getModel().getArchimateModel() : null);
+        
+        // Update shell text
+        getSite().getShell().setText(ArchiPlugin.getInstance().getProductName());
+        
+        // Disable Actions
+        disableActions();
+        
+        // Release the reference to the IDiagramModel in the DiagramEditorInput because it is not released by the system
+        // And can't be garbage collected
+        if(getEditorInput() instanceof DiagramEditorInput) {
+            int openEditors = EditorManager.getDiagramEditorReferences(fDiagramModel).length;
+            if(openEditors == 0) { // There may be more than one instance open (split editor) sharing the same DiagramEditorInput
+                ((DiagramEditorInput)getEditorInput()).dispose();
+            }
         }
+
+        if(fPaletteRoot != null) {
+            fPaletteRoot.dispose();
+        }
+        
+        // Can now be garbage collected
+        fDiagramModel = null;
+
+        fContextActivation = null;
+        fFindReplaceProvider = null;
     }
 }

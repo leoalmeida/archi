@@ -5,11 +5,10 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IDiagramModelComponent;
@@ -17,10 +16,6 @@ import com.archimatetool.model.ISketchModelActor;
 
 
 public class SketchModelActorTests extends DiagramModelObjectTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(SketchModelActorTests.class);
-    }
     
     private ISketchModelActor actor;
     
@@ -55,5 +50,4 @@ public class SketchModelActorTests extends DiagramModelObjectTests {
     public void testGetProperties() {
         CommonTests.testProperties(actor);
     }
-
 }

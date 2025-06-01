@@ -13,23 +13,24 @@ package com.archimatetool.model;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IDiagramModel#getConnectionRouterType <em>Connection Router Type</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getDiagramModel()
  * @model abstract="true"
  * @generated
  */
-public interface IDiagramModel extends IArchimateModelElement, IDiagramModelContainer, IDocumentable, IProperties {
+public interface IDiagramModel extends IArchimateModelObject, IDiagramModelContainer, IDocumentable, IProperties {
     
     /*
      * Connection Router Types
      */
     int CONNECTION_ROUTER_BENDPOINT = 0;
     
-    int CONNECTION_ROUTER_SHORTEST_PATH = 1;
+    // Doesn't work with connections to connections
+    // int CONNECTION_ROUTER_SHORTEST_PATH = 1;
     
     int CONNECTION_ROUTER_MANHATTAN = 2;
 

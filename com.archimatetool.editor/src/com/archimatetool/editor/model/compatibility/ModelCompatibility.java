@@ -17,6 +17,7 @@ import org.eclipse.emf.ecore.resource.Resource.Diagnostic;
 import org.eclipse.emf.ecore.xmi.ClassNotFoundException;
 import org.eclipse.emf.ecore.xmi.FeatureNotFoundException;
 import org.eclipse.emf.ecore.xmi.PackageNotFoundException;
+import org.eclipse.emf.ecore.xmi.UnresolvedReferenceException;
 import org.eclipse.emf.ecore.xmi.XMIException;
 import org.xml.sax.SAXParseException;
 
@@ -35,7 +36,8 @@ public class ModelCompatibility {
     
     private Resource fResource;
     
-    boolean doLog = true;
+    // Too noisy converting from A2 to A3 models
+    boolean doLog = false;
     
     public ModelCompatibility(Resource resource) {
         fResource = resource;
@@ -106,6 +108,11 @@ public class ModelCompatibility {
             return true;
         }
         
+        // Unresolved reference - not good
+        if(diagnostic instanceof UnresolvedReferenceException) {
+            return true;
+        }
+
         // Allow an IllegalValueException because an illegal value will default to a default value
 
         // Allow a FeatureNotFoundException because a feature might get deprecated

@@ -5,18 +5,14 @@
  */
 package com.archimatetool.jdom;
 
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
-import junit.framework.TestSuite;
-
-@SuppressWarnings("nls")
+@Suite
+@SelectClasses({
+    JDOMUtilsTests.class
+})
+@SuiteDisplayName("All JDOM Tests")
 public class AllTests {
-
-    public static junit.framework.Test suite() {
-		TestSuite suite = new TestSuite("com.archimatetool.jdom");
-
-		suite.addTest(JDOMUtilsTests.suite());
-		
-        return suite;
-	}
-
 }

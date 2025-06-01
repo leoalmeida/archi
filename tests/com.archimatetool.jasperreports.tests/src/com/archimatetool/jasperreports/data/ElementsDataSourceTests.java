@@ -5,66 +5,65 @@
  */
 package com.archimatetool.jasperreports.data;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 
-import junit.framework.JUnit4TestAdapter;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JRField;
-
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IBusinessActor;
+import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.testingtools.ArchimateTestModel;
 import com.archimatetool.tests.TestData;
+
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRField;
 
 
 @SuppressWarnings("nls")
 public class ElementsDataSourceTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ElementsDataSourceTests.class);
-    }
-
+    private static ArchimateTestModel tm;
     private static IArchimateModel model;
     
-    private ElementsDataSource ds;
-    
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() throws IOException {
         // Load ArchiMate model
-        ArchimateTestModel tm = new ArchimateTestModel(TestData.TEST_MODEL_FILE_ARCHISURANCE);
+        tm = new ArchimateTestModel(TestData.TEST_MODEL_FILE_ARCHISURANCE);
         model = tm.loadModel();
     }
     
-    @Before
-    public void runOnceBeforeEachTest() {
-        ds = new ElementsDataSource(model, "BusinessActor");
+    @Test
+    public void constructor_DiagramModel() {
+        ElementsDataSource ds = new ElementsDataSource((IDiagramModel)tm.getObjectByID("4056")); // Layered View
+        assertEquals(30, ds.size());
     }
     
     @Test
-    public void testGetPropertiesDataSource() throws JRException {
+    public void getPropertiesDataSourceNotNull() throws JRException {
+        ElementsDataSource ds = new ElementsDataSource(model, "BusinessActor");
         ds.next();
         assertNotNull(ds.getPropertiesDataSource());
     }
 
     @Test
-    public void testGetElement() {
+    public void getElementFirstNull() {
+        ElementsDataSource ds = new ElementsDataSource(model, "BusinessActor");
         assertNull(ds.getElement());
     }
 
     @Test
-    public void testNext() throws JRException {
+    public void next() throws JRException {
+        ElementsDataSource ds = new ElementsDataSource(model, "BusinessActor");
+        
         for(int i = 0; i < 17; i++) {
             assertTrue(ds.next());
         }
@@ -72,7 +71,9 @@ public class ElementsDataSourceTests {
     }
     
     @Test
-    public void testGetFieldValue() throws JRException {
+    public void getFieldValue() throws JRException {
+        ElementsDataSource ds = new ElementsDataSource(model, "BusinessActor");
+        
         ds.next();
         
         JRField field = mock(JRField.class);
@@ -87,7 +88,18 @@ public class ElementsDataSourceTests {
     }
 
     @Test
-    public void testMoveFirst() throws JRException {
+    public void size() {
+        ElementsDataSource ds = new ElementsDataSource(model, "elements");
+        assertEquals(120, ds.size());
+
+        ds = new ElementsDataSource(model, "relations");
+        assertEquals(176, ds.size());
+    }
+    
+    @Test
+    public void moveFirst() throws JRException {
+        ElementsDataSource ds = new ElementsDataSource(model, "BusinessActor");
+        
         assertNull(ds.getElement());
         
         ds.next();
@@ -102,4 +114,26 @@ public class ElementsDataSourceTests {
         ds.next();
         assertEquals(first, ds.getElement());
     }
+    
+    @Test
+    public void getReferencedViews() throws JRException {
+        ElementsDataSource ds = new ElementsDataSource(model, "BusinessActor");
+        
+        assertNull(ds.getReferencedViews());
+        
+        ds.next();
+
+        ViewModelDataSource vmds = ds.getReferencedViews();
+        assertNull(vmds.getElement());
+
+        vmds.next();
+        assertEquals("4165", vmds.getElement().getId());
+
+        vmds.next();
+        assertEquals("4056", vmds.getElement().getId());
+
+        vmds.next();
+        assertEquals("3698", vmds.getElement().getId());
+    }
+
 }

@@ -12,7 +12,7 @@ import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import com.archimatetool.canvas.model.ICanvasModel;
 import com.archimatetool.canvas.model.ICanvasPackage;
 import com.archimatetool.canvas.model.IHintProvider;
-import com.archimatetool.help.hints.IHelpHintProvider;
+import com.archimatetool.editor.ui.IHelpHintProvider;
 import com.archimatetool.model.impl.DiagramModel;
 
 
@@ -22,11 +22,11 @@ import com.archimatetool.model.impl.DiagramModel;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModel#getHintTitle <em>Hint Title</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModel#getHintContent <em>Hint Content</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -91,6 +91,7 @@ public class CanvasModel extends DiagramModel implements ICanvasModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getHintTitle() {
         return hintTitle;
     }
@@ -100,6 +101,7 @@ public class CanvasModel extends DiagramModel implements ICanvasModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setHintTitle(String newHintTitle) {
         String oldHintTitle = hintTitle;
         hintTitle = newHintTitle;
@@ -112,6 +114,7 @@ public class CanvasModel extends DiagramModel implements ICanvasModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getHintContent() {
         return hintContent;
     }
@@ -121,6 +124,7 @@ public class CanvasModel extends DiagramModel implements ICanvasModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setHintContent(String newHintContent) {
         String oldHintContent = hintContent;
         hintContent = newHintContent;
@@ -259,7 +263,7 @@ public class CanvasModel extends DiagramModel implements ICanvasModel {
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (hintTitle: "); //$NON-NLS-1$
         result.append(hintTitle);
         result.append(", hintContent: "); //$NON-NLS-1$

@@ -5,8 +5,6 @@
  */
 package com.archimatetool.editor.diagram.policies;
 
-import org.eclipse.draw2d.IFigure;
-import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.EditPart;
 import org.eclipse.gef.EditPolicy;
@@ -21,6 +19,7 @@ import com.archimatetool.editor.diagram.commands.CreateDiagramObjectCommand;
 import com.archimatetool.editor.diagram.commands.SetConstraintObjectCommand;
 import com.archimatetool.editor.diagram.editparts.IConstrainedSizeEditPart;
 import com.archimatetool.editor.diagram.editparts.INonResizableEditPart;
+import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IDiagramModelContainer;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.ILockable;
@@ -37,30 +36,8 @@ extends XYLayoutEditPolicy {
     
     @Override
     protected Command getCreateCommand(CreateRequest request) {
-        Rectangle bounds = getConstraintFor(request);
+        Rectangle bounds = (Rectangle)getConstraintFor(request);
         return new CreateDiagramObjectCommand(getHost(), request, bounds);
-    }
-    
-    /*
-     * Over-ride this to get any extra constraints for an object
-     */
-    @Override
-    protected Rectangle getConstraintFor(CreateRequest request) {
-        Rectangle bounds = (Rectangle)super.getConstraintFor(request);
-        
-        Dimension d = getMaximumSizeFor(request.getNewObjectType());
-        bounds.width = Math.min(d.width, bounds.width);
-        bounds.height = Math.min(d.height, bounds.height);
-        
-        return bounds;
-    }
-    
-    /**
-     * @param object
-     * @return The Maximum size constraint for an object
-     */
-    protected Dimension getMaximumSizeFor(Object object) {
-        return IFigure.MAX_DIMENSION;
     }
     
     @Override
@@ -86,7 +63,7 @@ extends XYLayoutEditPolicy {
 
         // Return a command that can move and/or resize a child
         if(constraint instanceof Rectangle) {
-            return new SetConstraintObjectCommand((IDiagramModelObject)child.getModel(), (Rectangle)constraint);
+            return new SetConstraintObjectCommand(request, (IDiagramModelObject)child.getModel(), (Rectangle)constraint);
         }
 
         return null;
@@ -107,17 +84,21 @@ extends XYLayoutEditPolicy {
      * If you don't want a part to be added, return null here.
      */
     @Override
-    protected Command createAddCommand(ChangeBoundsRequest request, EditPart childEditPart, Object constraint) {
+    protected AddObjectCommand createAddCommand(ChangeBoundsRequest request, EditPart childEditPart, Object constraint) {
         IDiagramModelContainer parent = (IDiagramModelContainer)getHost().getModel();
         IDiagramModelObject child = (IDiagramModelObject)childEditPart.getModel();
         
-        // Keep within box
         Rectangle bounds = (Rectangle)constraint;
-        if(bounds.x < 0) {
-            bounds.x = 0;
-        }
-        if(bounds.y < 0) {
-            bounds.y = 0;
+
+        // Keep within the parent box
+        // Fixed 2019-06-11 to check that the parent is not a diagram model (which can have negative space)
+        if(!(parent instanceof IDiagramModel)) {
+            if(bounds.x < 0) {
+                bounds.x = 0;
+            }
+            if(bounds.y < 0) {
+                bounds.y = 0;
+            }
         }
         
         return new AddObjectCommand(parent, child, bounds);
@@ -126,32 +107,50 @@ extends XYLayoutEditPolicy {
     /**
      * AddObjectCommand
      */
-    public static class AddObjectCommand extends Command {
-        IDiagramModelContainer fParent;
-        IDiagramModelObject fChild;
-        Rectangle fBounds;
+    public class AddObjectCommand extends Command {
+        IDiagramModelContainer parent;
+        IDiagramModelObject child;
+        Rectangle bounds;
 
         public AddObjectCommand(IDiagramModelContainer parent, IDiagramModelObject child, Rectangle bounds) {
-            fParent = parent;
-            fChild = child;
-            fBounds = bounds.getCopy();
+            this.parent = parent;
+            this.child = child;
+            this.bounds = bounds.getCopy();
         }
         
         @Override
         public void execute() {
-            fChild.setBounds(fBounds.x, fBounds.y, fBounds.width, fBounds.height);
-            fParent.getChildren().add(fChild);
+            doExecute();
+            // Add to selected parts
+            selectEditPart();
         }
 
         @Override
         public void undo() {
-            fParent.getChildren().remove(fChild);
+            parent.getChildren().remove(child);
+        }
+        
+        @Override
+        public void redo() {
+            doExecute();
+            // Don't add to selected parts because user might have selected other objects since execute and undo
+        }
+        
+        protected void doExecute() {
+            child.setBounds(bounds.x, bounds.y, bounds.width, bounds.height);
+            parent.getChildren().add(child);
+        }
+        
+        protected void selectEditPart() {
+            if(getHost().getViewer().getEditPartRegistry().get(child) instanceof EditPart editPart) {
+                getHost().getViewer().appendSelection(editPart);
+            }
         }
         
         @Override
         public void dispose() {
-            fParent = null;
-            fChild = null;
+            parent = null;
+            child = null;
         }
     }
 }

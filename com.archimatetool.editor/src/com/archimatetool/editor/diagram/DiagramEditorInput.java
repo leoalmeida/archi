@@ -11,7 +11,7 @@ import org.eclipse.ui.IMemento;
 import org.eclipse.ui.IPersistableElement;
 
 import com.archimatetool.editor.model.IEditorModelManager;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.model.IDiagramModel;
 
 
@@ -27,7 +27,7 @@ implements IEditorInput, IPersistableElement {
     /**
      * Model
      */
-    protected IDiagramModel fModel;
+    private IDiagramModel fModel;
     
     public DiagramEditorInput(IDiagramModel model) {
         fModel = model;
@@ -37,24 +37,28 @@ implements IEditorInput, IPersistableElement {
         return fModel;
     }
     
+    @Override
     public boolean exists() {
-        return fModel.getArchimateModel() != null;
+        return false;
     }
 
+    @Override
     public ImageDescriptor getImageDescriptor() {
-        return IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_DIAGRAM_16);
+        return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_DIAGRAM);
     }
 
+    @Override
     public String getName() {
         return fModel.getArchimateModel() == null ? Messages.DiagramEditorInput_0 : fModel.getArchimateModel().getName() + ": " + fModel.getName(); //$NON-NLS-1$
     }
 
+    @Override
     public String getToolTipText() {
         return getName();
     }
 
-    @SuppressWarnings("rawtypes")
-    public Object getAdapter(Class adapter) {
+    @Override
+    public <T> T getAdapter(Class<T> adapter) {
         return null;
     }
 
@@ -75,9 +79,9 @@ implements IEditorInput, IPersistableElement {
         return false;
     }
 
+    @Override
     public IPersistableElement getPersistable() {
-        // This can happen somehow (but can't remember how - so, a sanity check)
-        if(fModel.getArchimateModel() == null) {
+        if(fModel == null || fModel.getArchimateModel() == null) {
             return null;
         }
         
@@ -107,5 +111,9 @@ implements IEditorInput, IPersistableElement {
     @Override
     public void saveState(IMemento memento) {
         DiagramEditorInputFactory.saveState(memento, this);
+    }
+    
+    public void dispose() {
+        fModel = null;
     }
 }

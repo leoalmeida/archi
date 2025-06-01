@@ -15,20 +15,21 @@ import org.eclipse.emf.common.util.EList;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IDiagramModelConnection#getText <em>Text</em>}</li>
+ *   <li>{@link com.archimatetool.model.IDiagramModelConnection#getTextPosition <em>Text Position</em>}</li>
  *   <li>{@link com.archimatetool.model.IDiagramModelConnection#getSource <em>Source</em>}</li>
  *   <li>{@link com.archimatetool.model.IDiagramModelConnection#getTarget <em>Target</em>}</li>
  *   <li>{@link com.archimatetool.model.IDiagramModelConnection#getBendpoints <em>Bendpoints</em>}</li>
  *   <li>{@link com.archimatetool.model.IDiagramModelConnection#getType <em>Type</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getDiagramModelConnection()
  * @model
  * @generated
  */
-public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAttribute, IProperties, IDocumentable, ILineObject {
+public interface IDiagramModelConnection extends IConnectable, IFontAttribute, IProperties, IDocumentable, ILineObject, ITextAlignment {
     
     /**
      * Text Position at source
@@ -61,6 +62,23 @@ public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAt
     int ARROW_HOLLOW_SOURCE = 32;     // 1 << 5
     int ARROW_LINE_TARGET = 64;       // 1 << 6
     int ARROW_LINE_SOURCE = 128;      // 1 << 7
+    
+    /**
+     * Feature of name visible
+     */
+    String FEATURE_NAME_VISIBLE = "nameVisible"; //$NON-NLS-1$
+    boolean FEATURE_NAME_VISIBLE_DEFAULT = true;
+    
+    /**
+     * @return True if a name label should be visible
+     */
+    boolean isNameVisible();
+    
+    /**
+     * Set whether the name label should be visible
+     * @param value
+     */
+    void setNameVisible(boolean value);
 
     
     /**
@@ -89,6 +107,32 @@ public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAt
     void setText(String value);
 
     /**
+     * Returns the value of the '<em><b>Text Position</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <p>
+     * If the meaning of the '<em>Text Position</em>' attribute isn't clear,
+     * there really should be more of a description here...
+     * </p>
+     * <!-- end-user-doc -->
+     * @return the value of the '<em>Text Position</em>' attribute.
+     * @see #setTextPosition(int)
+     * @see com.archimatetool.model.IArchimatePackage#getDiagramModelConnection_TextPosition()
+     * @model
+     * @generated
+     */
+    int getTextPosition();
+
+    /**
+     * Sets the value of the '{@link com.archimatetool.model.IDiagramModelConnection#getTextPosition <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @param value the new value of the '<em>Text Position</em>' attribute.
+     * @see #getTextPosition()
+     * @generated
+     */
+    void setTextPosition(int value);
+
+    /**
      * Returns the value of the '<em><b>Source</b></em>' reference.
      * <!-- begin-user-doc -->
      * <p>
@@ -97,23 +141,22 @@ public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAt
      * </p>
      * <!-- end-user-doc -->
      * @return the value of the '<em>Source</em>' reference.
-     * @see #setSource(IDiagramModelObject)
+     * @see #setSource(IConnectable)
      * @see com.archimatetool.model.IArchimatePackage#getDiagramModelConnection_Source()
      * @model resolveProxies="false"
      * @generated
      */
-    IDiagramModelObject getSource();
+    IConnectable getSource();
 
     /**
      * Sets the value of the '{@link com.archimatetool.model.IDiagramModelConnection#getSource <em>Source</em>}' reference.
      * <!-- begin-user-doc -->
-     * Don't call this directly. Use connect() instead.
      * <!-- end-user-doc -->
      * @param value the new value of the '<em>Source</em>' reference.
      * @see #getSource()
      * @generated
      */
-    void setSource(IDiagramModelObject value);
+    void setSource(IConnectable value);
 
     /**
      * Returns the value of the '<em><b>Target</b></em>' reference.
@@ -124,23 +167,22 @@ public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAt
      * </p>
      * <!-- end-user-doc -->
      * @return the value of the '<em>Target</em>' reference.
-     * @see #setTarget(IDiagramModelObject)
+     * @see #setTarget(IConnectable)
      * @see com.archimatetool.model.IArchimatePackage#getDiagramModelConnection_Target()
      * @model resolveProxies="false"
      * @generated
      */
-    IDiagramModelObject getTarget();
+    IConnectable getTarget();
 
     /**
      * Sets the value of the '{@link com.archimatetool.model.IDiagramModelConnection#getTarget <em>Target</em>}' reference.
      * <!-- begin-user-doc -->
-     * Don't call this directly. Use connect() instead.
      * <!-- end-user-doc -->
      * @param value the new value of the '<em>Target</em>' reference.
      * @see #getTarget()
      * @generated
      */
-    void setTarget(IDiagramModelObject value);
+    void setTarget(IConnectable value);
 
     /**
      * Returns the value of the '<em><b>Bendpoints</b></em>' containment reference list.
@@ -191,6 +233,14 @@ public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAt
      * @model
      * @generated
      */
+    void connect(IConnectable source, IConnectable target);
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @model
+     * @generated
+     */
     void disconnect();
 
     /**
@@ -200,12 +250,4 @@ public interface IDiagramModelConnection extends IDiagramModelComponent, IFontAt
      * @generated
      */
     void reconnect();
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @model
-     * @generated
-     */
-    void connect(IDiagramModelObject source, IDiagramModelObject target);
 } // IDiagramModelConnection

@@ -10,6 +10,8 @@ import org.eclipse.jface.viewers.ComboBoxCellEditor;
 import org.eclipse.swt.custom.CCombo;
 import org.eclipse.swt.widgets.Composite;
 
+import com.archimatetool.editor.ui.UIUtils;
+
 
 /**
  * String ComboBox CellEditor
@@ -22,24 +24,43 @@ public class StringComboBoxCellEditor extends ComboBoxCellEditor {
     public StringComboBoxCellEditor(Composite parent, String[] items, boolean editable) {
         super(parent, items);
         setEditable(editable);
-        ((CCombo)getControl()).setVisibleItemCount(12);
+        setVisibleItemCount(12);
+        
+        // Filter out bad characters
+        UIUtils.applyInvalidCharacterFilter(getControl());
+        UIUtils.applyNewlineFilter(getControl());
+        
+        // Mac bug workaround
+        UIUtils.applyMacUndoBugFilter(getControl());
     }
 
+    public void setVisibleItemCount(int count) {
+        getControl().setVisibleItemCount(count);
+    }
+    
+    @Override
+    public CCombo getControl() {
+        return (CCombo)super.getControl();
+    }
+    
     @Override
     protected Object doGetValue() {
-        CCombo combobox = (CCombo)getControl();
-        return combobox.getText();
+        return getControl().getText();
     }
     
     @Override
     protected void doSetValue(Object value) {
-        CCombo combobox = (CCombo)getControl();
         Assert.isTrue(value instanceof String);
-        combobox.setText((String)value);
+        getControl().setText((String)value);
     }
     
     public void setEditable(boolean val) {
-        CCombo combobox = (CCombo)getControl();
-        combobox.setEditable(val);
+        getControl().setEditable(val);
+    }
+    
+    @Override
+    public void activate() {
+        // Set font from parent in case user changed it in preferences
+        getControl().setFont(getControl().getParent().getFont());
     }
 }

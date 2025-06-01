@@ -5,27 +5,31 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.gef.EditPart;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.FontData;
 import org.eclipse.swt.graphics.RGB;
+import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.diagram.commands.FontColorCommand;
 import com.archimatetool.editor.diagram.commands.FontCompoundCommand;
 import com.archimatetool.editor.diagram.commands.FontStyleCommand;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ui.ColorFactory;
+import com.archimatetool.editor.ui.components.ColorChooser;
 import com.archimatetool.editor.ui.components.FontChooser;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IFontAttribute;
-import com.archimatetool.model.ILockable;
 
 
 
@@ -34,45 +38,95 @@ import com.archimatetool.model.ILockable;
  * 
  * @author Phillip Beauvoir
  */
-public class FontSection extends AbstractArchimatePropertySection {
+public class FontSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.elementPropertySection"; //$NON-NLS-1$
     
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
+    /**
+     * Filter to show or reject this section depending on being IDiagramModelComponent
      */
-    private Adapter eAdapter = new AdapterImpl() {
+    public static class Filter extends ObjectFilter {
         @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Color event (From Undo/Redo and here)
-            if(feature == IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT || feature == IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT_COLOR ||
-                    feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
-                refreshControls();
-            }
+        public boolean isRequiredType(Object object) {
+            return (object instanceof IFontAttribute) && (shouldExposeFeature((EObject)object, IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT.getName())
+                    || shouldExposeFeature((EObject)object, IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT_COLOR.getName()));
         }
-    };
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return IDiagramModelComponent.class;
+        }
+    }
     
     /**
      * Font listener
      */
     private IPropertyChangeListener fontListener = new IPropertyChangeListener() {
+        @Override
         public void propertyChange(PropertyChangeEvent event) {
-            if(isAlive()) {
-                if(event.getProperty() == FontChooser.PROP_FONTCHANGE) {
-                    if(isAlive()) {
-                        FontData selectedFontData = fFontChooser.getFontData();
-                        RGB rgb = fFontChooser.getFontRGB();
-                        FontCompoundCommand cmd = new FontCompoundCommand(fFontObject, selectedFontData.toString(), rgb);
-                        getCommandStack().execute(cmd.unwrap());
-                    }
-                }
-                else if(event.getProperty() == FontChooser.PROP_FONTDEFAULT) {
-                    if(isAlive()) {
-                        getCommandStack().execute(new FontStyleCommand(fFontObject, null));
+            CompoundCommand result = new CompoundCommand();
+            
+            if(event.getProperty() == FontChooser.PROP_FONTCHANGE) {
+                FontData selectedFontData = fFontChooser.getFontData();
+                RGB rgb = fFontChooser.getFontRGB();
+                
+                for(EObject fa : getEObjects()) {
+                    if(isAlive(fa)) {
+                        Command cmd = new FontCompoundCommand((IFontAttribute)fa, selectedFontData.toString(), rgb);
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
                     }
                 }
             }
+            else if(event.getProperty() == FontChooser.PROP_FONTDEFAULT) {
+                for(EObject fa : getEObjects()) {
+                    if(isAlive(fa)) {
+                        Command cmd = new FontStyleCommand((IFontAttribute)fa, null);
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
+                }
+            }
+            
+            executeCommand(result.unwrap());
+        }
+    };
+    
+    /**
+     * Color listener
+     */
+    private IPropertyChangeListener colorListener = new IPropertyChangeListener() {
+        @Override
+        public void propertyChange(PropertyChangeEvent event) {
+            CompoundCommand result = new CompoundCommand();
+            
+            if(event.getProperty() == ColorChooser.PROP_COLORCHANGE) {
+                RGB rgb = fColorChooser.getColorValue();
+                String newColor = ColorFactory.convertRGBToString(rgb);
+                
+                for(EObject fa : getEObjects()) {
+                    if(isAlive(fa)) {
+                        Command cmd = new FontColorCommand((IFontAttribute)fa, newColor);
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
+                }
+            }
+            else if(event.getProperty() == ColorChooser.PROP_COLORDEFAULT) {
+                for(EObject fa : getEObjects()) {
+                    if(isAlive(fa)) {
+                        Command cmd = new FontColorCommand((IFontAttribute)fa, null);
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
+                }
+            }
+            
+            executeCommand(result.unwrap());
         }
     };
 
@@ -83,61 +137,96 @@ public class FontSection extends AbstractArchimatePropertySection {
         @Override
         public void propertyChange(PropertyChangeEvent event) {
             if(event.getProperty().startsWith(IPreferenceConstants.DEFAULT_VIEW_FONT)) {
-                refreshControls();
+                update();
             }
         }
     };
 
-    private IFontAttribute fFontObject;
-    
     private FontChooser fFontChooser;
+    private ColorChooser fColorChooser;
     
     @Override
     protected void createControls(final Composite parent) {
-        createLabel(parent, Messages.FontSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
+        ((GridLayout)parent.getLayout()).horizontalSpacing = 30;
         
-        fFontChooser = new FontChooser(parent);
-        getWidgetFactory().adapt(fFontChooser.getControl(), true, true); // Need to do it this way for Mac
-        fFontChooser.addListener(fontListener);
+        Composite group1 = createComposite(parent, 2, false);
+        createFontControl(group1);
         
-        Preferences.STORE.addPropertyChangeListener(prefsListener);
+        Composite group2 = createComposite(parent, 2, false);
+        createColorControl(group2);
+        
+        // Allow setting 1 or 2 columns
+        GridLayoutColumnHandler.create(parent, 2).updateColumns();
+
+        ArchiPlugin.getInstance().getPreferenceStore().addPropertyChangeListener(prefsListener);
 
         // Help
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
     }
     
-    @Override
-    protected void setElement(Object element) {
-        if(element instanceof EditPart && ((EditPart)element).getModel() instanceof IFontAttribute) {
-            fFontObject = (IFontAttribute)((EditPart)element).getModel();
-            if(fFontObject == null) {
-                throw new RuntimeException("Font Object was null"); //$NON-NLS-1$
-            }
-        }
-        else {
-            throw new RuntimeException("Should have been an IFontAttribute"); //$NON-NLS-1$
-        }
-        
-        refreshControls();
+    private void createFontControl(Composite parent) {
+        createLabel(parent, Messages.FontSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
+        fFontChooser = new FontChooser(parent, getWidgetFactory());
+        fFontChooser.addListener(fontListener);
     }
     
-    protected void refreshControls() {
-        fFontChooser.setFontObject(fFontObject);
-        boolean enabled = fFontObject instanceof ILockable ? !((ILockable)fFontObject).isLocked() : true;
-        fFontChooser.setEnabled(enabled);
-        fFontChooser.setIsDefaultFont(fFontObject.getFont() == null);
+    private void createColorControl(Composite parent) {
+        createLabel(parent, Messages.FontColorSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
+        fColorChooser = new ColorChooser(parent, getWidgetFactory());
+        fColorChooser.setDoShowPreferencesMenuItem(false);
+        fColorChooser.addListener(colorListener);
     }
     
     @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+
+        if(feature == IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT || 
+                feature == IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT_COLOR ||
+                feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
+            update();
+        }
     }
 
     @Override
-    protected EObject getEObject() {
-        return fFontObject;
+    protected void update() {
+        updateFontControl();
+        updateColorControl();
     }
     
+    private void updateFontControl() {
+        IFontAttribute lastSelected = (IFontAttribute)getFirstSelectedObject();
+        
+        fFontChooser.setFontObject(lastSelected);
+        fFontChooser.setEnabled(!isLocked(lastSelected));
+        fFontChooser.setIsDefaultFont(lastSelected.getFont() == null);
+    }
+    
+    private void updateColorControl() {
+        IFontAttribute firstSelected = (IFontAttribute)getFirstSelectedObject();
+        
+        RGB rgb = ColorFactory.convertStringToRGB(firstSelected.getFontColor());
+        fColorChooser.setColorValue(rgb != null ? rgb : new RGB(0, 0, 0)); // Null is black
+        
+        fColorChooser.setEnabled(!isLocked(firstSelected));
+        
+        // Set default enabled based on all selected objects.
+        // Note that the default button might not show the correct enabled state depending on what's selected at the time of the action.
+        boolean isDefaultColor = true;
+        for(IArchimateModelObject object : getEObjects()) {
+            if(object instanceof IFontAttribute fontObject) {
+                isDefaultColor &= fontObject.getFontColor() == null;
+            }
+        }
+        
+        fColorChooser.setIsDefaultColor(isDefaultColor);
+    }
+
+    @Override
+    protected IObjectFilter getFilter() {
+        return new Filter();
+    }
+
     @Override
     public void dispose() {
         super.dispose();
@@ -146,7 +235,11 @@ public class FontSection extends AbstractArchimatePropertySection {
             fFontChooser.removeListener(fontListener);
         }
         
-        Preferences.STORE.removePropertyChangeListener(prefsListener);
+        if(fColorChooser != null) {
+            fColorChooser.removeListener(colorListener);
+        }
+        
+        ArchiPlugin.getInstance().getPreferenceStore().removePropertyChangeListener(prefsListener);
     }
 
 }

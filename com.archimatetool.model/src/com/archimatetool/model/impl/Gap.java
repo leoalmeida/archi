@@ -15,12 +15,10 @@ import com.archimatetool.model.IGap;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Gap</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Gap extends ImplementationMigrationElement implements IGap {
+public class Gap extends ArchimateElement implements IGap {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

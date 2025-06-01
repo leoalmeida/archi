@@ -10,7 +10,6 @@ import org.eclipse.draw2d.FigureUtilities;
 import org.eclipse.draw2d.MarginBorder;
 import org.eclipse.draw2d.ToolbarLayout;
 import org.eclipse.draw2d.geometry.Dimension;
-import org.eclipse.draw2d.text.BlockFlow;
 import org.eclipse.draw2d.text.FlowPage;
 import org.eclipse.draw2d.text.ParagraphTextLayout;
 import org.eclipse.draw2d.text.TextFlow;
@@ -35,17 +34,15 @@ public class MultiToolTipFigure extends Figure {
             public Dimension getPreferredSize(int wHint, int hHint) {
                 Dimension d = FigureUtilities.getTextExtents(fTextFlow.getText(), fTextFlow.getFont());
                 if(d.width > 400) {
-                    d.width = 400;
+                    d = super.getPreferredSize(400, -1);
                 }
                 return d;
             }
         };
         
-        BlockFlow block = new BlockFlow();
         fTextFlow = new TextFlow();
         fTextFlow.setLayoutManager(new ParagraphTextLayout(fTextFlow, ParagraphTextLayout.WORD_WRAP_HARD));
-        block.add(fTextFlow);
-        page.add(block);
+        page.add(fTextFlow);
         add(page);
     }
     

@@ -9,23 +9,24 @@ import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.gef.EditPart;
 import org.eclipse.jface.resource.ImageDescriptor;
-import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 
 import com.archimatetool.canvas.ICanvasImages;
+import com.archimatetool.canvas.editparts.CanvasStickyEditPart;
 import com.archimatetool.canvas.model.ICanvasPackage;
-import com.archimatetool.editor.diagram.editparts.diagram.DiagramImageEditPart;
-import com.archimatetool.editor.ui.ColorFactory;
-import com.archimatetool.editor.ui.factory.diagram.DiagramImageUIProvider;
+import com.archimatetool.editor.ui.factory.AbstractGraphicalObjectUIProvider;
+import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.ITextPosition;
 
 
 
 /**
- * Canvas Image UI Provider
+ * Canvas Sticky UI Provider
  * 
  * @author Phillip Beauvoir
  */
-public class CanvasStickyUIProvider extends DiagramImageUIProvider {
+public class CanvasStickyUIProvider extends AbstractGraphicalObjectUIProvider {
 
     @Override
     public EClass providerFor() {
@@ -34,7 +35,7 @@ public class CanvasStickyUIProvider extends DiagramImageUIProvider {
     
     @Override
     public EditPart createEditPart() {
-        return new DiagramImageEditPart();
+        return new CanvasStickyEditPart();
     }
 
     @Override
@@ -49,16 +50,29 @@ public class CanvasStickyUIProvider extends DiagramImageUIProvider {
 
     @Override
     public Image getImage() {
-        return ICanvasImages.ImageFactory.getImage(ICanvasImages.ICON_CANVAS_STICKY_16);
+        return ICanvasImages.ImageFactory.getImage(ICanvasImages.ICON_CANVAS_STICKY);
     }
 
     @Override
     public ImageDescriptor getImageDescriptor() {
-        return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_STICKY_16);
+        return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_STICKY);
     }
-
+    
     @Override
-    public Color getDefaultColor() {
-        return ColorFactory.get(255, 255, 255);
+    public boolean shouldExposeFeature(String featureName) {
+        if(featureName == IArchimatePackage.Literals.LINE_OBJECT__LINE_COLOR.getName() ||
+                featureName == IArchimatePackage.Literals.LINE_OBJECT__LINE_WIDTH.getName() ||
+                featureName == IDiagramModelObject.FEATURE_LINE_STYLE ||
+                featureName == IDiagramModelObject.FEATURE_DERIVE_ELEMENT_LINE_COLOR ||
+                featureName == IDiagramModelObject.FEATURE_GRADIENT) {
+            return false;
+        }
+        
+        return true;
+    }
+    
+    @Override
+    public int getDefaultTextPosition() {
+        return ITextPosition.TEXT_POSITION_CENTRE;
     }
 }

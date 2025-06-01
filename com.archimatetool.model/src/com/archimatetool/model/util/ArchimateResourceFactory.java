@@ -6,19 +6,17 @@
 package com.archimatetool.model.util;
 
 import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
 
 import org.eclipse.emf.common.util.URI;
-import org.eclipse.emf.ecore.EClassifier;
-import org.eclipse.emf.ecore.EPackage;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.ResourceSet;
 import org.eclipse.emf.ecore.resource.impl.ResourceFactoryImpl;
 import org.eclipse.emf.ecore.resource.impl.ResourceSetImpl;
-import org.eclipse.emf.ecore.util.BasicExtendedMetaData;
 import org.eclipse.emf.ecore.util.ExtendedMetaData;
 import org.eclipse.emf.ecore.xmi.XMLResource;
-
-import com.archimatetool.model.IArchimatePackage;
 
 
 /**
@@ -82,39 +80,42 @@ public class ArchimateResourceFactory extends ResourceFactoryImpl {
      */
     @Override
     public Resource createResource(URI uri) {
-        XMLResource result = new ArchimateResource(uri);
+        ArchimateResource resource = new ArchimateResource(uri);
         
         // Ensure we have ExtendedMetaData for both Saving and Loading
-        ExtendedMetaData ext = new BasicExtendedMetaData() {
-            /*
-             * Backwards compatibility for the old "DiagramModel" type
-             */
-            @Override
-            public EClassifier getType(EPackage ePackage, String name) {
-                if(ePackage == IArchimatePackage.eINSTANCE && "DiagramModel".equals(name)) { //$NON-NLS-1$
-                    return IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL;
-                }
-                return super.getType(ePackage, name);
-            }
-        };
+        ExtendedMetaData ext = new ConverterExtendedMetadata();
 
-        result.getDefaultLoadOptions().put(XMLResource.OPTION_EXTENDED_META_DATA, ext);
-        result.getDefaultSaveOptions().put(XMLResource.OPTION_EXTENDED_META_DATA, ext);
+        resource.getDefaultLoadOptions().put(XMLResource.OPTION_EXTENDED_META_DATA, ext);
+        resource.getDefaultSaveOptions().put(XMLResource.OPTION_EXTENDED_META_DATA, ext);
 
-        result.getDefaultSaveOptions().put(XMLResource.OPTION_ENCODING, "UTF-8"); //$NON-NLS-1$
-        result.getDefaultLoadOptions().put(XMLResource.OPTION_ENCODING, "UTF-8"); //$NON-NLS-1$
+        resource.getDefaultSaveOptions().put(XMLResource.OPTION_ENCODING, "UTF-8"); //$NON-NLS-1$
+        resource.getDefaultLoadOptions().put(XMLResource.OPTION_ENCODING, "UTF-8"); //$NON-NLS-1$
+        
+        resource.getDefaultLoadOptions().put(XMLResource.OPTION_DEFER_IDREF_RESOLUTION, Boolean.TRUE);
+        resource.setIntrinsicIDToEObjectMap(new HashMap<String, EObject>());
+        
+        // Don't allow loading an unregistered URI in case of exploits
+        resource.getDefaultLoadOptions().put(XMLResource.OPTION_USE_PACKAGE_NS_URI_AS_LOCATION, false);
+        
+        Map<String, Object> parserFeatures = new HashMap<String, Object>();
+        // Don't allow DTD loading in case of XSS exploits
+        parserFeatures.put("http://apache.org/xml/features/disallow-doctype-decl", Boolean.TRUE); //$NON-NLS-1$
+        parserFeatures.put("http://apache.org/xml/features/nonvalidating/load-external-dtd", Boolean.FALSE); //$NON-NLS-1$
+        parserFeatures.put("http://xml.org/sax/features/external-general-entities", Boolean.FALSE); //$NON-NLS-1$
+        parserFeatures.put("http://xml.org/sax/features/external-parameter-entities", Boolean.FALSE); //$NON-NLS-1$
+        resource.getDefaultLoadOptions().put(XMLResource.OPTION_PARSER_FEATURES, parserFeatures);
         
         // Not sure about this
-        // result.getDefaultSaveOptions().put(XMLResource.OPTION_SCHEMA_LOCATION, Boolean.TRUE);
+        // resource.getDefaultSaveOptions().put(XMLResource.OPTION_SCHEMA_LOCATION, Boolean.TRUE);
 
         // Don't set this as it prefixes a hash # to ID references
-        // result.getDefaultLoadOptions().put(XMLResource.OPTION_USE_ENCODED_ATTRIBUTE_STYLE, Boolean.TRUE);
-        // result.getDefaultSaveOptions().put(XMLResource.OPTION_USE_ENCODED_ATTRIBUTE_STYLE, Boolean.TRUE);
+        // resource.getDefaultLoadOptions().put(XMLResource.OPTION_USE_ENCODED_ATTRIBUTE_STYLE, Boolean.TRUE);
+        // resource.getDefaultSaveOptions().put(XMLResource.OPTION_USE_ENCODED_ATTRIBUTE_STYLE, Boolean.TRUE);
 
         // Not sure about this
-        // result.getDefaultLoadOptions().put(XMLResource.OPTION_USE_LEXICAL_HANDLER, Boolean.TRUE);
+        // resource.getDefaultLoadOptions().put(XMLResource.OPTION_USE_LEXICAL_HANDLER, Boolean.TRUE);
         
-        return result;
+        return resource;
     }
 
 } //ArchimateResourceFactory

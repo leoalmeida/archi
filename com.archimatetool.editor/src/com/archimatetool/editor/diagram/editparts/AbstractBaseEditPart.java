@@ -5,23 +5,20 @@
  */
 package com.archimatetool.editor.diagram.editparts;
 
+import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.XYLayout;
 import org.eclipse.draw2d.geometry.Rectangle;
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.gef.DragTracker;
 import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.Request;
 import org.eclipse.gef.tools.SelectEditPartTracker;
-import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
 
 import com.archimatetool.editor.diagram.figures.IDiagramModelObjectFigure;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.services.ViewManager;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.ILockable;
-import com.archimatetool.model.IProperties;
 
 
 
@@ -32,93 +29,73 @@ import com.archimatetool.model.IProperties;
  */
 public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
     
-    /**
-     * Application Preferences Listener
-     */
-    private IPropertyChangeListener prefsListener = new IPropertyChangeListener() {
-        @Override
-        public void propertyChange(PropertyChangeEvent event) {
-            applicationPreferencesChanged(event);
-        }
-    };
+    // Class for new Figure
+    protected Class<?> figureClass;
     
+    protected AbstractBaseEditPart() {
+    }
+    
+    protected AbstractBaseEditPart(Class<?> figureClass) {
+        assert(IDiagramModelObjectFigure.class.isAssignableFrom(figureClass));
+        this.figureClass = figureClass;
+    }
+
+    @Override
+    protected IFigure createFigure() {
+        /*
+         * Create a Figure from the given class
+         */
+        IDiagramModelObjectFigure figure = null;
+        
+        if(figureClass != null) {
+            try {
+                figure = (IDiagramModelObjectFigure)figureClass.getDeclaredConstructor().newInstance();
+                figure.setDiagramModelObject(getModel());
+            }
+            catch(Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        
+        return figure;
+    }
+
+    @Override
+    public IDiagramModelObject getModel() {
+        return (IDiagramModelObject)super.getModel();
+    }
+    
+    @Override
+    public IDiagramModelObjectFigure getFigure() {
+        return (IDiagramModelObjectFigure)super.getFigure();
+    }
+
     /**
      * Application User Preferences were changed
      * @param event
      */
+    @Override
     protected void applicationPreferencesChanged(PropertyChangeEvent event) {
-        if(IPreferenceConstants.DEFAULT_VIEW_FONT.equals(event.getProperty())) {
+        // Default font or colour preferences changed, or font scaling changed
+        if(IPreferenceConstants.DEFAULT_VIEW_FONT.equals(event.getProperty()) ||
+                event.getProperty().startsWith(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX) ||
+                event.getProperty().equals(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR) ||
+                event.getProperty().equals(IPreferenceConstants.FONT_SCALING)) {
+            
             refreshFigure();
-        }
-        else if(IPreferenceConstants.SHOW_SHADOWS.equals(event.getProperty())) {
-            getFigure().repaint();
-        }
-        // Default colour preferences changed
-        else if(event.getProperty().startsWith(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX)) {
-            getFigure().repaint();
-        }
-        else if(event.getProperty().equals(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR)) {
-            getFigure().repaint();
-        }
-        else if(event.getProperty().startsWith(IPreferenceConstants.DERIVE_ELEMENT_LINE_COLOR)) {
-            getFigure().repaint();
         }
     }
     
-    @Override
-    public void activate() {
-        if(!isActive()) {
-            super.activate();
-            
-            // Listen to changes in Diagram Model Object
-            addECoreAdapter();
-            
-            // Listen to Prefs changes
-            Preferences.STORE.addPropertyChangeListener(prefsListener);
-        }
-    }
-
     @Override
     public void deactivate() {
         if(isActive()) {
             super.deactivate();
             
-            // Remove Listener to changes in Diagram Model Object
-            removeECoreAdapter();
-            
-            // Remove Prefs listener
-            Preferences.STORE.removePropertyChangeListener(prefsListener);
-
             // Dispose of figure
-            if(getFigure() instanceof IDiagramModelObjectFigure) {
-                ((IDiagramModelObjectFigure)getFigure()).dispose();
-            }
+            getFigure().dispose();
         }
     }
     
-    /**
-     * Add any Ecore Adapters
-     */
-    protected void addECoreAdapter() {
-        if(getECoreAdapter() != null) {
-            ((IDiagramModelObject)getModel()).eAdapters().add(getECoreAdapter());
-        }
-    }
-    
-    /**
-     * Remove any Ecore Adapters
-     */
-    protected void removeECoreAdapter() {
-        if(getECoreAdapter() != null) {
-            ((IDiagramModelObject)getModel()).eAdapters().remove(getECoreAdapter());
-        }
-    }
-    
-    /**
-     * @return The ECore Adapter to listen to model changes
-     */
-    protected abstract Adapter getECoreAdapter();
-
     @Override
     protected void refreshVisuals() {
         refreshBounds();
@@ -141,7 +118,7 @@ public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
          */ 
         GraphicalEditPart parentEditPart = (GraphicalEditPart)getParent();
 
-        IDiagramModelObject object = (IDiagramModelObject)getModel();
+        IDiagramModelObject object = getModel();
         Rectangle bounds = new Rectangle(object.getBounds().getX(), object.getBounds().getY(),
                 object.getBounds().getWidth(), object.getBounds().getHeight());
         
@@ -164,19 +141,22 @@ public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
      * Refresh this figure and all child figures
      */
     protected void refreshChildrenFigures() {
+        // Refresh this
         refreshFigure();
+        
+        // Connections
+        for(Object editPart : getSourceConnections()) {
+            if(editPart instanceof DiagramConnectionEditPart) {
+                ((DiagramConnectionEditPart)editPart).refreshVisuals();
+            }
+        }
+        
+        // Children
         for(Object editPart : getChildren()) {
             if(editPart instanceof AbstractBaseEditPart) {
                 ((AbstractBaseEditPart)editPart).refreshChildrenFigures();
             }
         }
-    }
-    
-    /**
-     * @return True if this EditPart's Viewer is in Full Screen Mode
-     */
-    public boolean isInFullScreenMode() {
-        return getViewer() != null && getViewer().getProperty("full_screen") != null; //$NON-NLS-1$
     }
     
     /**
@@ -187,13 +167,10 @@ public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
     }
     
     /**
-     * Show the Properties View.
-     * This will have no effect if the Viewer is in Full Screen Mode.
+     * Show the Properties View
      */
     protected void showPropertiesView() {
-        if(!isInFullScreenMode()) {
-            ViewManager.showViewPart(ViewManager.PROPERTIES_VIEW, false);
-        }
+        ViewManager.showViewPart(ViewManager.PROPERTIES_VIEW, false);
     }
     
     /** 
@@ -204,14 +181,10 @@ public abstract class AbstractBaseEditPart extends AbstractFilteredEditPart {
         return isLocked() ? new SelectEditPartTracker(this) : super.getDragTracker(request);
     }
     
-    @SuppressWarnings("rawtypes")
     @Override
-    public Object getAdapter(Class adapter) {
-        if(adapter == IDiagramModelObject.class) {
-            return getModel();
-        }
-        if(adapter == IProperties.class && getModel() instanceof IProperties) {
-            return getModel();
+    public <T> T getAdapter(Class<T> adapter) {
+        if(getModel() != null && adapter.isInstance(getModel())) {
+            return adapter.cast(getModel());
         }
         return super.getAdapter(adapter);
     }

@@ -19,7 +19,7 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.actions.ActionFactory.IWorkbenchAction;
 
 import com.archimatetool.editor.model.IEditorModelManager;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.model.IArchimateModel;
 
 
@@ -33,7 +33,10 @@ extends Action
 implements IWorkbenchAction
 {
     
+    private IWorkbenchWindow window;
+    
     public OpenModelAction(IWorkbenchWindow window) {
+        this.window = window;
         setText(Messages.OpenModelAction_0);
         setToolTipText(Messages.OpenModelAction_1);
         setId("com.archimatetool.editor.action.openModel"); //$NON-NLS-1$
@@ -42,7 +45,7 @@ implements IWorkbenchAction
     
     @Override
     public void run() {
-        FileDialog dialog = new FileDialog(Display.getCurrent().getActiveShell(), SWT.OPEN);
+        FileDialog dialog = new FileDialog(window.getShell(), SWT.OPEN);
         dialog.setFilterExtensions(new String[] { IEditorModelManager.ARCHIMATE_FILE_WILDCARD, "*.xml", "*.*" } ); //$NON-NLS-1$ //$NON-NLS-2$
         String path = dialog.open();
         if(path != null) {
@@ -59,6 +62,7 @@ implements IWorkbenchAction
             }
             
             BusyIndicator.showWhile(Display.getCurrent(), new Runnable() {
+                @Override
                 public void run() {
                     IEditorModelManager.INSTANCE.openModel(file);
                 }
@@ -68,7 +72,7 @@ implements IWorkbenchAction
     
     @Override
     public ImageDescriptor getImageDescriptor() {
-        return IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_OPEN_16);
+        return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_OPEN);
     }
     
     /**
@@ -86,6 +90,8 @@ implements IWorkbenchAction
         return null;
     }
 
+    @Override
     public void dispose() {
+        window = null;
     } 
 }

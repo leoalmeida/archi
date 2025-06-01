@@ -5,12 +5,11 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IDiagramModelBendpoint;
@@ -18,14 +17,10 @@ import com.archimatetool.model.IDiagramModelBendpoint;
 
 public class DiagramModelBendpointTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelBendpointTests.class);
-    }
-    
     private IDiagramModelBendpoint bp;
     
 
-    @Before
+    @BeforeEach
     public void runBeforeEachDiagramModelArchimateObjectTest() {
         bp = IArchimateFactory.eINSTANCE.createDiagramModelBendpoint();
     }

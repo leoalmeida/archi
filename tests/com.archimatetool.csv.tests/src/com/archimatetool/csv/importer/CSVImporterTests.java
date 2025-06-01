@@ -5,42 +5,45 @@
  */
 package com.archimatetool.csv.importer;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.util.List;
+import java.util.Map.Entry;
 
-import junit.framework.JUnit4TestAdapter;
-
+import org.apache.commons.csv.CSVRecord;
 import org.eclipse.gef.commands.CommandStack;
-import org.junit.Before;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.rules.ExpectedException;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.csv.CSVConstants;
 import com.archimatetool.csv.CSVParseException;
+import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.FolderType;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IArchimateRelationship;
+import com.archimatetool.model.IProfile;
+import com.archimatetool.model.IProperties;
 import com.archimatetool.model.IProperty;
-import com.archimatetool.model.IRelationship;
 import com.archimatetool.model.util.ArchimateModelUtils;
 import com.archimatetool.tests.TestUtils;
 
 
 @SuppressWarnings("nls")
 public class CSVImporterTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(CSVImporterTests.class);
-    }
     
     File testFolder = TestUtils.getLocalBundleFolder("com.archimatetool.csv.tests", "testdata");
     
@@ -55,18 +58,19 @@ public class CSVImporterTests {
     File elements3File = new File(testFolder, "test3-elements.csv");
     File relations3File = new File(testFolder, "test3-relations.csv");
     
+    File elements4File = new File(testFolder, "test4-elements.csv");
+    File relations4File = new File(testFolder, "test4-relations.csv");
+    File relations4aFile = new File(testFolder, "test4a-relations.csv");
+    
     private IArchimateModel model;
     private CSVImporter importer;
     
-    @Rule
-    public ExpectedException expectedEx = ExpectedException.none();
-    
-
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() {
         model = IArchimateFactory.eINSTANCE.createArchimateModel();
         model.setDefaults();
         model.setAdapter(CommandStack.class, new CommandStack());
+        model.setAdapter(IArchiveManager.class, IArchiveManager.FACTORY.createArchiveManager(model));
         
         importer = new CSVImporter(model);
     }
@@ -82,7 +86,7 @@ public class CSVImporterTests {
         stack.undo();
         
         assertEquals("", model.getName());
-        assertNull(model.getPurpose());
+        assertEquals("", model.getPurpose());
         assertEquals(0, model.getProperties().size());
         
         assertEquals(0, model.getFolder(FolderType.BUSINESS).getElements().size());
@@ -100,8 +104,8 @@ public class CSVImporterTests {
         importer = new CSVImporter(model);
         importer.doImport(elements2File);
         
-        // Ensure new elements is empty
-        assertTrue(importer.newElements.isEmpty());
+        // Ensure new relations is empty
+        assertTrue(importer.newRelations.isEmpty());
 
         // Ensure new properties is empty
         assertTrue(importer.newProperties.isEmpty());
@@ -123,13 +127,13 @@ public class CSVImporterTests {
         assertEquals("", element.getDocumentation());
         assertEquals(0, element.getProperties().size());
         
-        IRelationship relation = (IRelationship)ArchimateModelUtils.getObjectByID(model, "cdbfc933");
+        IArchimateRelationship relation = (IArchimateRelationship)ArchimateModelUtils.getObjectByID(model, "cdbfc933");
         assertEquals(IArchimatePackage.eINSTANCE.getAssignmentRelationship(), relation.eClass());
         assertEquals("Assignment relation changed", relation.getName());
         assertEquals("Assignment documentation changed", relation.getDocumentation());
         assertEquals(0, relation.getProperties().size());
         
-        relation = (IRelationship)ArchimateModelUtils.getObjectByID(model, "5854f8a3");
+        relation = (IArchimateRelationship)ArchimateModelUtils.getObjectByID(model, "5854f8a3");
         assertEquals(IArchimatePackage.eINSTANCE.getCompositionRelationship(), relation.eClass());
         assertEquals("5854f8a3", relation.getId());
         assertEquals("Compo", relation.getName());
@@ -139,6 +143,19 @@ public class CSVImporterTests {
         IProperty property = relation.getProperties().get(0);
         assertEquals("This", property.getKey());
         assertEquals("value changes", property.getValue());
+    }
+    
+    /**
+     * If the target model contains images, the model importer expects an ArchiveManager
+     */
+    @Test
+    public void testImagePathInProfile() throws Exception {
+        // Simulate an image by adding a profile with an image path
+        IProfile profile = IArchimateFactory.eINSTANCE.createProfile();
+        profile.setImagePath("imagePath");
+        model.getProfiles().add(profile);
+        
+        testDoImportWithUpdatedElements();
     }
     
     private void testDoImportPart1() {
@@ -155,66 +172,71 @@ public class CSVImporterTests {
         // Relations
         assertEquals(2, model.getFolder(FolderType.RELATIONS).getElements().size());
         
-        // Ensure updated elements is empty
-        assertTrue(importer.updatedElements.isEmpty());
+        // Properties
+        assertEquals(3, importer.newProperties.size());
+        for(Entry<IProperties, List<IProperty>> entry : importer.newProperties.entrySet()) {
+            assertFalse(entry.getValue().isEmpty());
+        }
     }
     
     @Test
     public void testImportModelElements() throws Exception {
+        importer.copyModel();
         importer.importElements(elements1File);
         
-        assertEquals(3, importer.newElements.size());
+        assertEquals(3, importer.newModel.getFolder(FolderType.BUSINESS).getElements().size());
         
-        IArchimateElement element = importer.newElements.get("f00aa5b4");
-        assertEquals(IArchimatePackage.eINSTANCE.getBusinessActor(), element.eClass());
-        assertEquals("f00aa5b4", element.getId());
-        assertEquals("Business Actor", element.getName());
-        assertEquals("This is the Business Actor\r\nDocumentation\r\nHere \"\"\r\n", element.getDocumentation());
+        IArchimateConcept concept = (IArchimateConcept)importer.objectLookup.get("f00aa5b4");
+        assertEquals(IArchimatePackage.eINSTANCE.getBusinessActor(), concept.eClass());
+        assertEquals("f00aa5b4", concept.getId());
+        assertEquals("Business Actor", concept.getName());
+        assertEquals("This is the Business Actor\r\nDocumentation\r\nHere \"\"\r\n", concept.getDocumentation());
         
-        element = importer.newElements.get("d9fe8c17");
-        assertEquals(IArchimatePackage.eINSTANCE.getBusinessInterface(), element.eClass());
-        assertEquals("d9fe8c17", element.getId());
-        assertEquals("Business Interface", element.getName());
-        assertEquals("", element.getDocumentation());
+        concept = (IArchimateConcept)importer.objectLookup.get("d9fe8c17");
+        assertEquals(IArchimatePackage.eINSTANCE.getBusinessInterface(), concept.eClass());
+        assertEquals("d9fe8c17", concept.getId());
+        assertEquals("Business Interface", concept.getName());
+        assertEquals("", concept.getDocumentation());
         
-        element = importer.newElements.get("f6a18059");
-        assertEquals(IArchimatePackage.eINSTANCE.getBusinessRole(), element.eClass());
-        assertEquals("f6a18059", element.getId());
-        assertEquals("Business Role", element.getName());
-        assertEquals("Some more docs\r\nHere\r\n", element.getDocumentation());
+        concept = (IArchimateConcept)importer.objectLookup.get("f6a18059");
+        assertEquals(IArchimatePackage.eINSTANCE.getBusinessRole(), concept.eClass());
+        assertEquals("f6a18059", concept.getId());
+        assertEquals("Business Role", concept.getName());
+        assertEquals("Some more docs\r\nHere\r\n", concept.getDocumentation());
     }
 
     @Test
     public void testImportElementsAndRelationsWithNoIDsHaveIDsGenerated() throws Exception {
+        importer.copyModel();
         importer.importElements(elements3File);
         importer.importRelations(relations3File);
         
-        assertEquals(6, importer.newElements.size());
-        for(String id : importer.newElements.keySet()) {
+        for(String id : importer.objectLookup.keySet()) {
             assertTrue(StringUtils.isSet(id));
         }
     }
 
     @Test
     public void testImportRelations() throws Exception {
+        importer.copyModel();
         importer.importElements(elements1File);
         importer.importRelations(relations1File);
         
-        assertEquals(5, importer.newElements.size());
+        assertEquals(2, importer.newRelations.size());
         
-        IRelationship relation = (IRelationship)importer.newElements.get("cdbfc933");
+        IArchimateRelationship relation = importer.newRelations.get("cdbfc933");
         assertEquals(IArchimatePackage.eINSTANCE.getAssignmentRelationship(), relation.eClass());
         assertEquals("cdbfc933", relation.getId());
         assertEquals("Assignment relation", relation.getName());
         assertEquals("Assignment documentation\r\nIs here \"hello\"", relation.getDocumentation());
-        IArchimateElement source = relation.getSource();
+        IArchimateConcept source = relation.getSource();
         assertNotNull(source);
         assertEquals("f00aa5b4", source.getId());
-        IArchimateElement target = relation.getTarget();
+        IArchimateConcept target = relation.getTarget();
         assertNotNull(target);
         assertEquals("f6a18059", target.getId());
         
-        relation = (IRelationship)importer.newElements.get("5854f8a3");
+        relation = importer.newRelations.get("5854f8a3");
         assertEquals(IArchimatePackage.eINSTANCE.getCompositionRelationship(), relation.eClass());
         assertEquals("5854f8a3", relation.getId());
         assertEquals("Compo", relation.getName());
@@ -227,13 +249,50 @@ public class CSVImporterTests {
         assertEquals("d9fe8c17", target.getId());
     }
     
+    /**
+     * Should be able to change the source and target IDs in an existing relationship
+     * and this should update the relationship in the model.
+     */
+    @Test
+    public void testImportRelationsWithChangedIds() throws Exception {
+        // Import elements and relations
+        importer.doImport(elements4File);
+        
+        // Get the elements and relations in the model
+        IArchimateElement e1 = (IArchimateElement)ArchimateModelUtils.getObjectByID(model, "e1");
+        IArchimateElement e2 = (IArchimateElement)ArchimateModelUtils.getObjectByID(model, "e2");
+        IArchimateElement e3 = (IArchimateElement)ArchimateModelUtils.getObjectByID(model, "e3");
+        IArchimateElement e4 = (IArchimateElement)ArchimateModelUtils.getObjectByID(model, "e4");
+        IArchimateRelationship r1 = (IArchimateRelationship)ArchimateModelUtils.getObjectByID(model, "r1");
+        IArchimateRelationship r2 = (IArchimateRelationship)ArchimateModelUtils.getObjectByID(model, "r2");
+        
+        // check relationships are connected properly
+        assertEquals(r1.getSource(), e1);
+        assertEquals(r1.getTarget(), e3);
+        assertEquals(r2.getSource(), e2);
+        assertEquals(r2.getTarget(), e4);
+        
+        // Create a new importer with this model
+        importer = new CSVImporter(model);
+        
+        // Now import the edited relations file where the relations source and target are changed
+        importer.doImport(relations4aFile);
+        
+        // check relationships are connected properly
+        assertEquals(r1.getSource(), e2);
+        assertEquals(r1.getTarget(), e4);
+        assertEquals(r2.getSource(), e1);
+        assertEquals(r2.getTarget(), e3);
+    }
+    
     @Test
     public void testImportProperties() throws Exception {
+        importer.copyModel();
         importer.importElements(elements1File);
         importer.importRelations(relations1File);
         importer.importProperties(properties1File);
         
-        assertEquals(7, importer.newProperties.size());
+        assertEquals(3, importer.newProperties.size());
     }
 
     @Test
@@ -264,28 +323,56 @@ public class CSVImporterTests {
     }
     
     @Test
-    public void testGetAccessoryFileFromElementsFile_Relations() {
+    public void testGetMatchingFileElements() {
         String parentFolder = "parentFolder";
         
-        File file = new File(parentFolder, "elements");
-        assertEquals(new File(parentFolder, "relations"),
-                CSVImporter.getAccessoryFileFromElementsFile(file, CSVConstants.RELATIONS_FILENAME));
-        assertEquals(new File(parentFolder, "properties"),
-                CSVImporter.getAccessoryFileFromElementsFile(file, CSVConstants.PROPERTIES_FILENAME));
+        File file = new File(parentFolder, "prefix-elements");
+        assertEquals(new File(parentFolder, "prefix-elements"), importer.getMatchingFile(file, CSVConstants.ELEMENTS_FILENAME));
         
-        file = new File(parentFolder, "elements.csv");
-        assertEquals(new File(parentFolder, "relations.csv"),
-                CSVImporter.getAccessoryFileFromElementsFile(file, CSVConstants.RELATIONS_FILENAME));
-        assertEquals(new File(parentFolder, "properties.csv"),
-                CSVImporter.getAccessoryFileFromElementsFile(file, CSVConstants.PROPERTIES_FILENAME));
-        
-        file = new File(parentFolder, "prefix-elements.csv");
-        assertEquals(new File(parentFolder, "prefix-relations.csv"),
-                CSVImporter.getAccessoryFileFromElementsFile(file, CSVConstants.RELATIONS_FILENAME));
-        assertEquals(new File(parentFolder, "prefix-properties.csv"),
-                CSVImporter.getAccessoryFileFromElementsFile(file, CSVConstants.PROPERTIES_FILENAME));
+        file = new File(parentFolder, "prefix-relations");
+        assertEquals(new File(parentFolder, "prefix-elements"), importer.getMatchingFile(file, CSVConstants.ELEMENTS_FILENAME));
+
+        file = new File(parentFolder, "prefix-properties");
+        assertEquals(new File(parentFolder, "prefix-elements"), importer.getMatchingFile(file, CSVConstants.ELEMENTS_FILENAME));
+
+        file = new File(parentFolder, "zoob");
+        assertNull(importer.getMatchingFile(file, CSVConstants.ELEMENTS_FILENAME));
     }
-    
+
+    @Test
+    public void testGetMatchingFileRelations() {
+        String parentFolder = "parentFolder";
+        
+        File file = new File(parentFolder, "prefix-elements");
+        assertEquals(new File(parentFolder, "prefix-relations"), importer.getMatchingFile(file, CSVConstants.RELATIONS_FILENAME));
+        
+        file = new File(parentFolder, "prefix-relations");
+        assertEquals(new File(parentFolder, "prefix-relations"), importer.getMatchingFile(file, CSVConstants.RELATIONS_FILENAME));
+
+        file = new File(parentFolder, "prefix-properties");
+        assertEquals(new File(parentFolder, "prefix-relations"), importer.getMatchingFile(file, CSVConstants.RELATIONS_FILENAME));
+
+        file = new File(parentFolder, "zoob");
+        assertNull(importer.getMatchingFile(file, CSVConstants.RELATIONS_FILENAME));
+    }
+
+    @Test
+    public void testGetMatchingFileProperties() {
+        String parentFolder = "parentFolder";
+        
+        File file = new File(parentFolder, "prefix-elements");
+        assertEquals(new File(parentFolder, "prefix-properties"), importer.getMatchingFile(file, CSVConstants.PROPERTIES_FILENAME));
+        
+        file = new File(parentFolder, "prefix-relations");
+        assertEquals(new File(parentFolder, "prefix-properties"), importer.getMatchingFile(file, CSVConstants.PROPERTIES_FILENAME));
+
+        file = new File(parentFolder, "prefix-properties");
+        assertEquals(new File(parentFolder, "prefix-properties"), importer.getMatchingFile(file, CSVConstants.PROPERTIES_FILENAME));
+
+        file = new File(parentFolder, "zoob");
+        assertNull(importer.getMatchingFile(file, CSVConstants.PROPERTIES_FILENAME));
+    }
+
     @Test
     public void testNormalise() {
         assertEquals("", importer.normalise(null));
@@ -297,75 +384,100 @@ public class CSVImporterTests {
     }
     
     @Test
-    public void testCheckID_Null() throws CSVParseException {
-        expectedEx.expect(CSVParseException.class);
-        expectedEx.expectMessage("ID not found");
+    public void testCheckIDForInvalidCharacters_Fail() {
+        String[] testStrings = {
+                "&", " ", "*", "$", "#"
+        };
         
-        importer.checkID(null);
+        for(String s : testStrings) {
+            try {
+                importer.checkIDForInvalidCharacters(s);
+                fail("Should throw CSVParseException");
+            }
+            catch(CSVParseException ex) {
+                continue;
+            }
+        }
     }
     
     @Test
-    public void testCheckID_Duplicate() throws Exception {
-        expectedEx.expect(CSVParseException.class);
-        expectedEx.expectMessage("Duplicate ID");
+    public void testCheckIDForInvalidCharacters_Pass() throws Exception {
+        String[] testStrings = {
+                "f00aa5b4", "123Za", "_-123uioP09..-_"
+        };
         
-        importer.doImport(elements1File);
-        importer.checkID("f00aa5b4");
-    }
-    
-    @Test
-    public void testFindElementInModel() throws Exception {
-        importer.doImport(elements1File);
-        assertNotNull(importer.findElementInModel("f00aa5b4", IArchimatePackage.eINSTANCE.getBusinessActor()));
+        for(String s : testStrings) {
+            importer.checkIDForInvalidCharacters(s);
+        }
     }
 
     @Test
-    public void testFindElementInModel_DifferentClass() throws Exception {
-        expectedEx.expect(CSVParseException.class);
-        expectedEx.expectMessage("Found element with same id but different class: f6a18059");
-        
+    public void testFindObjectInModel() throws Exception {
         importer.doImport(elements1File);
-        importer.findElementInModel("f6a18059", IArchimatePackage.eINSTANCE.getBusinessActor());
+        assertNotNull(importer.findObjectInModel("f00aa5b4", IArchimatePackage.eINSTANCE.getBusinessActor()));
+    }
+
+    @Test
+    public void testFindObjectInModel_DifferentClass() throws Exception {
+        importer.doImport(elements1File);
+        
+        CSVParseException thrown = assertThrows(CSVParseException.class, () -> {
+            importer.findObjectInModel("f6a18059", IArchimatePackage.eINSTANCE.getBusinessActor());
+        });
+        
+        assertEquals("Found concept with same id but different class: f6a18059", thrown.getMessage());
     }
     
     @Test
-    public void testFindReferencedElement() throws Exception {
+    public void testFindReferencedConcept() throws Exception {
         importer.doImport(elements1File);
-        assertNotNull(importer.findReferencedElement("f6a18059"));
+        assertNotNull(importer.findReferencedConcept("f6a18059"));
     }
     
     @Test
-    public void testFindReferencedElement_IsRelationship() throws Exception {
-        expectedEx.expect(CSVParseException.class);
-        expectedEx.expectMessage("Type should be of ArchiMate element type: 5854f8a3");
-        
+    public void testFindReferencedConcept_IsRelationship() throws Exception {
         importer.doImport(elements1File);
-        importer.findReferencedElement("5854f8a3");
+        IArchimateConcept concept = importer.findReferencedConcept("5854f8a3");
+        assertTrue(concept instanceof IArchimateRelationship);
     }
 
-    @Test(expected=CSVParseException.class)
-    public void testFindReferencedElement_NotFound() throws Exception {
+    @Test
+    public void testFindReferencedConcept_NotFound() throws Exception {
         importer.doImport(elements1File);
-        importer.findReferencedElement("someid");
+        assertThrows(CSVParseException.class, () -> {
+            importer.findReferencedConcept("someid");
+        });
     }
 
-    @Test(expected=CSVParseException.class)
-    public void testFindReferencedElement_Null() throws CSVParseException {
-        importer.findReferencedElement(null);
+    @Test
+    public void testFindReferencedConcept_Null() {
+        assertThrows(CSVParseException.class, () -> {
+            importer.findReferencedConcept(null);
+        });
     }
    
     @Test
+    public void testIsArchimateConceptEClass() {
+        assertFalse(importer.isArchimateConceptEClass(null));
+        assertFalse(importer.isArchimateConceptEClass(IArchimatePackage.eINSTANCE.getFolder()));
+        assertTrue(importer.isArchimateConceptEClass(IArchimatePackage.eINSTANCE.getAccessRelationship()));
+        assertTrue(importer.isArchimateConceptEClass(IArchimatePackage.eINSTANCE.getBusinessActor()));
+    }
+
+    @Test
     public void testIsArchimateElementEClass() {
         assertFalse(importer.isArchimateElementEClass(null));
+        assertFalse(importer.isArchimateConceptEClass(IArchimatePackage.eINSTANCE.getFolder()));
         assertFalse(importer.isArchimateElementEClass(IArchimatePackage.eINSTANCE.getAccessRelationship()));
         assertTrue(importer.isArchimateElementEClass(IArchimatePackage.eINSTANCE.getBusinessActor()));
     }
    
     @Test
-    public void testIsRelationshipEClass() {
-        assertFalse(importer.isRelationshipEClass(null));
-        assertFalse(importer.isRelationshipEClass(IArchimatePackage.eINSTANCE.getBusinessActor()));
-        assertTrue(importer.isRelationshipEClass(IArchimatePackage.eINSTANCE.getAccessRelationship()));
+    public void testIsArchimateRelationshipEClass() {
+        assertFalse(importer.isArchimateRelationshipEClass(null));
+        assertFalse(importer.isArchimateConceptEClass(IArchimatePackage.eINSTANCE.getFolder()));
+        assertFalse(importer.isArchimateRelationshipEClass(IArchimatePackage.eINSTANCE.getBusinessActor()));
+        assertTrue(importer.isArchimateRelationshipEClass(IArchimatePackage.eINSTANCE.getAccessRelationship()));
     }
     
     @Test
@@ -378,5 +490,37 @@ public class CSVImporterTests {
         
         assertEquals(property, importer.getProperty(element, "key"));
         assertNull(importer.getProperty(element, "key2"));
+    }
+    
+    @Test
+    public void testGetRecordsWithDelimiters() throws Exception {
+        testGetRecords(',');
+        testGetRecords(';');
+        testGetRecords('\t');
+    }
+    
+    @Test
+    public void testGetRecordsWithWrongDelimiterShouldThrowException() {
+        IOException ex = assertThrows(IOException.class, () -> {
+            testGetRecords(' ');
+        });
+        
+        assertTrue(ex.getMessage().contains(CSVImporter.EXPECTED_ERROR_MESSAGE));
+    }
+
+    private void testGetRecords(char delimiter) throws Exception {
+        String csv = "\"Field 1\",\"Field 2\",\"Field 3\"";
+        csv = csv.replace(',', delimiter);
+        
+        File file = TestUtils.createTempFile(".csv");
+        Files.writeString(file.toPath(), csv);
+        
+        List<CSVRecord> records = importer.getRecords(file);
+        assertNotNull(records);
+        assertEquals(1, records.size());
+        CSVRecord rec = records.get(0);
+        assertEquals("Field 1", rec.get(0));
+        assertEquals("Field 2", rec.get(1));
+        assertEquals("Field 3", rec.get(2));
     }
 }

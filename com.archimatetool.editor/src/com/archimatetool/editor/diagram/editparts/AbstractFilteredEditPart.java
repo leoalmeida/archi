@@ -9,8 +9,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import org.eclipse.emf.common.notify.Adapter;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.gef.editparts.AbstractGraphicalEditPart;
+import org.eclipse.jface.util.IPropertyChangeListener;
+import org.eclipse.jface.util.PropertyChangeEvent;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.model.IDiagramModelContainer;
 import com.archimatetool.model.IDiagramModelObject;
 
@@ -23,7 +28,73 @@ import com.archimatetool.model.IDiagramModelObject;
  */
 public abstract class AbstractFilteredEditPart extends AbstractGraphicalEditPart {
     
+    /**
+     * Application Preferences Listener
+     */
+    private IPropertyChangeListener prefsListener;
+
     @Override
+    public void activate() {
+        if(!isActive()) {
+            super.activate();
+            
+            // Listen to Model
+            addECoreAdapter();
+            
+            // Listen to Application Prefs changes
+            prefsListener = this::applicationPreferencesChanged;
+            ArchiPlugin.getInstance().getPreferenceStore().addPropertyChangeListener(prefsListener);
+        }
+    }
+
+    @Override
+    public void deactivate() {
+        if(isActive()) {
+            super.deactivate();
+            
+            // Remove Listener to changes in Model Object
+            removeECoreAdapter();
+
+            // Remove Prefs listener
+            ArchiPlugin.getInstance().getPreferenceStore().removePropertyChangeListener(prefsListener);
+        }
+    }
+
+    /**
+     * Add any Ecore Adapters
+     */
+    protected void addECoreAdapter() {
+        if(getECoreAdapter() != null) {
+            getModel().eAdapters().add(getECoreAdapter());
+        }
+    }
+    
+    /**
+     * Remove any Ecore Adapters
+     */
+    protected void removeECoreAdapter() {
+        if(getECoreAdapter() != null) {
+            getModel().eAdapters().remove(getECoreAdapter());
+        }
+    }
+    
+    /**
+     * @return The ECore Adapter to listen to model changes
+     */
+    protected abstract Adapter getECoreAdapter();
+
+    /**
+     * An Application Preference Property change event occurred
+     * @param event
+     */
+    protected abstract void applicationPreferencesChanged(PropertyChangeEvent event);
+    
+    @Override
+    public EObject getModel() {
+        return (EObject)super.getModel();
+    }
+    
+   @Override
     protected List<?> getModelChildren() {
         return getFilteredModelChildren();
     }
@@ -32,7 +103,7 @@ public abstract class AbstractFilteredEditPart extends AbstractGraphicalEditPart
         if(getModel() instanceof IDiagramModelContainer) {
             List<IDiagramModelObject> originalList = ((IDiagramModelContainer)getModel()).getChildren();
             
-            IChildEditPartFilter[] filters = getEditPartFilterProvider().getEditPartFilters(IChildEditPartFilter.class);
+            IChildEditPartFilter[] filters = getRootEditPartFilterProvider().getEditPartFilters(IChildEditPartFilter.class);
             if(filters != null) {
                 List<IDiagramModelObject> filteredList = new ArrayList<IDiagramModelObject>();
                 
@@ -60,13 +131,11 @@ public abstract class AbstractFilteredEditPart extends AbstractGraphicalEditPart
         return Collections.EMPTY_LIST;
     }
 
-    protected IEditPartFilterProvider getEditPartFilterProvider() {
-        if(this instanceof IEditPartFilterProvider) {
-            return (IEditPartFilterProvider)this;
+    protected IEditPartFilterProvider getRootEditPartFilterProvider() {
+        if(getRoot() != null && getRoot().getContents() instanceof IEditPartFilterProvider) {
+            return (IEditPartFilterProvider)getRoot().getContents();
         }
-        if(getParent() instanceof AbstractFilteredEditPart) {
-            return ((AbstractFilteredEditPart)getParent()).getEditPartFilterProvider();
-        }
+        
         return null;
     }
 }

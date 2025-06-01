@@ -5,27 +5,23 @@
  */
 package com.archimatetool.editor.actions;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.List;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.Separator;
-import org.eclipse.ui.IWorkbenchWindow;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.tests.TestData;
@@ -34,21 +30,17 @@ import com.archimatetool.tests.TestData;
 @SuppressWarnings("nls")
 public class MRUMenuManagerTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(MRUMenuManagerTests.class);
-    }
-    
     private MRUMenuManager menuManager;
     
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() {
         // Clear prefs
-        Preferences.STORE.setToDefault(IPreferenceConstants.MRU_MAX);
+        ArchiPlugin.getInstance().getPreferenceStore().setToDefault(IPreferenceConstants.MRU_MAX);
         for(int i = 0; i < 50; i++) {
-            Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + i, "");
+            ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + i, "");
         }
 
-        menuManager = new MRUMenuManager(mock(IWorkbenchWindow.class));
+        menuManager = new MRUMenuManager(null);
     }
     
     @Test
@@ -59,11 +51,11 @@ public class MRUMenuManagerTests {
 
     @Test
     public void testListIsPopulated() {
-        Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + "0", "someFile1");
-        Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + "1", "someFile2");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + "0", "someFile1");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + "1", "someFile2");
         
         // Need a new instance now
-        menuManager = new MRUMenuManager(mock(IWorkbenchWindow.class));
+        menuManager = new MRUMenuManager(null);
         
         List<File> list = menuManager.getMRUList();
         assertEquals(2, list.size());
@@ -118,11 +110,11 @@ public class MRUMenuManagerTests {
         assertTrue(menuManager.getItems()[1] instanceof ActionContributionItem);
         
         // Add some MRU files
-        Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + "0", "someFile1");
-        Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + "1", "someFile2");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + "0", "someFile1");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + "1", "someFile2");
         
         // Need a new instance
-        menuManager = new MRUMenuManager(mock(IWorkbenchWindow.class));
+        menuManager = new MRUMenuManager(null);
         
         // Should be added
         assertEquals(4, menuManager.getSize());
@@ -134,11 +126,11 @@ public class MRUMenuManagerTests {
     @Test
     public void testClearAll() {
         // Add some MRU files
-        Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + "0", "someFile1");
-        Preferences.STORE.setValue(MRUMenuManager.MRU_PREFS_KEY + "1", "someFile2");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + "0", "someFile1");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(MRUMenuManager.MRU_PREFS_KEY + "1", "someFile2");
         
         // Need a new instance after 
-        menuManager = new MRUMenuManager(mock(IWorkbenchWindow.class));
+        menuManager = new MRUMenuManager(null);
         
         // Should be added
         assertEquals(4, menuManager.getSize());
@@ -159,19 +151,19 @@ public class MRUMenuManagerTests {
     public void testGetPreferencesMRUMax() {
         assertEquals(6, menuManager.getPreferencesMRUMax());
         
-        Preferences.STORE.setValue(IPreferenceConstants.MRU_MAX, 8);
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.MRU_MAX, 8);
         assertEquals(8, menuManager.getPreferencesMRUMax());
         
-        Preferences.STORE.setValue(IPreferenceConstants.MRU_MAX, 2);
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.MRU_MAX, 2);
         assertEquals(3, menuManager.getPreferencesMRUMax());
         
-        Preferences.STORE.setValue(IPreferenceConstants.MRU_MAX, 16);
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.MRU_MAX, 16);
         assertEquals(15, menuManager.getPreferencesMRUMax());
     }
     
     
     @Test
-    public void testModelPropertChange() {
+    public void testModelPropertyChange() {
         List<File> list = menuManager.getMRUList();
         assertTrue(list.isEmpty());
         
@@ -196,11 +188,30 @@ public class MRUMenuManagerTests {
     }
     
     @Test
-    public void testIsTempFile() {
-        File file = new File("~newfile.archimate");
+    public void testIsTempFileInTempFolder() throws IOException {
+        // File in temp dir
+        File file = File.createTempFile("~architemplate", null);
+        assertTrue(menuManager.isTempFile(file));
+        file.delete();
+    }
+    
+    @Test
+    public void testIsTempFileInTempSubFolder() {
+        File tmpFolder = new File(System.getProperty("java.io.tmpdir"));
+        
+        // File in sub dir
+        File file = new File(tmpFolder, "folder/folder/file.txt");
         assertTrue(menuManager.isTempFile(file));
         
-        file = new File("newfile.archimate");
+        // Top
+        file = new File(tmpFolder, "file.txt");
+        assertTrue(menuManager.isTempFile(file));
+    }
+
+    @Test
+    public void testIsNotTempFile() {
+        // Normal file
+        File file = new File("newfile.archimate");
         assertFalse(menuManager.isTempFile(file));
     }
     

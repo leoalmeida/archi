@@ -7,11 +7,33 @@ package com.archimatetool.jasperreports;
 
 import java.io.File;
 import java.io.IOException;
+import java.net.URL;
+import java.net.URLClassLoader;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.ResourceBundle;
+
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.osgi.util.NLS;
+import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
+import org.eclipse.swt.graphics.ImageLoader;
+import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.PlatformUI;
+
+import com.archimatetool.editor.diagram.util.DiagramUtils;
+import com.archimatetool.editor.ui.ImageFactory;
+import com.archimatetool.editor.utils.FileUtils;
+import com.archimatetool.jasperreports.data.ArchimateModelDataSource;
+import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.IDiagramModel;
 
 import net.sf.jasperreports.engine.DefaultJasperReportsContext;
 import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRParameter;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.JasperFillManager;
@@ -25,18 +47,6 @@ import net.sf.jasperreports.export.SimpleExporterInput;
 import net.sf.jasperreports.export.SimpleOutputStreamExporterOutput;
 import net.sf.jasperreports.export.SimpleWriterExporterOutput;
 
-import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.graphics.ImageData;
-import org.eclipse.swt.graphics.ImageLoader;
-
-import com.archimatetool.editor.diagram.util.DiagramUtils;
-import com.archimatetool.editor.utils.FileUtils;
-import com.archimatetool.jasperreports.data.ArchimateModelDataSource;
-import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IDiagramModel;
-
 
 /**
  * Exporter for Jasper Reports
@@ -45,15 +55,15 @@ import com.archimatetool.model.IDiagramModel;
  */
 public class JasperReportsExporter {
     
-    /*
-     * Export options
-     */
-    public static int EXPORT_HTML = 1;
-    public static int EXPORT_PDF = 1 << 1;
-    public static int EXPORT_DOCX = 1 << 2;
-    public static int EXPORT_PPT = 1 << 3;
-    public static int EXPORT_RTF = 1 << 4;
-    public static int EXPORT_ODT = 1 << 5;
+    static class CancelledException extends IOException {
+    }
+    
+    public static final int EXPORT_HTML = 1;
+    public static final int EXPORT_PDF = 1 << 1;
+    public static final int EXPORT_DOCX = 1 << 2;
+    public static final int EXPORT_PPT = 1 << 3;
+    public static final int EXPORT_RTF = 1 << 4;
+    public static final int EXPORT_ODT = 1 << 5;
     
     private boolean DELETE_TEMP_FILES = true;
     
@@ -63,6 +73,10 @@ public class JasperReportsExporter {
     private File fMainTemplateFile;
     private String fReportTitle;
     private int fExportOptions;
+    
+    private Locale fLocale;
+    
+    private IProgressMonitor progressMonitor;
 
     /**
      * Export model to one or more Jasper Reports
@@ -71,19 +85,21 @@ public class JasperReportsExporter {
      * @param exportFileName    The file name to use for all reports
      * @param mainTemplateFile  The Jasper main.jrxml template file
      * @param reportTitle       The title of the report
+     * @param locale            The target Locale, or null for default locale
      * @param exportOptions     Export options. XOR of EXPORT_* options
      */
     public JasperReportsExporter(IArchimateModel model, File exportFolder, String exportFileName,
-                                        File mainTemplateFile, String reportTitle, int exportOptions) {
+                                        File mainTemplateFile, String reportTitle, Locale locale, int exportOptions) {
         fModel = model;
         fExportFolder = exportFolder;
         fExportFileName = exportFileName;
         fMainTemplateFile = mainTemplateFile;
         fReportTitle = reportTitle;
         fExportOptions = exportOptions;
+        fLocale = locale == null ? Locale.getDefault() : locale;
         
         // Stop logging
-        System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");  //$NON-NLS-1$//$NON-NLS-2$
+        // System.setProperty("org.apache.commons.logging.Log", "org.apache.commons.logging.impl.NoOpLog");  //$NON-NLS-1$//$NON-NLS-2$
     }
     
     /** 
@@ -93,127 +109,97 @@ public class JasperReportsExporter {
      * @throws JRException
      */
     public void export(IProgressMonitor monitor) throws IOException, JRException {
-        if(monitor != null) {
-            monitor.beginTask(Messages.JasperReportsExporter_0, 11);
+        progressMonitor = monitor;
+        
+        if(progressMonitor != null) {
+            progressMonitor.beginTask(Messages.JasperReportsExporter_0, -1);
         }
         
         // Temp Folder to store assets
         File tmpFolder = new File(fExportFolder, "tmp"); //$NON-NLS-1$
         tmpFolder.mkdirs();
         
-        //System.out.println("Exporting: " + fModel.getName());
+        try {
+            writeDiagrams(tmpFolder);
+            
+            JasperPrint jasperPrint = createJasperPrint(tmpFolder);
+            
+            if((fExportOptions & EXPORT_HTML) != 0) {
+                setProgressSubTask(Messages.JasperReportsExporter_3);
+                exportHTML(jasperPrint, new File(fExportFolder, fExportFileName + ".html")); //$NON-NLS-1$
+            }
 
-        if(monitor != null) {
-            monitor.subTask(Messages.JasperReportsExporter_1);
-        }
-        writeDiagrams(tmpFolder);
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        if(monitor != null) {
-            monitor.subTask(Messages.JasperReportsExporter_2);
-        }
-        JasperPrint jasperPrint = createJasperPrint(monitor, tmpFolder);
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        if((fExportOptions & EXPORT_HTML) != 0) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_3);
+            if((fExportOptions & EXPORT_PDF) != 0) {
+                setProgressSubTask(Messages.JasperReportsExporter_4);
+                exportPDF(jasperPrint, new File(fExportFolder, fExportFileName + ".pdf")); //$NON-NLS-1$
             }
-            exportHTML(jasperPrint, new File(fExportFolder, fExportFileName + ".html")); //$NON-NLS-1$
-        }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
 
-        if((fExportOptions & EXPORT_PDF) != 0) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_4);
+            if((fExportOptions & EXPORT_DOCX) != 0) {
+                setProgressSubTask(Messages.JasperReportsExporter_5);
+                exportDOCX(jasperPrint, new File(fExportFolder, fExportFileName + ".docx")); //$NON-NLS-1$
             }
-            exportPDF(jasperPrint, new File(fExportFolder, fExportFileName + ".pdf")); //$NON-NLS-1$
-        }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-
-        if((fExportOptions & EXPORT_DOCX) != 0) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_5);
+            
+            if((fExportOptions & EXPORT_PPT) != 0) {
+                setProgressSubTask(Messages.JasperReportsExporter_6);
+                exportPPT(jasperPrint, new File(fExportFolder, fExportFileName + ".pptx")); //$NON-NLS-1$
             }
-            exportDOCX(jasperPrint, new File(fExportFolder, fExportFileName + ".docx")); //$NON-NLS-1$
-        }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        if((fExportOptions & EXPORT_PPT) != 0) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_6);
+            
+            if((fExportOptions & EXPORT_RTF) != 0) {
+                setProgressSubTask(Messages.JasperReportsExporter_7);
+                exportRTF(jasperPrint, new File(fExportFolder, fExportFileName + ".rtf")); //$NON-NLS-1$
             }
-            exportPPT(jasperPrint, new File(fExportFolder, fExportFileName + ".pptx")); //$NON-NLS-1$
-        }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        if((fExportOptions & EXPORT_RTF) != 0) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_7);
+            
+            if((fExportOptions & EXPORT_ODT) != 0) {
+                setProgressSubTask(Messages.JasperReportsExporter_8);
+                exportODT(jasperPrint, new File(fExportFolder, fExportFileName + ".odt")); //$NON-NLS-1$
             }
-            exportRTF(jasperPrint, new File(fExportFolder, fExportFileName + ".rtf")); //$NON-NLS-1$
         }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        if((fExportOptions & EXPORT_ODT) != 0) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_8);
+        finally {
+            if(DELETE_TEMP_FILES) {
+                setProgressSubTask(Messages.JasperReportsExporter_9);
+                FileUtils.deleteFolder(tmpFolder);
             }
-            exportODT(jasperPrint, new File(fExportFolder, fExportFileName + ".odt")); //$NON-NLS-1$
         }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        if(DELETE_TEMP_FILES) {
-            if(monitor != null) {
-                monitor.subTask(Messages.JasperReportsExporter_9);
-            }
-            FileUtils.deleteFolder(tmpFolder);
-        }
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
-        //System.out.println("Finished");
     }
     
     /**
      * Write the diagrams to temp files
      */
-    void writeDiagrams(File tmpFolder) {
-        for(IDiagramModel dm : fModel.getDiagramModels()) {
-            Image image = DiagramUtils.createImage(dm, 1, 10);
-            String diagramName = dm.getId() + ".png"; //$NON-NLS-1$
+    void writeDiagrams(File tmpFolder) throws IOException {
+        List<IDiagramModel> diagramModels = fModel.getDiagramModels();
+        int total = diagramModels.size();
+        int i = 1;
+
+        for(IDiagramModel dm : diagramModels) {
+            setProgressSubTask(NLS.bind(Messages.JasperReportsExporter_1, i++, total));
+            
+            Image image = null;
+            
             try {
+                image = DiagramUtils.createImage(dm, 1, 10);
+                String diagramName = dm.getId() + ".png"; //$NON-NLS-1$
                 ImageLoader loader = new ImageLoader();
-                loader.data = new ImageData[] { image.getImageData() };
+                loader.data = new ImageData[] { image.getImageData(ImageFactory.getImageDeviceZoom()) };
                 File file = new File(tmpFolder, diagramName);
                 loader.save(file.getAbsolutePath(), SWT.IMAGE_PNG);
             }
+            catch(Throwable t) {
+                throw new IOException("Error saving image for: " + dm.getName() + "\n" + //$NON-NLS-1$ //$NON-NLS-2$
+                        (t.getMessage() == null ? t.toString() : t.getMessage()), t);
+            }
             finally {
-                image.dispose();
+                if(image != null) {
+                    image.dispose();
+                }
             }
         }
     }
     
-    JasperPrint createJasperPrint(IProgressMonitor monitor, File tmpFolder) throws JRException {
+    JasperPrint createJasperPrint(File tmpFolder) throws JRException, IOException {
+        setProgressSubTask(Messages.JasperReportsExporter_2);
+        
         // Set the location of the default Jasper Properties File
-        File propsFile = new File(JasperReportsPlugin.INSTANCE.getPluginFolder(), "jasperreports.properties"); //$NON-NLS-1$
+        File propsFile = new File(JasperReportsPlugin.getInstance().getPluginFolder(), "jasperreports.properties"); //$NON-NLS-1$
         System.setProperty(DefaultJasperReportsContext.PROPERTIES_FILE, propsFile.getAbsolutePath());
 
         // Set the location of the Images
@@ -224,25 +210,39 @@ public class JasperReportsExporter {
 
         // Parameters referenced in Report
         params.put("REPORT_TITLE", fReportTitle); //$NON-NLS-1$
-        //params.put(JRParameter.REPORT_LOCALE, Locale.US);
         
-        // Path to main.jrxml
-        params.put("REPORT_PATH", fMainTemplateFile.getParent() + File.separator); //$NON-NLS-1$
+        // Report folder
+        File reportFolder = fMainTemplateFile.getParentFile();
         
-        if(monitor != null) {
-            monitor.worked(1);
+        // Load local strings properties as a resource bundle - location is report folder. If not present, ignore
+        File bundleFile = new File(reportFolder, "strings.properties"); //$NON-NLS-1$
+        if(bundleFile.canRead()) {
+            ClassLoader loader = new URLClassLoader(new URL[] {reportFolder.toURI().toURL()});
+            ResourceBundle resourceBundle = ResourceBundle.getBundle("strings", fLocale, loader); //$NON-NLS-1$
+            params.put(JRParameter.REPORT_RESOURCE_BUNDLE, resourceBundle);
         }
         
+        // Set locale
+        params.put(JRParameter.REPORT_LOCALE, fLocale);
+        
+        // Path to report
+        params.put("REPORT_PATH", reportFolder.toString() + File.separator); //$NON-NLS-1$
+        
+        // Path to Model
+        if(fModel.getFile() != null) {
+            // Model File path
+            params.put("MODEL_FILE", fModel.getFile().getAbsolutePath()); //$NON-NLS-1$
+            // Model Directory
+            params.put("MODEL_DIRECTORY", fModel.getFile().getParent() + File.separator); //$NON-NLS-1$
+        }
+
         // Compile Main Report
-        //System.out.println("Compiling Main Report");
-        if(monitor != null) {
-            monitor.subTask(Messages.JasperReportsExporter_10);
-        }
+        setProgressSubTask(Messages.JasperReportsExporter_10);
+        
         JasperReport mainReport = JasperCompileManager.compileReport(fMainTemplateFile.getPath());
         
         // Compile sub-reports
-        File folder = fMainTemplateFile.getParentFile();
-        for(File file : folder.listFiles()) {
+        for(File file : reportFolder.listFiles()) {
             if(!file.equals(fMainTemplateFile) && file.getName().endsWith(".jrxml")) { //$NON-NLS-1$
                 //System.out.println("Compiling Sub-Report: " + file);
                 JasperReport jr = JasperCompileManager.compileReport(file.getPath());
@@ -250,31 +250,21 @@ public class JasperReportsExporter {
             }
         }
         
-        if(monitor != null) {
-            monitor.worked(1);
-        }
-        
         // Fill Report
-        //System.out.println("Filling Report");
-        if(monitor != null) {
-            monitor.subTask(Messages.JasperReportsExporter_11);
-        }
+        setProgressSubTask(Messages.JasperReportsExporter_11);
         
         return JasperFillManager.fillReport(mainReport, params, new ArchimateModelDataSource(fModel));
     }
     
     void exportHTML(JasperPrint jasperPrint, File file) throws JRException {
-        //System.out.println("Exporting to HTML: " + file);
         JasperExportManager.exportReportToHtmlFile(jasperPrint, file.getPath());
     }
 
     void exportPDF(JasperPrint jasperPrint, File file) throws JRException {
-        //System.out.println("Exporting to PDF: " + file);
         JasperExportManager.exportReportToPdfFile(jasperPrint, file.getPath());
     }
     
     void exportDOCX(JasperPrint jasperPrint, File file) throws JRException {
-        //System.out.println("Exporting to DOCX: " + file);
         JRDocxExporter exporter = new JRDocxExporter();
         exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
         exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(file));
@@ -282,7 +272,6 @@ public class JasperReportsExporter {
     }
 
     void exportPPT(JasperPrint jasperPrint, File file) throws JRException {
-        //System.out.println("Exporting to MS PPT: " + file);
         JRPptxExporter exporter = new JRPptxExporter();
         exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
         exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(file));
@@ -290,7 +279,6 @@ public class JasperReportsExporter {
     }
 
     void exportODT(JasperPrint jasperPrint, File file) throws JRException {
-        //System.out.println("Exporting to ODT: " + file);
         JROdtExporter exporter = new JROdtExporter();
         exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
         exporter.setExporterOutput(new SimpleOutputStreamExporterOutput(file));
@@ -298,11 +286,23 @@ public class JasperReportsExporter {
     }
     
     void exportRTF(JasperPrint jasperPrint, File file) throws JRException {
-        //System.out.println("Exporting to RTF: " + file);
         JRRtfExporter exporter = new JRRtfExporter();
         exporter.setExporterInput(new SimpleExporterInput(jasperPrint));
         exporter.setExporterOutput(new SimpleWriterExporterOutput(file));
         exporter.exportReport();
     }
 
+    private void setProgressSubTask(String task) throws CancelledException {
+        if(progressMonitor != null) {
+            progressMonitor.subTask(task);
+            
+            if(progressMonitor.isCanceled()) {
+                throw new CancelledException();
+            }
+            
+            if(PlatformUI.isWorkbenchRunning() && Display.getCurrent() != null) {
+                while(Display.getCurrent().readAndDispatch());
+            }
+        }
+    }
 }

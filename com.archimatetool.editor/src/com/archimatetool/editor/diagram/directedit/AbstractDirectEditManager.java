@@ -5,15 +5,17 @@
  */
 package com.archimatetool.editor.diagram.directedit;
 
+import org.eclipse.gef.DefaultEditDomain;
 import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.tools.CellEditorLocator;
 import org.eclipse.gef.tools.DirectEditManager;
-import org.eclipse.swt.SWT;
-import org.eclipse.swt.events.KeyAdapter;
-import org.eclipse.swt.events.KeyEvent;
+import org.eclipse.swt.events.VerifyEvent;
+import org.eclipse.swt.events.VerifyListener;
+import org.eclipse.swt.widgets.Text;
 
-import com.archimatetool.editor.ui.components.CellEditorGlobalActionHandler;
-import com.archimatetool.editor.utils.PlatformUtils;
+import com.archimatetool.editor.diagram.AbstractDiagramEditor;
+import com.archimatetool.editor.ui.UIUtils;
+import com.archimatetool.editor.ui.components.GlobalActionDisablementHandler;
 
 
 
@@ -24,28 +26,55 @@ import com.archimatetool.editor.utils.PlatformUtils;
  */
 public abstract class AbstractDirectEditManager extends DirectEditManager {
     
-    private CellEditorGlobalActionHandler fGlobalActionHandler;
+    private GlobalActionDisablementHandler fGlobalActionHandler;
+    private VerifyListener verifyListener;
 
-    public AbstractDirectEditManager(GraphicalEditPart source, @SuppressWarnings("rawtypes") Class editorType, CellEditorLocator locator) {
+    public AbstractDirectEditManager(GraphicalEditPart source, Class<?> editorType, CellEditorLocator locator) {
         super(source, editorType, locator);
     }
 
     @Override
     protected void initCellEditor() {
         // Hook into the global Action Handlers and null them
-        fGlobalActionHandler = new CellEditorGlobalActionHandler();
+        fGlobalActionHandler = new GlobalActionDisablementHandler();
         fGlobalActionHandler.clearGlobalActions();
         
-        // Stop OS X closing Mac Full Screen when Escape pressed
-        if(PlatformUtils.isMac()) {
-            getCellEditor().getControl().addKeyListener(new KeyAdapter() {
+        // Filter out any illegal xml characters
+        UIUtils.applyInvalidCharacterFilter(getTextControl());
+        
+        // Mac bug workaround
+        UIUtils.applyMacUndoBugFilter(getTextControl());
+
+        // Deactivate key binding context
+        if(((DefaultEditDomain)getEditPart().getViewer().getEditDomain()).getEditorPart() instanceof AbstractDiagramEditor editor) {
+            editor.deactivateContext();
+        }
+
+    }
+    
+    protected void setNormalised() {
+        if(verifyListener == null) {
+            verifyListener = new VerifyListener() {
                 @Override
-                public void keyPressed(KeyEvent e) {
-                    if(e.keyCode == SWT.ESC) {
-                        e.doit = false;
-                    }
+                public void verifyText(VerifyEvent event) {
+                    event.text = event.text.replaceAll("(\r\n|\r|\n)", ""); //$NON-NLS-1$ //$NON-NLS-2$
                 }
-            });
+            };
+            
+            getTextControl().addVerifyListener(verifyListener);
+        }
+    }
+    
+    protected Text getTextControl() {
+        return (Text)getCellEditor().getControl();
+    }
+    
+    @Override
+    protected void unhookListeners() {
+        super.unhookListeners();
+        
+        if(verifyListener != null) {
+            getTextControl().removeVerifyListener(verifyListener);
         }
     }
     
@@ -53,6 +82,11 @@ public abstract class AbstractDirectEditManager extends DirectEditManager {
     protected void bringDown() {
         // Restore the global Action Handlers
         fGlobalActionHandler.restoreGlobalActions();
+        
+        // Reactivate key binding context
+        if(((DefaultEditDomain)getEditPart().getViewer().getEditDomain()).getEditorPart() instanceof AbstractDiagramEditor editor) {
+            editor.activateContext();
+        }
         
         super.bringDown();
     }

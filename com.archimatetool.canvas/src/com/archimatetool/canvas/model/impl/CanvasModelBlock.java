@@ -20,7 +20,7 @@ import org.eclipse.emf.ecore.util.InternalEList;
 import com.archimatetool.canvas.model.ICanvasModelBlock;
 import com.archimatetool.canvas.model.ICanvasPackage;
 import com.archimatetool.canvas.model.IHintProvider;
-import com.archimatetool.help.hints.IHelpHintProvider;
+import com.archimatetool.editor.ui.IHelpHintProvider;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IBorderObject;
 import com.archimatetool.model.IDiagramModelContainer;
@@ -30,6 +30,7 @@ import com.archimatetool.model.ILockable;
 import com.archimatetool.model.IProperties;
 import com.archimatetool.model.IProperty;
 import com.archimatetool.model.ITextContent;
+import com.archimatetool.model.ITextPosition;
 import com.archimatetool.model.impl.DiagramModelObject;
 
 
@@ -39,6 +40,7 @@ import com.archimatetool.model.impl.DiagramModelObject;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelBlock#getImagePath <em>Image Path</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelBlock#getImagePosition <em>Image Position</em>}</li>
@@ -49,8 +51,8 @@ import com.archimatetool.model.impl.DiagramModelObject;
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelBlock#getHintTitle <em>Hint Title</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelBlock#getHintContent <em>Hint Content</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelBlock#getContent <em>Content</em>}</li>
+ *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelBlock#getTextPosition <em>Text Position</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -216,6 +218,26 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
     protected String content = CONTENT_EDEFAULT;
 
     /**
+     * The default value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextPosition()
+     * @generated
+     * @ordered
+     */
+    protected static final int TEXT_POSITION_EDEFAULT = 0;
+
+    /**
+     * The cached value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextPosition()
+     * @generated
+     * @ordered
+     */
+    protected int textPosition = TEXT_POSITION_EDEFAULT;
+
+    /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
@@ -239,6 +261,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EList<IDiagramModelObject> getChildren() {
         if (children == null) {
             children = new EObjectContainmentEList<IDiagramModelObject>(IDiagramModelObject.class, this, ICanvasPackage.CANVAS_MODEL_BLOCK__CHILDREN);
@@ -251,6 +274,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getContent() {
         return content;
     }
@@ -260,6 +284,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setContent(String newContent) {
         String oldContent = content;
         content = newContent;
@@ -272,6 +297,30 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
+    public int getTextPosition() {
+        return textPosition;
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
+    public void setTextPosition(int newTextPosition) {
+        int oldTextPosition = textPosition;
+        textPosition = newTextPosition;
+        if (eNotificationRequired())
+            eNotify(new ENotificationImpl(this, Notification.SET, ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION, oldTextPosition, textPosition));
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
     public EList<IProperty> getProperties() {
         if (properties == null) {
             properties = new EObjectContainmentEList<IProperty>(IProperty.class, this, ICanvasPackage.CANVAS_MODEL_BLOCK__PROPERTIES);
@@ -284,6 +333,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public boolean isLocked() {
         return locked;
     }
@@ -293,6 +343,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLocked(boolean newLocked) {
         boolean oldLocked = locked;
         locked = newLocked;
@@ -305,6 +356,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getImagePath() {
         return imagePath;
     }
@@ -314,6 +366,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setImagePath(String newImagePath) {
         String oldImagePath = imagePath;
         imagePath = newImagePath;
@@ -326,6 +379,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getImagePosition() {
         return imagePosition;
     }
@@ -335,6 +389,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setImagePosition(int newImagePosition) {
         int oldImagePosition = imagePosition;
         imagePosition = newImagePosition;
@@ -347,6 +402,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getHintTitle() {
         return hintTitle;
     }
@@ -356,6 +412,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setHintTitle(String newHintTitle) {
         String oldHintTitle = hintTitle;
         hintTitle = newHintTitle;
@@ -368,6 +425,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getHintContent() {
         return hintContent;
     }
@@ -377,6 +435,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setHintContent(String newHintContent) {
         String oldHintContent = hintContent;
         hintContent = newHintContent;
@@ -399,6 +458,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getBorderColor() {
         return borderColor;
     }
@@ -408,6 +468,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setBorderColor(String newBorderColor) {
         String oldBorderColor = borderColor;
         borderColor = newBorderColor;
@@ -416,17 +477,12 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
     }
 
     @Override
-    public int getDefaultTextAlignment() {
-        return TEXT_ALIGNMENT_LEFT;
-    }
-    
-    @Override
     public EObject getCopy() {
         ICanvasModelBlock newObject = (ICanvasModelBlock)super.getCopy();
         newObject.getChildren().clear(); // need to do this!
         return newObject;
     }
-
+    
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -469,6 +525,8 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
                 return getHintContent();
             case ICanvasPackage.CANVAS_MODEL_BLOCK__CONTENT:
                 return getContent();
+            case ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION:
+                return getTextPosition();
         }
         return super.eGet(featureID, resolve, coreType);
     }
@@ -511,6 +569,9 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
             case ICanvasPackage.CANVAS_MODEL_BLOCK__CONTENT:
                 setContent((String)newValue);
                 return;
+            case ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION:
+                setTextPosition((Integer)newValue);
+                return;
         }
         super.eSet(featureID, newValue);
     }
@@ -550,6 +611,9 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
             case ICanvasPackage.CANVAS_MODEL_BLOCK__CONTENT:
                 setContent(CONTENT_EDEFAULT);
                 return;
+            case ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION:
+                setTextPosition(TEXT_POSITION_EDEFAULT);
+                return;
         }
         super.eUnset(featureID);
     }
@@ -580,6 +644,8 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
                 return HINT_CONTENT_EDEFAULT == null ? hintContent != null : !HINT_CONTENT_EDEFAULT.equals(hintContent);
             case ICanvasPackage.CANVAS_MODEL_BLOCK__CONTENT:
                 return CONTENT_EDEFAULT == null ? content != null : !CONTENT_EDEFAULT.equals(content);
+            case ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION:
+                return textPosition != TEXT_POSITION_EDEFAULT;
         }
         return super.eIsSet(featureID);
     }
@@ -636,6 +702,12 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
         if (baseClass == ITextContent.class) {
             switch (derivedFeatureID) {
                 case ICanvasPackage.CANVAS_MODEL_BLOCK__CONTENT: return IArchimatePackage.TEXT_CONTENT__CONTENT;
+                default: return -1;
+            }
+        }
+        if (baseClass == ITextPosition.class) {
+            switch (derivedFeatureID) {
+                case ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION: return IArchimatePackage.TEXT_POSITION__TEXT_POSITION;
                 default: return -1;
             }
         }
@@ -697,6 +769,12 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
                 default: return -1;
             }
         }
+        if (baseClass == ITextPosition.class) {
+            switch (baseFeatureID) {
+                case IArchimatePackage.TEXT_POSITION__TEXT_POSITION: return ICanvasPackage.CANVAS_MODEL_BLOCK__TEXT_POSITION;
+                default: return -1;
+            }
+        }
         return super.eDerivedStructuralFeatureID(baseFeatureID, baseClass);
     }
 
@@ -709,7 +787,7 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (imagePath: "); //$NON-NLS-1$
         result.append(imagePath);
         result.append(", imagePosition: "); //$NON-NLS-1$
@@ -724,6 +802,8 @@ public class CanvasModelBlock extends DiagramModelObject implements ICanvasModel
         result.append(hintContent);
         result.append(", content: "); //$NON-NLS-1$
         result.append(content);
+        result.append(", textPosition: "); //$NON-NLS-1$
+        result.append(textPosition);
         result.append(')');
         return result.toString();
     }

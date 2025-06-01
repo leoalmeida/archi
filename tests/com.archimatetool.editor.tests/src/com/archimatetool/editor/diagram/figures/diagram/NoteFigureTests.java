@@ -5,63 +5,48 @@
  */
 package com.archimatetool.editor.diagram.figures.diagram;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.eclipse.draw2d.geometry.Dimension;
+import java.util.stream.Stream;
+
+import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.geometry.Point;
-import org.junit.Test;
+import org.junit.jupiter.params.provider.Arguments;
 
+import com.archimatetool.editor.ParamsTest;
+import com.archimatetool.editor.diagram.figures.AbstractDiagramModelObjectFigure;
 import com.archimatetool.editor.diagram.figures.AbstractDiagramModelObjectFigureTests;
-import com.archimatetool.editor.ui.factory.ElementUIFactory;
-import com.archimatetool.editor.ui.factory.IElementUIProvider;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IDiagramModelNote;
+import com.archimatetool.model.ITextAlignment;
 
 
 @SuppressWarnings("nls")
 public class NoteFigureTests extends AbstractDiagramModelObjectFigureTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(NoteFigureTests.class);
+    static Stream<Arguments> getParams() {
+        return Stream.of(
+                getParam(createFigure())
+        );
     }
-    
-    private NoteFigure figure;
-    private IDiagramModelNote dmNote;
-    
 
-    @Override
-    protected NoteFigure createFigure() {
-        // Add a DiagramModelNote
-        dmNote = IArchimateFactory.eINSTANCE.createDiagramModelNote();
+    static IFigure createFigure() {
+        IDiagramModelNote dmNote = IArchimateFactory.eINSTANCE.createDiagramModelNote();
         dmNote.setBounds(IArchimateFactory.eINSTANCE.createBounds());
         dmNote.setContent("Note Test");
-        dm.getChildren().add(dmNote);
-        
-        editor.layoutPendingUpdates();
-        
-        figure = (NoteFigure)editor.findFigure(dmNote);
-        return figure;
+        dmNote.setTextAlignment(ITextAlignment.TEXT_ALIGNMENT_LEFT);
+        return addDiagramModelObjectToModelAndFindFigure(dmNote);
     }
     
-    @Test
-    public void testGetDefaultSize() {
-        IElementUIProvider provider = ElementUIFactory.INSTANCE.getProvider(figure.getDiagramModelObject());
-        Dimension defaultSize = provider.getDefaultSize();
-
-        assertEquals(defaultSize, figure.getDefaultSize());
-    }
-
-    @Test
-    public void testGetTextControl() {
+    @ParamsTest
+    public void testGetTextControl(NoteFigure figure) {
         assertNotNull(figure.getTextControl());
     }
 
     @Override
-    @Test
-    public void testDidClickTestControl() {
-        assertTrue(abstractFigure.didClickTextControl(new Point(10, 10)));
+    @ParamsTest
+    public void testDidClickTextControl(AbstractDiagramModelObjectFigure figure) {
+        assertTrue(figure.didClickTextControl(new Point(10, 10)));
     }
 }

@@ -11,11 +11,12 @@ import org.eclipse.emf.common.notify.impl.AdapterFactoryImpl;
 import org.eclipse.emf.ecore.EObject;
 
 import com.archimatetool.canvas.model.*;
-import com.archimatetool.help.hints.IHelpHintProvider;
+import com.archimatetool.editor.ui.IHelpHintProvider;
 import com.archimatetool.model.IAdapter;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IBorderObject;
 import com.archimatetool.model.ICloneable;
+import com.archimatetool.model.IConnectable;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelConnection;
@@ -24,13 +25,17 @@ import com.archimatetool.model.IDiagramModelImage;
 import com.archimatetool.model.IDiagramModelImageProvider;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IDocumentable;
+import com.archimatetool.model.IFeatures;
 import com.archimatetool.model.IFontAttribute;
+import com.archimatetool.model.IIconic;
 import com.archimatetool.model.IIdentifier;
 import com.archimatetool.model.ILineObject;
 import com.archimatetool.model.ILockable;
 import com.archimatetool.model.INameable;
 import com.archimatetool.model.IProperties;
+import com.archimatetool.model.ITextAlignment;
 import com.archimatetool.model.ITextContent;
+import com.archimatetool.model.ITextPosition;
 
 
 /**
@@ -90,10 +95,6 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     protected CanvasSwitch<Adapter> modelSwitch =
         new CanvasSwitch<Adapter>() {
             @Override
-            public Adapter caseIconic(IIconic object) {
-                return createIconicAdapter();
-            }
-            @Override
             public Adapter caseHintProvider(IHintProvider object) {
                 return createHintProviderAdapter();
             }
@@ -126,14 +127,6 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
                 return createCanvasModelConnectionAdapter();
             }
             @Override
-            public Adapter caseIdentifier(IIdentifier object) {
-                return createIdentifierAdapter();
-            }
-            @Override
-            public Adapter caseCloneable(ICloneable object) {
-                return createCloneableAdapter();
-            }
-            @Override
             public Adapter caseAdapter(IAdapter object) {
                 return createAdapterAdapter();
             }
@@ -142,28 +135,24 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
                 return createNameableAdapter();
             }
             @Override
+            public Adapter caseIdentifier(IIdentifier object) {
+                return createIdentifierAdapter();
+            }
+            @Override
+            public Adapter caseFeatures(IFeatures object) {
+                return createFeaturesAdapter();
+            }
+            @Override
+            public Adapter caseArchimateModelObject(IArchimateModelObject object) {
+                return createArchimateModelObjectAdapter();
+            }
+            @Override
+            public Adapter caseCloneable(ICloneable object) {
+                return createCloneableAdapter();
+            }
+            @Override
             public Adapter caseDiagramModelComponent(IDiagramModelComponent object) {
                 return createDiagramModelComponentAdapter();
-            }
-            @Override
-            public Adapter caseFontAttribute(IFontAttribute object) {
-                return createFontAttributeAdapter();
-            }
-            @Override
-            public Adapter caseLineObject(ILineObject object) {
-                return createLineObjectAdapter();
-            }
-            @Override
-            public Adapter caseDiagramModelObject(IDiagramModelObject object) {
-                return createDiagramModelObjectAdapter();
-            }
-            @Override
-            public Adapter caseDiagramModelImageProvider(IDiagramModelImageProvider object) {
-                return createDiagramModelImageProviderAdapter();
-            }
-            @Override
-            public Adapter caseArchimateModelElement(IArchimateModelElement object) {
-                return createArchimateModelElementAdapter();
             }
             @Override
             public Adapter caseDiagramModelContainer(IDiagramModelContainer object) {
@@ -182,6 +171,34 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
                 return createDiagramModelAdapter();
             }
             @Override
+            public Adapter caseConnectable(IConnectable object) {
+                return createConnectableAdapter();
+            }
+            @Override
+            public Adapter caseFontAttribute(IFontAttribute object) {
+                return createFontAttributeAdapter();
+            }
+            @Override
+            public Adapter caseLineObject(ILineObject object) {
+                return createLineObjectAdapter();
+            }
+            @Override
+            public Adapter caseTextAlignment(ITextAlignment object) {
+                return createTextAlignmentAdapter();
+            }
+            @Override
+            public Adapter caseDiagramModelObject(IDiagramModelObject object) {
+                return createDiagramModelObjectAdapter();
+            }
+            @Override
+            public Adapter caseDiagramModelImageProvider(IDiagramModelImageProvider object) {
+                return createDiagramModelImageProviderAdapter();
+            }
+            @Override
+            public Adapter caseIconic(IIconic object) {
+                return createIconicAdapter();
+            }
+            @Override
             public Adapter caseTextContent(ITextContent object) {
                 return createTextContentAdapter();
             }
@@ -192,6 +209,10 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
             @Override
             public Adapter caseBorderObject(IBorderObject object) {
                 return createBorderObjectAdapter();
+            }
+            @Override
+            public Adapter caseTextPosition(ITextPosition object) {
+                return createTextPositionAdapter();
             }
             @Override
             public Adapter caseDiagramModelImage(IDiagramModelImage object) {
@@ -306,6 +327,20 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     }
 
     /**
+     * Creates a new adapter for an object of class '{@link com.archimatetool.model.IArchimateModelObject <em>Model Object</em>}'.
+     * <!-- begin-user-doc -->
+     * This default implementation returns null so that we can easily ignore cases;
+     * it's useful to ignore a case when inheritance will catch all the cases anyway.
+     * <!-- end-user-doc -->
+     * @return the new adapter.
+     * @see com.archimatetool.model.IArchimateModelObject
+     * @generated
+     */
+    public Adapter createArchimateModelObjectAdapter() {
+        return null;
+    }
+
+    /**
      * Creates a new adapter for an object of class '{@link com.archimatetool.canvas.model.IHintProvider <em>Hint Provider</em>}'.
      * <!-- begin-user-doc -->
      * This default implementation returns null so that we can easily ignore cases;
@@ -320,13 +355,13 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     }
 
     /**
-     * Creates a new adapter for an object of class '{@link com.archimatetool.help.hints.IHelpHintProvider <em>Help Hint Provider</em>}'.
+     * Creates a new adapter for an object of class '{@link com.archimatetool.editor.ui.IHelpHintProvider <em>Help Hint Provider</em>}'.
      * <!-- begin-user-doc -->
      * This default implementation returns null so that we can easily ignore cases;
      * it's useful to ignore a case when inheritance will catch all the cases anyway.
      * <!-- end-user-doc -->
      * @return the new adapter.
-     * @see com.archimatetool.help.hints.IHelpHintProvider
+     * @see com.archimatetool.editor.ui.IHelpHintProvider
      * @generated
      */
     public Adapter createHelpHintProviderAdapter() {
@@ -358,20 +393,6 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
      * @generated
      */
     public Adapter createAdapterAdapter() {
-        return null;
-    }
-
-    /**
-     * Creates a new adapter for an object of class '{@link com.archimatetool.model.IArchimateModelElement <em>Model Element</em>}'.
-     * <!-- begin-user-doc -->
-     * This default implementation returns null so that we can easily ignore cases;
-     * it's useful to ignore a case when inheritance will catch all the cases anyway.
-     * <!-- end-user-doc -->
-     * @return the new adapter.
-     * @see com.archimatetool.model.IArchimateModelElement
-     * @generated
-     */
-    public Adapter createArchimateModelElementAdapter() {
         return null;
     }
 
@@ -418,6 +439,20 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     }
 
     /**
+     * Creates a new adapter for an object of class '{@link com.archimatetool.model.IFeatures <em>Features</em>}'.
+     * <!-- begin-user-doc -->
+     * This default implementation returns null so that we can easily ignore cases;
+     * it's useful to ignore a case when inheritance will catch all the cases anyway.
+     * <!-- end-user-doc -->
+     * @return the new adapter.
+     * @see com.archimatetool.model.IFeatures
+     * @generated
+     */
+    public Adapter createFeaturesAdapter() {
+        return null;
+    }
+
+    /**
      * Creates a new adapter for an object of class '{@link com.archimatetool.model.IDiagramModelComponent <em>Diagram Model Component</em>}'.
      * <!-- begin-user-doc -->
      * This default implementation returns null so that we can easily ignore cases;
@@ -428,6 +463,20 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
      * @generated
      */
     public Adapter createDiagramModelComponentAdapter() {
+        return null;
+    }
+
+    /**
+     * Creates a new adapter for an object of class '{@link com.archimatetool.model.IConnectable <em>Connectable</em>}'.
+     * <!-- begin-user-doc -->
+     * This default implementation returns null so that we can easily ignore cases;
+     * it's useful to ignore a case when inheritance will catch all the cases anyway.
+     * <!-- end-user-doc -->
+     * @return the new adapter.
+     * @see com.archimatetool.model.IConnectable
+     * @generated
+     */
+    public Adapter createConnectableAdapter() {
         return null;
     }
 
@@ -516,6 +565,20 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     }
 
     /**
+     * Creates a new adapter for an object of class '{@link com.archimatetool.model.ITextAlignment <em>Text Alignment</em>}'.
+     * <!-- begin-user-doc -->
+     * This default implementation returns null so that we can easily ignore cases;
+     * it's useful to ignore a case when inheritance will catch all the cases anyway.
+     * <!-- end-user-doc -->
+     * @return the new adapter.
+     * @see com.archimatetool.model.ITextAlignment
+     * @generated
+     */
+    public Adapter createTextAlignmentAdapter() {
+        return null;
+    }
+
+    /**
      * Creates a new adapter for an object of class '{@link com.archimatetool.model.IDiagramModelObject <em>Diagram Model Object</em>}'.
      * <!-- begin-user-doc -->
      * This default implementation returns null so that we can easily ignore cases;
@@ -572,6 +635,20 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     }
 
     /**
+     * Creates a new adapter for an object of class '{@link com.archimatetool.model.ITextPosition <em>Text Position</em>}'.
+     * <!-- begin-user-doc -->
+     * This default implementation returns null so that we can easily ignore cases;
+     * it's useful to ignore a case when inheritance will catch all the cases anyway.
+     * <!-- end-user-doc -->
+     * @return the new adapter.
+     * @see com.archimatetool.model.ITextPosition
+     * @generated
+     */
+    public Adapter createTextPositionAdapter() {
+        return null;
+    }
+
+    /**
      * Creates a new adapter for an object of class '{@link com.archimatetool.model.IDiagramModelImage <em>Diagram Model Image</em>}'.
      * <!-- begin-user-doc -->
      * This default implementation returns null so that we can easily ignore cases;
@@ -600,13 +677,13 @@ public class CanvasAdapterFactory extends AdapterFactoryImpl {
     }
 
     /**
-     * Creates a new adapter for an object of class '{@link com.archimatetool.canvas.model.IIconic <em>Iconic</em>}'.
+     * Creates a new adapter for an object of class '{@link com.archimatetool.model.IIconic <em>Iconic</em>}'.
      * <!-- begin-user-doc -->
      * This default implementation returns null so that we can easily ignore cases;
      * it's useful to ignore a case when inheritance will catch all the cases anyway.
      * <!-- end-user-doc -->
      * @return the new adapter.
-     * @see com.archimatetool.canvas.model.IIconic
+     * @see com.archimatetool.model.IIconic
      * @generated
      */
     public Adapter createIconicAdapter() {

@@ -5,24 +5,24 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import org.eclipse.core.runtime.IAdaptable;
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.ui.PlatformUI;
 
 import com.archimatetool.editor.diagram.commands.ConnectionTextPositionCommand;
-import com.archimatetool.editor.diagram.commands.LineWidthCommand;
+import com.archimatetool.editor.model.commands.FeatureCommand;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelConnection;
-import com.archimatetool.model.ILockable;
+import com.archimatetool.model.IFeatures;
 
 
 
@@ -31,34 +31,27 @@ import com.archimatetool.model.ILockable;
  * 
  * @author Phillip Beauvoir
  */
-public class DiagramConnectionSection extends AbstractArchimatePropertySection {
+public class DiagramConnectionSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.elementPropertySection"; //$NON-NLS-1$
 
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
+    /**
+     * Filter to show or reject this section depending on input value
      */
-    private Adapter eAdapter = new AdapterImpl() {
+    public static class Filter extends ObjectFilter {
         @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Model event (Undo/Redo and here)
-            if(feature == IArchimatePackage.Literals.FONT_ATTRIBUTE__TEXT_POSITION) {
-                refreshTextPositionCombo();
-            }
-            else if(feature == IArchimatePackage.Literals.LINE_OBJECT__LINE_WIDTH) {
-                refreshLineWidthCombo();
-            }
-            else if(feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
-                refreshControls();
-            }
+        public boolean isRequiredType(Object object) {
+            return object instanceof IDiagramModelConnection;
         }
-    };
-    
-    private IDiagramModelConnection fConnection;
-    
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return IDiagramModelConnection.class;
+        }
+    }
+
     private Combo fComboTextPosition;
-    private Combo fComboLineWidth;
+    private Button fButtonDisplayName;
     
     public static final String[] comboTextPositionItems = {
             Messages.DiagramConnectionSection_0,
@@ -66,16 +59,10 @@ public class DiagramConnectionSection extends AbstractArchimatePropertySection {
             Messages.DiagramConnectionSection_2
     };
     
-    public static final String[] comboLineWidthItems = {
-            Messages.DiagramConnectionSection_3,
-            Messages.DiagramConnectionSection_4,
-            Messages.DiagramConnectionSection_5
-    };
-    
     @Override
     protected void createControls(Composite parent) {
+        createDisplayNameControl(parent);
         createTextPositionComboControl(parent);
-        createLineWidthComboControl(parent);
         
         // Help ID
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
@@ -85,88 +72,104 @@ public class DiagramConnectionSection extends AbstractArchimatePropertySection {
         createLabel(parent, Messages.DiagramConnectionSection_6, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
         
         fComboTextPosition = new Combo(parent, SWT.READ_ONLY);
+        getWidgetFactory().adapt(fComboTextPosition, true, true);
         fComboTextPosition.setItems(comboTextPositionItems);
+        
         GridData gd = new GridData(SWT.NONE, SWT.NONE, true, false);
-        gd.minimumWidth = ITabbedLayoutConstants.COMBO_WIDTH;
         fComboTextPosition.setLayoutData(gd);
+        
         fComboTextPosition.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if(isAlive()) {
-                    fIsExecutingCommand = true;
-                    getCommandStack().execute(new ConnectionTextPositionCommand(fConnection, fComboTextPosition.getSelectionIndex()));
-                    fIsExecutingCommand = false;
+                CompoundCommand result = new CompoundCommand();
+
+                for(EObject connection : getEObjects()) {
+                    if(isAlive(connection)) {
+                        Command cmd = new ConnectionTextPositionCommand((IDiagramModelConnection)connection, fComboTextPosition.getSelectionIndex());
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
                 }
+
+                executeCommand(result.unwrap());
             }
         });
     }
     
-    private void createLineWidthComboControl(Composite parent) {
-        createLabel(parent, Messages.DiagramConnectionSection_7, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
+    private void createDisplayNameControl(Composite parent) {
+        createLabel(parent, Messages.DiagramConnectionSection_8 + ":", ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER); //$NON-NLS-1$
         
-        fComboLineWidth = new Combo(parent, SWT.READ_ONLY);
-        fComboLineWidth.setItems(comboLineWidthItems);
-        GridData gd = new GridData(SWT.NONE, SWT.NONE, true, false);
-        gd.minimumWidth = ITabbedLayoutConstants.COMBO_WIDTH;
-        fComboLineWidth.setLayoutData(gd);
-        fComboLineWidth.addSelectionListener(new SelectionAdapter() {
+        fButtonDisplayName = getWidgetFactory().createButton(parent, null, SWT.CHECK);
+        
+        fButtonDisplayName.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if(isAlive()) {
-                    fIsExecutingCommand = true;
-                    getCommandStack().execute(new LineWidthCommand(fConnection, fComboLineWidth.getSelectionIndex() + 1));
-                    fIsExecutingCommand = false;
+                CompoundCommand result = new CompoundCommand();
+
+                for(EObject connection : getEObjects()) {
+                    if(isAlive(connection)) {
+                        Command cmd = new FeatureCommand(Messages.DiagramConnectionSection_8, (IFeatures)connection,
+                                IDiagramModelConnection.FEATURE_NAME_VISIBLE, fButtonDisplayName.getSelection(), IDiagramModelConnection.FEATURE_NAME_VISIBLE_DEFAULT);
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
                 }
+
+                executeCommand(result.unwrap());
             }
         });
     }
     
     @Override
-    protected void setElement(Object element) {
-        if(element instanceof IAdaptable) {
-            fConnection = (IDiagramModelConnection)((IAdaptable)element).getAdapter(IDiagramModelConnection.class);
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+
+        if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION) {
+            refreshTextPositionCombo();
         }
-        else {
-            throw new RuntimeException("Should have been an Edit Part"); //$NON-NLS-1$
+        else if(feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
+            update();
         }
-        
-        refreshControls();
+        else if(isFeatureNotification(msg, IDiagramModelConnection.FEATURE_NAME_VISIBLE)) {
+            refreshNameVisibleButton();
+        }
     }
-    
-    protected void refreshControls() {
+
+    @Override
+    protected void update() {
+        refreshNameVisibleButton();
         refreshTextPositionCombo();
-        refreshLineWidthCombo();
     }
     
     protected void refreshTextPositionCombo() {
         if(fIsExecutingCommand) {
             return; 
         }
-        int pos = fConnection.getTextPosition();
+        
+        IDiagramModelConnection lastSelectedConnection = (IDiagramModelConnection)getFirstSelectedObject();
+        
+        int pos = lastSelectedConnection.getTextPosition();
         fComboTextPosition.select(pos);
         
-        boolean enabled = fConnection instanceof ILockable ? !((ILockable)fConnection).isLocked() : true;
-        fComboTextPosition.setEnabled(enabled);
+        fComboTextPosition.setEnabled(!isLocked(lastSelectedConnection));
     }
     
-    protected void refreshLineWidthCombo() {
+    protected void refreshNameVisibleButton() {
         if(fIsExecutingCommand) {
             return; 
         }
-        int lineWidth = fConnection.getLineWidth();
-        fComboLineWidth.select(lineWidth - 1);
         
-        boolean enabled = fConnection instanceof ILockable ? !((ILockable)fConnection).isLocked() : true;
-        fComboLineWidth.setEnabled(enabled);
+        IDiagramModelConnection lastSelectedConnection = (IDiagramModelConnection)getFirstSelectedObject();
+        
+        fButtonDisplayName.setSelection(lastSelectedConnection.isNameVisible());
+        
+        fButtonDisplayName.setEnabled(!isLocked(lastSelectedConnection));
     }
     
     @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
-    }
-
-    @Override
-    protected EObject getEObject() {
-        return fConnection;
+    protected IObjectFilter getFilter() {
+        return new Filter();
     }
 }

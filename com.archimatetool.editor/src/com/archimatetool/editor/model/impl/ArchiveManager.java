@@ -1,40 +1,41 @@
 /**
- * This program and the accompanying materials
- * are made available under the terms of the License
- * which accompanies this distribution in the file LICENSE.txt
+ * This program and the accompanying materials are made available under the
+ * terms of the License which accompanies this distribution in the file
+ * LICENSE.txt
  */
 package com.archimatetool.editor.model.impl;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
+import java.util.Map.Entry;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
 
-import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.resource.Resource;
-import org.eclipse.emf.ecore.util.EContentAdapter;
 import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.swt.graphics.Image;
+import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.widgets.Display;
 
 import com.archimatetool.editor.model.IArchiveManager;
-import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.utils.FileUtils;
-import com.archimatetool.editor.utils.ZipUtils;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelImageProvider;
 import com.archimatetool.model.util.ArchimateResourceFactory;
 
@@ -42,15 +43,18 @@ import com.archimatetool.model.util.ArchimateResourceFactory;
 
 /**
  * Archive Manager
+ * Handles saving a model to archive file if model contains images or to XML file if no images
+ * Handles image data, saving images, creating images
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class ArchiveManager implements IArchiveManager {
     
     /**
-     * Raw image bytes loaded for all images in use in this model
+     * Raw image bytes stored for all images in this model
      */
-    static ByteArrayStorage BYTE_ARRAY_STORAGE = new ByteArrayStorage();
+    private ByteArrayStorage byteArrayStorage = new ByteArrayStorage();
     
     /**
      * The ArchiMate model
@@ -63,78 +67,38 @@ public class ArchiveManager implements IArchiveManager {
     private boolean fImagesLoaded = false;
     
     /**
-     * Paths of images loaded
-     */
-    private List<String> fLoadedImagePaths = new ArrayList<String>();
-    
-    /**
-     * Adapter monitors added image components added by user (copy & paste, DND, image set, etc)
-     * since images were loaded from archive file.
-     */
-    private EContentAdapter fModelAdapter = new EContentAdapter() {
-        @Override
-        public void notifyChanged(Notification msg) {
-            super.notifyChanged(msg);
-
-            // IDiagramModelImageProvider added
-            if(msg.getEventType() == Notification.ADD) {
-                if(msg.getNewValue() instanceof IDiagramModelImageProvider) {
-                    IDiagramModelImageProvider imageProvider = (IDiagramModelImageProvider)msg.getNewValue();
-                    String imagePath = imageProvider.getImagePath();
-                    if(imagePath != null && !fLoadedImagePaths.contains(imagePath)) {
-                        fLoadedImagePaths.add(imagePath);
-                    }
-                }
-            }
-            // Image path set
-            else if(msg.getEventType() == Notification.SET) {
-                if(msg.getFeature() == IArchimatePackage.Literals.DIAGRAM_MODEL_IMAGE_PROVIDER__IMAGE_PATH) {
-                    String imagePath = (String)msg.getNewValue();
-                    if(imagePath != null && !fLoadedImagePaths.contains(imagePath)) {
-                        fLoadedImagePaths.add(imagePath);
-                    }
-                }
-            }
-        }
-    };
-    
-    /**
      * @param model The owning model
      */
     public ArchiveManager(IArchimateModel model) {
         fModel = model;
-        fModel.eAdapters().add(fModelAdapter);
+    }
+    
+    @Override
+    public boolean useArchiveFormat() {
+        if(fModel.getFile() == null) {
+            return true; // default for safety
+        }
+        
+        // Use archive format if model file is not in a git folder
+        File gitFolder = new File(fModel.getFile().getParentFile(), ".git");
+        return !(gitFolder.exists() && gitFolder.isDirectory());
     }
 
     @Override
     public String addImageFromFile(File file) throws IOException {
         if(file == null || !file.exists() || !file.canRead()) {
-            throw new FileNotFoundException("Cannot find file"); //$NON-NLS-1$
+            throw new FileNotFoundException("Cannot find file");
         }
         
         // Get bytes
-        byte[] bytes = BYTE_ARRAY_STORAGE.getBytesFromFile(file);
+        byte[] bytes = byteArrayStorage.getBytesFromFile(file);
         if(bytes == null) {
-            throw new IOException("Could not get bytes from file"); //$NON-NLS-1$
+            throw new IOException("Could not get bytes from file");
         }
-        
-        // Is this already in the cache?
-        String entryName = BYTE_ARRAY_STORAGE.getKey(bytes);
-        
-        // No, so create a new one
-        if(entryName == null) {
-            // Is this actually a valid Image file? Test it...
-            testImageBytesValid(bytes);
-            
-            // OK, add the bytes
-            entryName = createArchiveImagePathname(file);
-            BYTE_ARRAY_STORAGE.addByteContentEntry(entryName, bytes);
-        }
-        
-        // Once the imagepath has been returned, the caller should call IDiagramModelImageProvider.setImagePath(imagepath)
-        // And this in turn will add the image path to fLoadededImagePaths via the EContentAdapter
-        
-        return entryName;
+
+        String entryName = createArchiveImagePathname(file);
+
+        return addByteContentEntry(entryName, bytes);
     }
     
     /**
@@ -144,52 +108,67 @@ public class ArchiveManager implements IArchiveManager {
      */
     private void testImageBytesValid(byte[] bytes) throws IOException {
         try {
-            Image img = new Image(Display.getCurrent(), new ByteArrayInputStream(bytes));
-            img.dispose();
+            new ImageData(new ByteArrayInputStream(bytes));
         }
         catch(Throwable ex) {
-            throw new IOException("Not a supported image file", ex); //$NON-NLS-1$
+            throw new IOException("Not a supported image file", ex);
         }
     }
     
     @Override
-    public Image createImage(String path) throws Exception {
-        if(BYTE_ARRAY_STORAGE.hasEntry(path)) {
-            return new Image(Display.getCurrent(), BYTE_ARRAY_STORAGE.getInputStream(path));
+    public Image createImage(String imagePath) throws Exception {
+        if(byteArrayStorage.hasEntry(imagePath)) {
+            return new Image(Display.getCurrent(), byteArrayStorage.getInputStream(imagePath));
         }
         
         return null;
     }
     
     @Override
-    public List<String> getImagePaths() {
-        List<String> list = new ArrayList<String>();
+    public ImageData createImageData(String imagePath) {
+        if(byteArrayStorage.hasEntry(imagePath)) {
+            return new ImageData(byteArrayStorage.getInputStream(imagePath));
+        }
+        
+        return null;
+    }
+    
+    @Override
+    public Set<String> getImagePaths() {
+        Set<String> set = new HashSet<>();
         
         for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
             EObject element = iter.next();
             if(element instanceof IDiagramModelImageProvider) {
                 String imagePath = ((IDiagramModelImageProvider)element).getImagePath();
-                if(imagePath != null && !list.contains(imagePath)) {
-                    list.add(imagePath);
+                if(imagePath != null) {
+                    set.add(imagePath);
                 }
             }
         }
         
-        return list;
+        return set;
     }
     
     @Override
-    public List<String> getLoadedImagePaths() {
-        return new ArrayList<String>(fLoadedImagePaths);
+    public Set<String> getLoadedImagePaths() {
+        return byteArrayStorage.getEntryNames();
     }
     
     /**
-     * Load images from model's archive file
+     * Load images from model's archive file or folder
      */
     @Override
     public void loadImages() throws IOException {
-        if(!fImagesLoaded && loadImagesFromModelFile(fModel.getFile())) {
-            fImagesLoaded = true;
+        if(!fImagesLoaded && fModel.getFile() != null) {
+            // Archive format
+            if(FACTORY.isArchiveFile(fModel.getFile())) {
+                fImagesLoaded = loadImagesFromModelFile(fModel.getFile());
+            }
+            // Else try and load if there is an "images" folder
+            else {
+                fImagesLoaded = loadImagesFromModelFolder(fModel.getFile());
+            }
         }
     }
     
@@ -199,90 +178,217 @@ public class ArchiveManager implements IArchiveManager {
             return false;
         }
         
-        ZipFile zipFile = new ZipFile(file);
-        
-        for(Enumeration<? extends ZipEntry> enm = zipFile.entries(); enm.hasMoreElements();) {
-            ZipEntry zipEntry = enm.nextElement();
-            String entryName = zipEntry.getName();
-            if(entryName.startsWith("images/")) { //$NON-NLS-1$
-                // Add to ByteArrayStorage
-                if(!BYTE_ARRAY_STORAGE.hasEntry(entryName)) {
-                    InputStream in = zipFile.getInputStream(zipEntry);
-                    BYTE_ARRAY_STORAGE.addStreamEntry(entryName, in);
-                }
-                
-                // Add to list
-                if(!fLoadedImagePaths.contains(entryName)) {
-                    fLoadedImagePaths.add(entryName);
+        try(ZipFile zipFile = new ZipFile(file)) {
+            for(Enumeration<? extends ZipEntry> enm = zipFile.entries(); enm.hasMoreElements();) {
+                ZipEntry zipEntry = enm.nextElement();
+                String entryName = zipEntry.getName();
+                if(entryName.startsWith("images/")) {
+                    // Add to ByteArrayStorage
+                    if(!byteArrayStorage.hasEntry(entryName)) {
+                        InputStream in = zipFile.getInputStream(zipEntry);
+                        byteArrayStorage.addStreamEntry(entryName, in);
+                    }
                 }
             }
         }
         
-        zipFile.close();
+        return true;
+    }
+    
+    /**
+     * Load any images from the "images" folder if this model is in a git repository
+     */
+    private boolean loadImagesFromModelFolder(File modelFile) throws IOException {
+        File imagesFolder = getImagesFolder(modelFile);
+        if(FileUtils.isFolderEmpty(imagesFolder)) { // No images in folder
+            return false;
+        }
+        
+        // Get image paths in the model
+        Set<String> paths = getImagePaths();
+        if(paths.isEmpty()) {
+            return false;
+        }
+
+        // Iterate through all image files in the folder
+        for(File imageFile : imagesFolder.listFiles()) {
+            String entryName = "images/" + imageFile.getName();
+            
+            // If the image belongs to the model and it's not loaded, then load it
+            // This ensures we don't load any image file that doesn't belong in the model
+            if(paths.contains(entryName) && !byteArrayStorage.hasEntry(entryName)) {
+                byte[] bytes = Files.readAllBytes(imageFile.toPath());
+                try {
+                    testImageBytesValid(bytes);
+                    byteArrayStorage.addByteContentEntry(entryName, bytes);
+                }
+                catch(IOException ex) {
+                    // Ignore
+                }
+            }
+        }
         
         return true;
     }
     
     @Override
     public boolean hasImages() {
+        // List of of actual images loaded
+        Set<String> loadedImagePaths = getLoadedImagePaths();
+        
+        // If no loaded images...
+        if(loadedImagePaths.isEmpty()) {
+            return false;
+        }
+        
+        // Iterate thru model and find instances of IDiagramModelImageProvider
         for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
             EObject element = iter.next();
+            
             if(element instanceof IDiagramModelImageProvider) {
                 String imagePath = ((IDiagramModelImageProvider)element).getImagePath();
-                if(imagePath != null) {
+                
+                // If it has an image path and it's loaded we have images
+                if(imagePath != null && loadedImagePaths.contains(imagePath)) {
                     return true;
                 }
             }
         }
+        
         return false;
+    }
+
+    @Override
+    public byte[] getBytesFromEntry(String entryName) {
+        return byteArrayStorage.getEntry(entryName);
+    }
+
+    @Override
+    public String addByteContentEntry(String imagePath, byte[] bytes) throws IOException {
+        // Is this already in the cache?
+        String entryName = byteArrayStorage.getKey(bytes);
+        
+        // No
+        if(entryName == null) {
+            // Is this actually a valid Image file? Test it...
+            testImageBytesValid(bytes);
+           
+            // Add it
+            entryName = imagePath;
+            byteArrayStorage.addByteContentEntry(imagePath, bytes);
+        }
+
+        return entryName;
+    }
+    
+    @Override
+    public String copyImageBytes(IArchiveManager archiveManager, String imagePath) throws IOException {
+        byte[] bytes = archiveManager.getBytesFromEntry(imagePath);
+        if(bytes != null) {
+            imagePath = addByteContentEntry(imagePath, bytes);
+        }
+        return imagePath;
     }
     
     @Override
     public void saveModel() throws IOException {
         File file = fModel.getFile();
-        
         if(file == null) {
             return;
         }
         
+        // Delete the images folder if not using the archive format
+        // We have to delete the folder in all cases regardless of whether the model has images
+        if(!useArchiveFormat()) { // This check is important because we don't want to delete any "images" folder
+            FileUtils.deleteFolder(getImagesFolder(file));
+        }
+        
         if(hasImages()) {
-            saveModelToArchiveFile(file);
+            if(useArchiveFormat()) {
+                saveModelToArchiveFile(file);
+            }
+            else {
+                saveModelWithImagesFolder(file);
+            }
         }
         else {
-            saveModelToXMLFile(file);
+            saveResource(file);
         }
+    }
+    
+    @Override
+    public IArchiveManager clone(IArchimateModel model) {
+        ArchiveManager archiveManager = new ArchiveManager(model);
+        
+        for(Entry<String, byte[]> entry : byteArrayStorage.getEntrySet()) {
+            archiveManager.byteArrayStorage.addByteContentEntry(entry.getKey(), entry.getValue());
+        }
+        
+        return archiveManager;
     }
     
     /**
      * Save the model to Archive File format
      */
     private void saveModelToArchiveFile(File file) throws IOException {
-        // Temp file for xml model file
-        File tmpFile = File.createTempFile("archimate", null); //$NON-NLS-1$
-        tmpFile.deleteOnExit();
-        saveModelToXMLFile(tmpFile);
-        
-        // Create Zip File output stream to model's file
-        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(file));
-        ZipOutputStream zOut = new ZipOutputStream(out);
-        
-        try {
+        try(ZipOutputStream zOut = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(file)))) {
             // Add the model xml file
-            ZipUtils.addFileToZip(tmpFile, "model.xml", zOut); //$NON-NLS-1$
+            saveModelWithArchiveFile(zOut);
             
             // Add any images
             saveImages(zOut);
         }
-        finally {
-            tmpFile.delete();
-            zOut.close();
+    }
+    
+    /**
+     * Save the model not in archive format, with images in an "images" file
+     */
+    private void saveModelWithImagesFolder(File modelFile) throws IOException {
+        saveResource(modelFile);
+        
+        // Create images folder
+        getImagesFolder(modelFile).mkdirs();
+        
+        for(String imagePath : getImagePaths()) {
+            byte[] bytes = byteArrayStorage.getEntry(imagePath);
+            if(bytes != null) {
+                File imageFile = new File(modelFile.getParentFile(), imagePath);
+                Files.write(imageFile.toPath(), bytes, StandardOpenOption.CREATE);
+            }
         }
     }
     
     /**
-     * Save the model to XML File format
+     * Save the model xml file in the Archive File
      */
-    private void saveModelToXMLFile(File file) throws IOException {
+    private void saveModelWithArchiveFile(ZipOutputStream zOut) throws IOException {
+        // Temp file for xml model file
+        File tmpFile = File.createTempFile("archi-", null);
+        tmpFile.deleteOnExit();
+        saveResource(tmpFile);
+        
+        ZipEntry zipEntry = new ZipEntry("model.xml");
+        zOut.putNextEntry(zipEntry);
+        
+        final int bufSize = 8192;
+        byte buf[] = new byte[bufSize];
+        int bytesRead;
+        
+        try(BufferedInputStream in = new BufferedInputStream(new FileInputStream(tmpFile), bufSize)) {
+            while((bytesRead = in.read(buf)) != -1) {
+                zOut.write(buf, 0, bytesRead);
+            }
+            zOut.closeEntry();
+        }
+        finally {
+            tmpFile.delete();
+        }
+    }
+    
+    /**
+     * Save the model to Resource
+     */
+    private void saveResource(File file) throws IOException {
         Resource resource = fModel.eResource();
         
         // No parent Resource set, so create a new one
@@ -295,27 +401,23 @@ public class ArchiveManager implements IArchiveManager {
             resource.setURI(URI.createFileURI(file.getAbsolutePath()));
         }
         
-        resource.save(null);
+        // Catch *all* exceptions in case of XML errors
+        try {
+            resource.save(null);
+        }
+        catch(Exception ex) {
+            throw new IOException(ex);
+        }
     }
     
     private void saveImages(ZipOutputStream zOut) throws IOException {
-        List<String> added = new ArrayList<String>();
-        
-        for(Iterator<EObject> iter = fModel.eAllContents(); iter.hasNext();) {
-            EObject eObject = iter.next();
-            if(eObject instanceof IDiagramModelImageProvider) {
-                IDiagramModelImageProvider imageProvider = (IDiagramModelImageProvider)eObject;
-                String imagePath = imageProvider.getImagePath();
-                if(imagePath != null && !added.contains(imagePath)) {
-                    byte[] bytes = BYTE_ARRAY_STORAGE.getEntry(imagePath);
-                    if(bytes != null) {
-                        ZipEntry zipEntry = new ZipEntry(imagePath);
-                        zOut.putNextEntry(zipEntry);
-                        zOut.write(bytes);
-                        zOut.closeEntry();
-                        added.add(imagePath);
-                    }
-                }
+        for(String imagePath : getImagePaths()) {
+            byte[] bytes = byteArrayStorage.getEntry(imagePath);
+            if(bytes != null) {
+                ZipEntry zipEntry = new ZipEntry(imagePath);
+                zOut.putNextEntry(zipEntry);
+                zOut.write(bytes);
+                zOut.closeEntry();
             }
         }
     }
@@ -325,7 +427,7 @@ public class ArchiveManager implements IArchiveManager {
         
         String unique = EcoreUtil.generateUUID();
         
-        String path = "images/" + unique; //$NON-NLS-1$
+        String path = "images/" + unique;
         if(ext.length() != 0) {
             path += ext;
         }
@@ -333,41 +435,14 @@ public class ArchiveManager implements IArchiveManager {
         return path;
     }
     
-    @Override
-    public void dispose() {
-        fModel.eAdapters().remove(fModelAdapter);
-        
-        if(!fLoadedImagePaths.isEmpty()) {
-            unloadUnusedImages();
-        }
-        
-        fLoadedImagePaths.clear();
-        fModel = null;
+    private File getImagesFolder(File modelFile) {
+        return modelFile != null ? new File(modelFile.getParentFile(), "images") : null;
     }
     
-    /**
-     * Unload any images not in use in other models
-     */
-    private void unloadUnusedImages() {
-        // Gather all image paths that are in use in other models
-        List<String> allPathsInUse = new ArrayList<String>();
-        
-        for(IArchimateModel model : IEditorModelManager.INSTANCE.getModels()) {
-            if(model != fModel) { // don't bother with this model as we no longer use any images
-                ArchiveManager archiveManager = (ArchiveManager)model.getAdapter(IArchiveManager.class);
-                for(String imagePath : archiveManager.fLoadedImagePaths) {
-                    if(!allPathsInUse.contains(imagePath)) {
-                        allPathsInUse.add(imagePath);
-                    }
-                }
-            }
-        }
-        
-        // Release all unused image data and cached images that are not in image paths
-        for(String imagePath : fLoadedImagePaths) {
-            if(!allPathsInUse.contains(imagePath)) {
-                BYTE_ARRAY_STORAGE.removeEntry(imagePath);
-            }
-        }
+    @Override
+    public void dispose() {
+        byteArrayStorage.dispose();
+        byteArrayStorage = null;
+        fModel = null;
     }
 }

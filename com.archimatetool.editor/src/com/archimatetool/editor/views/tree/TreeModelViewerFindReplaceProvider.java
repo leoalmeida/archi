@@ -15,10 +15,10 @@ import com.archimatetool.editor.ui.findreplace.AbstractFindReplaceProvider;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.editor.views.tree.commands.RenameCommandHandler;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IFolder;
 import com.archimatetool.model.INameable;
-import com.archimatetool.model.IRelationship;
 
 
 
@@ -43,6 +43,7 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
         fTreeModelViewer = viewer;
     }
     
+    @Override
     public boolean find(String toFind) {
         // Find All
         if(isAll()) {
@@ -60,6 +61,7 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
         }
     }
     
+    @Override
     public boolean replace(String toFind, String toReplaceWith) {
         // Replace All
         if(isAll()) {
@@ -68,7 +70,7 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
                 List<String> newNames = new ArrayList<String>();
                 
                 for(INameable nameable : elements) {
-                    String newName = getNewName(nameable.getName(), toFind, toReplaceWith);
+                    String newName = getReplacedString(nameable.getName(), toFind, toReplaceWith);
                     newNames.add(newName);
                 }
                 
@@ -91,7 +93,7 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
                             INameable nameable = (INameable)object;
                             elements.add(nameable);
                             
-                            String newName = getNewName(nameable.getName(), toFind, toReplaceWith);
+                            String newName = getReplacedString(nameable.getName(), toFind, toReplaceWith);
                             newNames.add(newName);
                         }
                     }
@@ -106,7 +108,7 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
             else {
                 Object object = getFirstSelectedObject();
                 if(matches(object, toFind)) {
-                    RenameCommandHandler.doRenameCommand((INameable)object, getNewName(((INameable)object).getName(), toFind, toReplaceWith));
+                    RenameCommandHandler.doRenameCommand((INameable)object, getReplacedString(((INameable)object).getName(), toFind, toReplaceWith));
                     return true;
                 }
             }
@@ -205,7 +207,7 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
             return false;
         }
         
-        if(object instanceof IRelationship && !isIncludeRelations()) { // relations not included
+        if(object instanceof IArchimateRelationship && !isIncludeRelations()) { // relations not included
             return false;
         }
         
@@ -236,8 +238,8 @@ public class TreeModelViewerFindReplaceProvider extends AbstractFindReplaceProvi
     private IArchimateModel getModelInScope() {
         IStructuredSelection selection = (IStructuredSelection)fTreeModelViewer.getSelection();
         Object o = selection.getFirstElement();
-        if(o instanceof IArchimateModelElement) {
-            return ((IArchimateModelElement)o).getArchimateModel();
+        if(o instanceof IArchimateModelObject) {
+            return ((IArchimateModelObject)o).getArchimateModel();
         }
         
         return null;

@@ -5,18 +5,17 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.emf.common.util.EList;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
@@ -29,10 +28,6 @@ import com.archimatetool.model.TestSupport;
 @SuppressWarnings("nls")
 public class MetadataTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(MetadataTests.class);
-    }
-    
     IArchimateModel model;
     IMetadata metadata;
     
@@ -40,10 +35,12 @@ public class MetadataTests {
     // BEFORE AND AFTER METHODS GO HERE 
     // ---------------------------------------------------------------------------------------------
     
-    @Before
+    @SuppressWarnings("deprecation")
+    @BeforeEach
     public void runBeforeEachTest() {
         model = IArchimateFactory.eINSTANCE.createArchimateModel();
-        metadata = model.getMetadata();
+        metadata = IArchimateFactory.eINSTANCE.createMetadata();
+        model.setMetadata(metadata);
     }
     
     // ---------------------------------------------------------------------------------------------
@@ -82,6 +79,7 @@ public class MetadataTests {
         IArchimateModel testModel = TestSupport.loadModel(file);
         
         // Check it persisted
+        @SuppressWarnings("deprecation")
         EList<IProperty> testEntries = testModel.getMetadata().getEntries();
         assertEquals(1, testEntries.size());
         testProperty = testEntries.get(0);
@@ -104,9 +102,11 @@ public class MetadataTests {
         assertEquals(property, entries.get(0));
     }
     
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void testAddEntryNullException() {
-        metadata.addEntry(null, "");
+        assertThrows(IllegalArgumentException.class, () -> {
+            metadata.addEntry(null, "");
+        });
     }
         
     @Test
@@ -119,9 +119,11 @@ public class MetadataTests {
         assertEquals(property, metadata.getEntry(key));
     }
     
-    @Test(expected=IllegalArgumentException.class)
+    @Test
     public void testgetEntryNullException() {
-        metadata.getEntry(null);
+        assertThrows(IllegalArgumentException.class, () -> {
+            metadata.getEntry(null);
+        });
     }
 
     @Test

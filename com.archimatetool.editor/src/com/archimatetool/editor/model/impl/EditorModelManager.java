@@ -11,16 +11,14 @@ import java.beans.PropertyChangeSupport;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.EventObject;
 import java.util.List;
 
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.util.URI;
 import org.eclipse.emf.ecore.resource.Resource;
 import org.eclipse.emf.ecore.resource.Resource.Diagnostic;
-import org.eclipse.emf.ecore.util.EContentAdapter;
 import org.eclipse.gef.commands.CommandStack;
-import org.eclipse.gef.commands.CommandStackListener;
+import org.eclipse.gef.commands.CommandStackEvent;
+import org.eclipse.gef.commands.CommandStackEventListener;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.osgi.util.NLS;
@@ -35,16 +33,16 @@ import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.JDOMException;
 
-import com.archimatetool.editor.ArchimateEditorPlugin;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.Logger;
 import com.archimatetool.editor.diagram.util.AnimationUtil;
 import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.model.IEditorModelManager;
+import com.archimatetool.editor.model.ModelChecker;
 import com.archimatetool.editor.model.compatibility.CompatibilityHandlerException;
 import com.archimatetool.editor.model.compatibility.IncompatibleModelException;
 import com.archimatetool.editor.model.compatibility.ModelCompatibility;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.services.EditorManager;
 import com.archimatetool.editor.utils.FileUtils;
 import com.archimatetool.jdom.JDOMUtils;
@@ -53,7 +51,7 @@ import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.ModelVersion;
-import com.archimatetool.model.util.ArchimateResourceFactory;
+import com.archimatetool.model.util.IModelContentListener;
 
 
 
@@ -77,6 +75,11 @@ implements IEditorModelManager {
     private PropertyChangeSupport fListeners = new PropertyChangeSupport(this);
     
     /**
+     * Listener
+     */
+    private IModelContentListener fEContentListener = this::notifyChanged;
+    
+    /**
      * Models Open
      */
     private List<IArchimateModel> fModels;
@@ -84,27 +87,36 @@ implements IEditorModelManager {
     /**
      * Backing File
      */
-    private File backingFile = new File(ArchimateEditorPlugin.INSTANCE.getUserDataFolder(), "models.xml"); //$NON-NLS-1$
+    private File backingFile = new File(ArchiPlugin.getInstance().getWorkspaceFolder(), "models.xml"); //$NON-NLS-1$
     
     /**
      * Listen to the App closing so we can ask to save
      */
     private IWorkbenchListener workBenchListener = new IWorkbenchListener() {
+        @Override
         public void postShutdown(IWorkbench workbench) {
         }
 
+        @Override
         public boolean preShutdown(IWorkbench  workbench, boolean forced) {
             // Handle modified models
-            for(IArchimateModel model : getModels()) {
-                if(isModelDirty(model)) {
-                    try {
-                        boolean result = askSaveModel(model);
-                        if(!result) {
+            if(fModels != null) { // Dont call getModels() - we don't want to call loadState();
+                for(IArchimateModel model : fModels) {
+                    if(isModelDirty(model)) {
+                        try {
+                            boolean result = askSaveModel(model);
+                            if(!result) {
+                                return false;
+                            }
+                        }
+                        catch(IOException ex) {
+                            ex.printStackTrace();
+                            MessageDialog.openError(Display.getCurrent().getActiveShell(),
+                                    Messages.EditorModelManager_14,
+                                    NLS.bind(Messages.EditorModelManager_15, model.getFile())
+                                    + "\n" + ex.getMessage()); //$NON-NLS-1$
                             return false;
                         }
-                    }
-                    catch(IOException ex) {
-                        ex.printStackTrace();
                     }
                 }
             }
@@ -154,8 +166,14 @@ implements IEditorModelManager {
     
     @Override
     public void registerModel(IArchimateModel model) {
+        if(model == null) {
+            return;
+        }
+        
         // Add to Models
-        getModels().add(model);
+        if(!getModels().contains(model)) {
+            getModels().add(model);
+        }
         
         // New Command Stack
         createNewCommandStack(model);
@@ -164,7 +182,9 @@ implements IEditorModelManager {
         createNewArchiveManager(model);
         
         firePropertyChange(this, PROPERTY_MODEL_CREATED, null, model);
-        model.eAdapters().add(new ECoreAdapter());
+        
+        // Register Ecore listener
+        model.addModelContentListener(fEContentListener);
     }
     
     @Override
@@ -180,11 +200,15 @@ implements IEditorModelManager {
         }
         
         model = loadModel(file);
+        
         if(model != null) {
-            // Open Views of newly opened model if set in Preferences
-            if(Preferences.doOpenDiagramsOnLoad()) {
+            // Open Views of newly opened model if set in Preferences up to a maximum for safety
+            if(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.OPEN_DIAGRAMS_ON_LOAD)) {
+                int max = 0;
                 for(IDiagramModel dm : model.getDiagramModels()) {
-                    EditorManager.openDiagramEditor(dm);
+                    if(max++ < 30) {
+                        EditorManager.openDiagramEditor(dm);
+                    }
                 }
             }
             
@@ -209,7 +233,8 @@ implements IEditorModelManager {
         // New Archive Manager
         createNewArchiveManager(model);
         
-        model.eAdapters().add(new ECoreAdapter());
+        // Register Ecore listener
+        model.addModelContentListener(fEContentListener);
 
         firePropertyChange(this, PROPERTY_MODEL_OPENED, null, model);
     }
@@ -225,14 +250,9 @@ implements IEditorModelManager {
         if(model != null) {
             return model;
         }
-
-        // Ascertain if this is an archive file
-        boolean useArchiveFormat = IArchiveManager.FACTORY.isArchiveFile(file);
         
         // Create the Resource
-        Resource resource = ArchimateResourceFactory.createNewResource(useArchiveFormat ?
-                                                       IArchiveManager.FACTORY.createArchiveModelURI(file) :
-                                                       URI.createFileURI(file.getAbsolutePath()));
+        Resource resource = IArchiveManager.FACTORY.createResource(file);
 
         // Check model compatibility
         ModelCompatibility modelCompatibility = new ModelCompatibility(resource);
@@ -242,16 +262,28 @@ implements IEditorModelManager {
             resource.load(null);
         }
         catch(IOException ex) {
+            // No Resource errors so must be file access exception
+            if(resource.getErrors().isEmpty() && PlatformUI.isWorkbenchRunning()) {
+                MessageDialog.openError(Display.getCurrent().getActiveShell(),
+                        Messages.EditorModelManager_2,
+                        ex.toString());
+                return null;
+            }
+            
             // Error occured loading model. 
             try {
                 modelCompatibility.checkErrors();
             }
             catch(IncompatibleModelException ex1) {
                 // Was it a disaster?
-                MessageDialog.openError(Display.getCurrent().getActiveShell(),
-                        Messages.EditorModelManager_2,
-                        NLS.bind(Messages.EditorModelManager_3, file)
-                        + "\n" + ex1.getMessage()); //$NON-NLS-1$
+                if(PlatformUI.isWorkbenchRunning()) {
+                    MessageDialog.openError(Display.getCurrent().getActiveShell(),
+                            Messages.EditorModelManager_2,
+                            NLS.bind(Messages.EditorModelManager_3, file)
+                            + "\n" + ex1.getMessage()); //$NON-NLS-1$
+                    
+                }
+
                 return null;
             }
         }
@@ -259,35 +291,37 @@ implements IEditorModelManager {
         model = (IArchimateModel)resource.getContents().get(0);
 
         // Once loaded - check for later model version
-        boolean isLaterModelVersion = modelCompatibility.isLaterModelVersion(ModelVersion.VERSION);
-        if(isLaterModelVersion) {
-            boolean answer = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
-                    Messages.EditorModelManager_4,
-                    NLS.bind(Messages.EditorModelManager_5,
-                            file, model.getVersion()));
-            if(!answer) {
-                return null;
-            }
-        }
-        // Check for unknown model features which might be OK to load
-        else {
-            List<Diagnostic> exceptions = modelCompatibility.getAcceptableExceptions();
-            if(!exceptions.isEmpty()) {
-                String message = ""; //$NON-NLS-1$
-                for(int i = 0; i < exceptions.size(); i++) {
-                    if(i == 3) {
-                        message += (exceptions.size() - 3) + " " + Messages.EditorModelManager_12; //$NON-NLS-1$
-                        break;
-                    }
-                    message += exceptions.get(i).getMessage() + "\n"; //$NON-NLS-1$
-                }
-                
+        if(PlatformUI.isWorkbenchRunning()) {
+            boolean isLaterModelVersion = modelCompatibility.isLaterModelVersion(ModelVersion.VERSION);
+            if(isLaterModelVersion) {
                 boolean answer = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
                         Messages.EditorModelManager_4,
-                        NLS.bind(Messages.EditorModelManager_13, file)
-                        + "\n\n" + message); //$NON-NLS-1$
+                        NLS.bind(Messages.EditorModelManager_5,
+                                file, model.getVersion()));
                 if(!answer) {
                     return null;
+                }
+            }
+            // Check for unknown model features which might be OK to load
+            else {
+                List<Diagnostic> exceptions = modelCompatibility.getAcceptableExceptions();
+                if(!exceptions.isEmpty()) {
+                    String message = ""; //$NON-NLS-1$
+                    for(int i = 0; i < exceptions.size(); i++) {
+                        if(i == 3) {
+                            message += (exceptions.size() - 3) + " " + Messages.EditorModelManager_12; //$NON-NLS-1$
+                            break;
+                        }
+                        message += exceptions.get(i).getMessage() + "\n"; //$NON-NLS-1$
+                    }
+                    
+                    boolean answer = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
+                            Messages.EditorModelManager_4,
+                            NLS.bind(Messages.EditorModelManager_13, file)
+                            + "\n\n" + message); //$NON-NLS-1$
+                    if(!answer) {
+                        return null;
+                    }
                 }
             }
         }
@@ -299,11 +333,18 @@ implements IEditorModelManager {
         catch(CompatibilityHandlerException ex) {
         }
 
+        // Set file
         model.setFile(file);
+        
+        // Check defaults
         model.setDefaults();
+        
+        // Add to list of open models
         getModels().add(model);
-        model.eAdapters().add(new ECoreAdapter());
-
+        
+        // Register Ecore listener
+        model.addModelContentListener(fEContentListener);
+        
         // New Command Stack
         createNewCommandStack(model);
         
@@ -315,14 +356,80 @@ implements IEditorModelManager {
 
         // This last
         firePropertyChange(this, PROPERTY_MODEL_LOADED, null, model);
+        
+        return model;
+    }
+    
+    @Override
+    public IArchimateModel load(File file) throws IOException {
+        if(file == null || !file.exists()) {
+            return null;
+        }
+        
+        // Create the Resource
+        Resource resource = IArchiveManager.FACTORY.createResource(file);
 
+        // Check model compatibility
+        ModelCompatibility modelCompatibility = new ModelCompatibility(resource);
+        
+        // Load the model file
+        try {
+            resource.load(null);
+        }
+        catch(IOException ex) {
+            // No errors so must be something else
+            if(resource.getErrors().isEmpty()) {
+                throw ex;
+            }
+            // Error occured loading model. 
+            try {
+                modelCompatibility.checkErrors();
+            }
+            catch(IncompatibleModelException ex1) {
+                throw new IOException(NLS.bind(Messages.EditorModelManager_10, file) + "\n" + ex1.getMessage()); //$NON-NLS-1$
+            }
+        }
+        
+        IArchimateModel model = (IArchimateModel)resource.getContents().get(0);
+
+        // And then fix any backward compatibility issues
+        try {
+            modelCompatibility.fixCompatibility();
+        }
+        catch(CompatibilityHandlerException ex) {
+        }
+
+        // Set file
+        model.setFile(file);
+        
+        // Check defaults
+        model.setDefaults();
+        
+        // New Command Stack
+        CommandStack cmdStack = new CommandStack();
+        model.setAdapter(CommandStack.class, cmdStack);
+        
+        // New Archive Manager and load images
+        IArchiveManager archiveManager = IArchiveManager.FACTORY.createArchiveManager(model);
+        model.setAdapter(IArchiveManager.class, archiveManager);
+        archiveManager.loadImages();
+        
         return model;
     }
     
     @Override
     public boolean closeModel(IArchimateModel model) throws IOException {
+        return closeModel(model, true);
+    }
+    
+    @Override
+    public boolean closeModel(IArchimateModel model, boolean askSaveModel) throws IOException {
+        if(model == null) {
+            return true;
+        }
+        
         // Check if model needs saving
-        if(isModelDirty(model)) {
+        if(PlatformUI.isWorkbenchRunning() && isModelDirty(model) && askSaveModel) {
             boolean result = askSaveModel(model);
             if(!result) {
                 return false;
@@ -332,16 +439,22 @@ implements IEditorModelManager {
         // Close the corresponding GEF editor(s) for this model *FIRST* before removing from model
         EditorManager.closeDiagramEditors(model);
         
+        // Remove the model from the local list of open models
         getModels().remove(model);
-        model.eAdapters().clear();
+
+        // Fire this event *before* disposing of the model in case listeners need to access it or any of its members
         firePropertyChange(this, PROPERTY_MODEL_REMOVED, null, model);
-        
+
         // Delete the CommandStack *LAST* because GEF Editor(s) will still reference it!
         deleteCommandStack(model);
-        
+  
         // Delete Archive Manager
         deleteArchiveManager(model);
 
+        // *at the very last* dispose of this model so its contents can be garbage collected
+        // Some Eclipse components such as the Properties View might still reference the model or some of its contents
+        model.dispose();
+        
         return true;
     }
     
@@ -380,6 +493,15 @@ implements IEditorModelManager {
 
     @Override
     public boolean saveModel(IArchimateModel model) throws IOException {
+        // Check integrity
+        ModelChecker checker = new ModelChecker(model);
+        if(!checker.checkAll()) {
+            if(PlatformUI.isWorkbenchRunning()) {
+                checker.showErrorDialog(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell());
+            }
+            return false;
+        }
+        
         // First time to save...
         if(model.getFile() == null) {
             File file = askSaveModel();
@@ -392,7 +514,7 @@ implements IEditorModelManager {
         File file = model.getFile();
         
         // Save backup (if set in Preferences)
-        if(Preferences.STORE.getBoolean(IPreferenceConstants.BACKUP_ON_SAVE) && file.exists()) {
+        if(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.BACKUP_ON_SAVE) && file.exists()) {
             FileUtils.copyFile(file, new File(model.getFile().getAbsolutePath() + ".bak"), false); //$NON-NLS-1$
         }
         
@@ -405,9 +527,11 @@ implements IEditorModelManager {
         
         // Set CommandStack Save point
         CommandStack stack = (CommandStack)model.getAdapter(CommandStack.class);
-        stack.markSaveLocation();
-        // Send notification to Tree
-        firePropertyChange(model, COMMAND_STACK_CHANGED, true, false);
+        if(stack != null) {
+            stack.markSaveLocation();
+            // Send notification to Tree
+            firePropertyChange(model, COMMAND_STACK_CHANGED, true, false);
+        }
         
         // Set all diagram models to be marked as "saved" - this is for the editor view persistence
         markDiagramModelsAsSaved(model);
@@ -419,10 +543,18 @@ implements IEditorModelManager {
     
     @Override
     public boolean saveModelAs(IArchimateModel model) throws IOException {
+        if(model == null) {
+            return false;
+        }
+        
         File file = askSaveModel();
         if(file == null) {
             return false;
         }
+        
+        // Activate inactive editor parts now otherwise they will reference the previous file name stored in the part's persistence memento
+        // and when re-activated show a blank editor part and a "This View is no longer available" message.
+        EditorManager.activateDiagramEditors(model);
         
         // Set new file
         model.setFile(file);
@@ -469,6 +601,10 @@ implements IEditorModelManager {
         
         FileDialog dialog = new FileDialog(shell, SWT.SAVE);
         dialog.setFilterExtensions(new String[] { ARCHIMATE_FILE_WILDCARD, "*.*" } ); //$NON-NLS-1$
+        
+        // Set to true for consistency on all OSs
+        dialog.setOverwrite(true);
+        
         String path = dialog.open();
         if(path == null) {
             return null;
@@ -491,16 +627,6 @@ implements IEditorModelManager {
             }
         }
         
-        // Make sure the file does not already exist
-        if(file.exists()) {
-            boolean result = MessageDialog.openQuestion(shell,
-                    Messages.EditorModelManager_10,
-                    NLS.bind(Messages.EditorModelManager_11, file));
-            if(!result) {
-                return null;
-            }
-        }
-        
         return file;
     }
     
@@ -511,16 +637,21 @@ implements IEditorModelManager {
     private void createNewCommandStack(final IArchimateModel model) {
         CommandStack cmdStack = new CommandStack();
         
-        // Forward on CommandStack Event to Tree
-        cmdStack.addCommandStackListener(new CommandStackListener() {
-            public void commandStackChanged(EventObject event) {
-                // Send notification to Tree
-                firePropertyChange(model, COMMAND_STACK_CHANGED, false, true);
-            }
-        });
-        
-        // Animate Commands
-        AnimationUtil.registerCommandStack(cmdStack);
+        if(PlatformUI.isWorkbenchRunning()) {
+            // Forward on CommandStack Event to Tree
+            cmdStack.addCommandStackEventListener(new CommandStackEventListener() {
+                @Override
+                public void stackChanged(CommandStackEvent event) {
+                    // Send notification to listeners after the change event
+                    if(event.isPostChangeEvent()) {
+                        firePropertyChange(model, COMMAND_STACK_CHANGED, false, true);
+                    }
+                }
+            });
+            
+            // Animate Commands
+            AnimationUtil.registerCommandStack(cmdStack);
+        }
         
         model.setAdapter(CommandStack.class, cmdStack);
     }
@@ -549,6 +680,9 @@ implements IEditorModelManager {
      * Create a new ArchiveManager for the model
      */
     private IArchiveManager createNewArchiveManager(IArchimateModel model) {
+        // dispose any previous one
+        deleteArchiveManager(model);
+        
         IArchiveManager archiveManager = IArchiveManager.FACTORY.createArchiveManager(model);
         model.setAdapter(IArchiveManager.class, archiveManager);
         
@@ -576,6 +710,7 @@ implements IEditorModelManager {
 
     //========================== Persist backing file  ==========================
 
+    @Override
     public void saveState() throws IOException {
         Document doc = new Document();
         Element rootElement = new Element("models"); //$NON-NLS-1$
@@ -609,30 +744,22 @@ implements IEditorModelManager {
     
     //========================== Model Listener events  ==========================
 
+    @Override
     public void addPropertyChangeListener(PropertyChangeListener listener) {
         fListeners.addPropertyChangeListener(listener);
     }
 
+    @Override
     public void removePropertyChangeListener(PropertyChangeListener listener) {
         fListeners.removePropertyChangeListener(listener);
     }
     
+    @Override
     public void firePropertyChange(Object source, String prop, Object oldValue, Object newValue) {
         fListeners.firePropertyChange(new PropertyChangeEvent(source, prop, oldValue, newValue));
     }
     
-    // ======================= ECore Adapter =========================================
-    
-    /**
-     * Adapter listener class.
-     * Forwards on messages so that listeners don't have to adapt to ECore objects
-     */
-    private class ECoreAdapter extends EContentAdapter {
-        @Override
-        public void notifyChanged(Notification msg) {
-            super.notifyChanged(msg);
-            // Forward on to listeners...
-            firePropertyChange(this, PROPERTY_ECORE_EVENT, null, msg);
-        }
+    private void notifyChanged(Notification notification) {
+        firePropertyChange(this, PROPERTY_ECORE_EVENT, null, notification);
     }
 }

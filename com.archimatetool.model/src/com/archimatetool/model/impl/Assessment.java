@@ -15,12 +15,10 @@ import com.archimatetool.model.IAssessment;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Assessment</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Assessment extends MotivationElement implements IAssessment {
+public class Assessment extends ArchimateElement implements IAssessment {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

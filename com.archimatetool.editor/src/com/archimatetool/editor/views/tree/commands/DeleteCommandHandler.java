@@ -6,9 +6,14 @@
 package com.archimatetool.editor.views.tree.commands;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Hashtable;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.gef.commands.Command;
@@ -19,21 +24,23 @@ import org.eclipse.swt.widgets.TreeItem;
 
 import com.archimatetool.editor.diagram.commands.DiagramCommandFactory;
 import com.archimatetool.editor.model.DiagramModelUtils;
+import com.archimatetool.editor.model.commands.DeleteArchimateElementCommand;
+import com.archimatetool.editor.model.commands.DeleteArchimateRelationshipCommand;
 import com.archimatetool.editor.model.commands.DeleteDiagramModelCommand;
-import com.archimatetool.editor.model.commands.DeleteElementCommand;
 import com.archimatetool.editor.model.commands.DeleteFolderCommand;
 import com.archimatetool.editor.views.tree.TreeModelViewer;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IAdapter;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.IArchimateModelObject;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IDiagramModel;
-import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelConnection;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IDiagramModelReference;
 import com.archimatetool.model.IFolder;
-import com.archimatetool.model.IFolderContainer;
-import com.archimatetool.model.IRelationship;
 import com.archimatetool.model.util.ArchimateModelUtils;
 
 
@@ -55,7 +62,7 @@ public class DeleteCommandHandler {
      * If deleting elements from more than one model in the tree we need to use the
      * Command Stack allocated to each model. And then allocate one CompoundCommand per Command Stack.
      */
-    private Hashtable<CommandStack, CompoundCommand> fCommandMap = new Hashtable<CommandStack, CompoundCommand>();
+    private Hashtable<CommandStack, CompoundCommand> fCommandMap = new Hashtable<>();
     
     // Treeviewer
     private TreeModelViewer fViewer;
@@ -63,52 +70,38 @@ public class DeleteCommandHandler {
     // Selected objects in Tree
     private Object[] fSelectedObjects = new Object[1]; // default value
     
-    // Top level objects to delete
-    private List<Object> fElementsToDelete;
-    
-    // Elements to check including children of top elements to delete
-    private List<Object> fElementsToCheck;
+    // Objects to delete
+    private Set<IArchimateModelObject> fObjectsToDelete;
     
     // The object to select in the tree after the deletion
     private Object fObjectToSelectAfterDeletion;
+    
+    // A cache for a model's diagram references as getting them is slow if there are many diagrams
+    private Map<IArchimateModel, List<IDiagramModelReference>> fDiagramModelReferenceCache;
     
     /**
      * @param element
      * @return True if we can delete this object
      */
     public static boolean canDelete(Object element) {
-        // Elements and Diagrams
-        if(element instanceof IArchimateElement || element instanceof IDiagramModel) {
-            return true;
-        }
-        
-        // Certain Folders
-        if(element instanceof IFolder) {
-            IFolder folder = (IFolder)element;
-            if(folder.getType().equals(FolderType.DERIVED) || folder.getType().equals(FolderType.USER)) {
-                return true;
-            }
-        }
-        
-        return false;
+        // Elements, Relations, Diagrams and user folders
+        return element instanceof IArchimateConcept || element instanceof IDiagramModel ||
+                (element instanceof IFolder folder && folder.getType().equals(FolderType.USER));
     }
 
     /**
-     * Default constructor
+     * @param objects Objects to delete
      */
-    public DeleteCommandHandler() {
+    public DeleteCommandHandler(Object[] objects) {
+        this(null, objects);
     }
 
+    /**
+     * @param viewer Tree Viewer in case of selecting a tree node after deletion
+     * @param objects Objects to delete
+     */
     public DeleteCommandHandler(TreeModelViewer viewer, Object[] objects) {
         fViewer = viewer;
-        setObjectsToBeDeleted(objects);
-    }
-    
-    /**
-     * Set the objects to be deleted
-     * @param objects The, er, objects to be deleted
-     */
-    public void setObjectsToBeDeleted(Object[] objects) {
         fSelectedObjects = objects;
     }
     
@@ -117,8 +110,7 @@ public class DeleteCommandHandler {
      */
     public boolean hasDiagramReferences() {
         for(Object object : fSelectedObjects) {
-            boolean result = hasDiagramReferences(object);
-            if(result) {
+            if(hasDiagramReferences(object)) {
                 return true;
             }
         }
@@ -130,23 +122,27 @@ public class DeleteCommandHandler {
      * @return True if object has references in a diagram model
      */
     private boolean hasDiagramReferences(Object object) {
-        if(object instanceof IFolder) {
-            for(EObject element : ((IFolder)object).getElements()) {
-                boolean result = hasDiagramReferences(element);
-                if(result) {
+        if(object instanceof IFolder folder) {
+            for(EObject element : folder.getElements()) {
+                if(hasDiagramReferences(element)) {
                     return true;
                 }
             }
-            for(IFolder f : ((IFolder)object).getFolders()) {
-                boolean result = hasDiagramReferences(f);
-                if(result) {
+            for(IFolder subFolder : folder.getFolders()) {
+                if(hasDiagramReferences(subFolder)) {
                     return true;
                 }
             }
         }
         
-        else if(object instanceof IArchimateElement) {
-            return DiagramModelUtils.isElementReferencedInDiagrams((IArchimateElement)object);
+        // Concept
+        if(object instanceof IArchimateConcept concept) {
+            return DiagramModelUtils.isArchimateConceptReferencedInDiagrams(concept);
+        }
+        
+        // Diagram Model Reference
+        if(object instanceof IDiagramModel dm) {
+            return DiagramModelUtils.hasDiagramModelReference(dm);
         }
         
         return false;
@@ -160,8 +156,13 @@ public class DeleteCommandHandler {
         // Find the object to select after the deletion
         fObjectToSelectAfterDeletion = findObjectToSelectAfterDeletion();
         
-        // Gather the elements to delete
-        getElementsToDelete();
+        // Actual elements to delete
+        fObjectsToDelete = new HashSet<>();
+        
+        fDiagramModelReferenceCache = new HashMap<>();
+        
+        // Gather the objects to delete
+        getObjectsToDelete();
         
         // Create the Commands
         createCommands();
@@ -182,11 +183,11 @@ public class DeleteCommandHandler {
          *  We need to ensure that the Delete Diagram Model Commands are called first in order to close
          *  any open diagram editors before removing their models from parent folders.
          */
-        for(Object object : fElementsToDelete) {
-            if(object instanceof IDiagramModel) {
-                CompoundCommand compoundCommand = getCompoundCommand((IAdapter)object);
+        for(Object object : fObjectsToDelete) {
+            if(object instanceof IDiagramModel dm) {
+                CompoundCommand compoundCommand = getCompoundCommand(dm);
                 if(compoundCommand != null) {
-                    Command cmd = new DeleteDiagramModelCommand((IDiagramModel)object);
+                    Command cmd = new DeleteDiagramModelCommand(dm);
                     compoundCommand.add(cmd);
                 }
                 else {
@@ -198,7 +199,7 @@ public class DeleteCommandHandler {
         /*
          * Then the other types
          */
-        for(Object object : fElementsToDelete) {
+        for(Object object : fObjectsToDelete) {
             if(object instanceof IDiagramModel) { // already done
                 continue;
             }
@@ -209,20 +210,24 @@ public class DeleteCommandHandler {
                 continue;
             }
 
-            if(object instanceof IFolder) {
-                Command cmd = new DeleteFolderCommand((IFolder)object);
+            if(object instanceof IFolder folder) {
+                Command cmd = new DeleteFolderCommand(folder);
                 compoundCommand.add(cmd);
             }
-            else if(object instanceof IArchimateElement) {
-                Command cmd = new DeleteElementCommand((IArchimateElement)object);
+            else if(object instanceof IArchimateElement element) {
+                Command cmd = new DeleteArchimateElementCommand(element);
                 compoundCommand.add(cmd);
             }
-            else if(object instanceof IDiagramModelObject) {
-                Command cmd = DiagramCommandFactory.createDeleteDiagramObjectCommand((IDiagramModelObject)object);
+            else if(object instanceof IArchimateRelationship relationship) {
+                Command cmd = new DeleteArchimateRelationshipCommand(relationship);
                 compoundCommand.add(cmd);
             }
-            else if(object instanceof IDiagramModelConnection) {
-                Command cmd = DiagramCommandFactory.createDeleteDiagramConnectionCommand((IDiagramModelConnection)object);
+            else if(object instanceof IDiagramModelObject dmo) {
+                Command cmd = DiagramCommandFactory.createDeleteDiagramObjectCommand(dmo);
+                compoundCommand.add(cmd);
+            }
+            else if(object instanceof IDiagramModelConnection dmc) {
+                Command cmd = DiagramCommandFactory.createDeleteDiagramConnectionCommand(dmc);
                 compoundCommand.add(cmd);
             }
         }
@@ -232,70 +237,74 @@ public class DeleteCommandHandler {
      * Create the list of objects to delete and check
      * @return
      */
-    private void getElementsToDelete() {
-        // Actual elements to delete
-        fElementsToDelete = new ArrayList<Object>();
-        
-        // Elements to check against for diagram references and other uses
-        fElementsToCheck = new ArrayList<Object>();
-        
-        // First, gather up the list of Archimate objects to be deleted...
+    private void getObjectsToDelete() {
+        // First, get the Archimate concepts and folders to be deleted
         for(Object object : fSelectedObjects) {
             if(canDelete(object)) {
-                addToList(object, fElementsToDelete);
+                fObjectsToDelete.add((IArchimateModelObject)object);
                 addFolderChildElements(object);
                 addElementRelationships(object);
             }
         }
         
-        // Gather referenced diagram objects to be deleted checking that the parent diagram model is not also selected to be deleted
-        for(Object object : fElementsToCheck) {
-            // Archimate Elements
-            if(object instanceof IArchimateElement) {
-                IArchimateElement element = (IArchimateElement)object;
-                for(IDiagramModel diagramModel : element.getArchimateModel().getDiagramModels()) {
-                    // Check diagram model is not selected to be deleted - no point in deleting any of its children
-                    if(!fElementsToDelete.contains(diagramModel)) {
-                        for(IDiagramModelComponent dc : DiagramModelUtils.findDiagramModelComponentsForElement(diagramModel, element)) {
-                            addToList(dc, fElementsToDelete);
-                        }
-                    }
-                }
+        // Then get the referenced diagram components to be deleted
+        for(IArchimateModelObject object : new ArrayList<>(fObjectsToDelete)) {
+            // Archimate Concept to be deleted
+            if(object instanceof IArchimateConcept concept) {
+                fObjectsToDelete.addAll(concept.getReferencingDiagramComponents());
             }
             
-            // Diagram Models and their references
-            if(object instanceof IDiagramModel) {
-                IDiagramModel diagramModelDeleted = (IDiagramModel)object;
-                for(IDiagramModel diagramModel : diagramModelDeleted.getArchimateModel().getDiagramModels()) {
-                    List<IDiagramModelReference> list = DiagramModelUtils.findDiagramModelReferences(diagramModel, diagramModelDeleted); // is there one?
-                    fElementsToDelete.addAll(list);
-                }
+            // Diagram Model to be deleted so we also need to delete diagram model references, if any
+            if(object instanceof IDiagramModel dm) {
+                getDiagramModelReferencesToDelete(dm);
             }
         }
     }
     
+    private void getDiagramModelReferencesToDelete(IDiagramModel dm) {
+        // Iterating more than once can be slow so use a cache of diagram model references
+        List<IDiagramModelReference> refs = fDiagramModelReferenceCache.get(dm.getArchimateModel());
+        
+        // Not in the cache so create a new one
+        if(refs == null) {
+            refs = new ArrayList<>();
+            IFolder diagramsFolder = dm.getArchimateModel().getFolder(FolderType.DIAGRAMS);
+            if(diagramsFolder != null) {
+                for(Iterator<EObject> iter = diagramsFolder.eAllContents(); iter.hasNext();) {
+                    EObject eObject = iter.next();
+                    if(eObject instanceof IDiagramModelReference ref) {
+                        refs.add(ref);
+                    }
+                }
+            }
+            fDiagramModelReferenceCache.put(dm.getArchimateModel(), refs);
+        }
+        
+        // Iterate through all refs
+        for(IDiagramModelReference ref : refs) {
+            if(ref.getReferencedModel() == dm) {
+                fObjectsToDelete.add(ref);
+            }
+        }
+    }
+
     /**
      * Gather elements in folders that need checking for referenced diagram objects and other checks
      */
     private void addFolderChildElements(Object object) {
         // Folder
-        if(object instanceof IFolder) {
-            for(EObject element : ((IFolder)object).getElements()) {
+        if(object instanceof IFolder folder) {
+            for(EObject element : folder.getElements()) {
                 addFolderChildElements(element);
             }
 
             // Child folders
-            for(IFolder f : ((IFolderContainer)object).getFolders()) {
-                addFolderChildElements(f);
+            for(IFolder childFolder : folder.getFolders()) {
+                addFolderChildElements(childFolder);
             }
         }
-        else {
-            // Add to check list
-            addToList(object, fElementsToCheck);
-            // Diagram models need to be deleted explicitly with their own command in case they need closing in the editor
-            if(object instanceof IDiagramModel) {
-                addToList(object, fElementsToDelete);
-            }
+        else if(object instanceof IArchimateModelObject amo) {
+            fObjectsToDelete.add(amo);
         }
     }
     
@@ -304,31 +313,24 @@ public class DeleteCommandHandler {
      */
     private void addElementRelationships(Object object) {
         // Folder
-        if(object instanceof IFolder) {
-            for(EObject element : ((IFolder)object).getElements()) {
+        if(object instanceof IFolder folder) {
+            for(EObject element : folder.getElements()) {
                 addElementRelationships(element);
             }
 
             // Child folders
-            for(IFolder f : ((IFolderContainer)object).getFolders()) {
-                addElementRelationships(f);
+            for(IFolder childFolder : folder.getFolders()) {
+                addElementRelationships(childFolder);
             }
         }
-        // Element
-        else if(object instanceof IArchimateElement && !(object instanceof IRelationship)) {
-            for(IRelationship relationship : ArchimateModelUtils.getRelationships((IArchimateElement)object)) {
-                addToList(relationship, fElementsToDelete);
-                addToList(relationship, fElementsToCheck);
+        // Element/Relation
+        else if(object instanceof IArchimateConcept concept) {
+            for(IArchimateRelationship relationship : ArchimateModelUtils.getAllRelationshipsForConcept(concept)) {
+                fObjectsToDelete.add(relationship);
+                
+                // Recurse
+                addElementRelationships(relationship);
             }
-        }
-    }
-    
-    /**
-     * Add object to list if not already in list
-     */
-    private void addToList(Object object, List<Object> list) {
-        if(object != null && !list.contains(object)) {
-            list.add(object);
         }
     }
     
@@ -357,6 +359,10 @@ public class DeleteCommandHandler {
      * Find the best object to select after the deletion
      */
     private Object findObjectToSelectAfterDeletion() {
+        if(fViewer == null) {
+            return null;
+        }
+        
         Object firstObject = fSelectedObjects[0];
         
         TreeItem item = fViewer.findTreeItem(firstObject);
@@ -378,15 +384,15 @@ public class DeleteCommandHandler {
 
         Object selected = null;
         
-        // Item index is greater than 1 so select previous sibling item
+        // Item index is greater than 0 so select previous sibling item
         int index = parentTreeItem.indexOf(item);
-        if(index > 1) {
+        if(index > 0) {
             selected = parentTreeItem.getItem(index - 1).getData();
         }
         
         // Was null so select parent of first object
-        if(selected == null && firstObject instanceof EObject) {
-            selected = ((EObject)firstObject).eContainer();
+        if(selected == null && firstObject instanceof EObject eObject) {
+            selected = eObject.eContainer();
         }
         
         return selected;
@@ -394,8 +400,10 @@ public class DeleteCommandHandler {
     
     private void dispose() {
         fSelectedObjects = null;
-        fElementsToDelete = null;
+        fObjectsToDelete = null;
         fViewer = null;
         fCommandMap = null;
+        fDiagramModelReferenceCache = null;
+        fObjectToSelectAfterDeletion = null;
     }
 }

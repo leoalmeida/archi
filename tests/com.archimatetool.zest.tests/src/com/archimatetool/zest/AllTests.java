@@ -5,18 +5,14 @@
  */
 package com.archimatetool.zest;
 
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
-import junit.framework.TestSuite;
-
-@SuppressWarnings("nls")
+@Suite
+@SelectClasses({
+    ZestViewerContentProviderTests.class
+})
+@SuiteDisplayName("All Zest Tests")
 public class AllTests {
-
-    public static junit.framework.Test suite() {
-		TestSuite suite = new TestSuite("com.archimatetool.zest");
-
-		suite.addTest(ZestViewerContentProviderTests.suite());
-		
-        return suite;
-	}
-
 }

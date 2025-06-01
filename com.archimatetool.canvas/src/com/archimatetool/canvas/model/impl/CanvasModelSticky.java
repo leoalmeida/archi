@@ -26,6 +26,7 @@ import com.archimatetool.model.ILockable;
 import com.archimatetool.model.IProperties;
 import com.archimatetool.model.IProperty;
 import com.archimatetool.model.ITextContent;
+import com.archimatetool.model.ITextPosition;
 import com.archimatetool.model.impl.DiagramModelObject;
 
 
@@ -35,6 +36,7 @@ import com.archimatetool.model.impl.DiagramModelObject;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelSticky#getImagePath <em>Image Path</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelSticky#getImagePosition <em>Image Position</em>}</li>
@@ -43,8 +45,8 @@ import com.archimatetool.model.impl.DiagramModelObject;
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelSticky#getProperties <em>Properties</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelSticky#isLocked <em>Locked</em>}</li>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelSticky#getBorderColor <em>Border Color</em>}</li>
+ *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelSticky#getTextPosition <em>Text Position</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -180,6 +182,26 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
     protected String borderColor = BORDER_COLOR_EDEFAULT;
 
     /**
+     * The default value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextPosition()
+     * @generated
+     * @ordered
+     */
+    protected static final int TEXT_POSITION_EDEFAULT = 0;
+
+    /**
+     * The cached value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextPosition()
+     * @generated
+     * @ordered
+     */
+    protected int textPosition = TEXT_POSITION_EDEFAULT;
+
+    /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
@@ -203,6 +225,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getImagePath() {
         return imagePath;
     }
@@ -212,6 +235,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setImagePath(String newImagePath) {
         String oldImagePath = imagePath;
         imagePath = newImagePath;
@@ -224,6 +248,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getImagePosition() {
         return imagePosition;
     }
@@ -233,6 +258,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setImagePosition(int newImagePosition) {
         int oldImagePosition = imagePosition;
         imagePosition = newImagePosition;
@@ -245,6 +271,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getContent() {
         return content;
     }
@@ -254,6 +281,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setContent(String newContent) {
         String oldContent = content;
         content = newContent;
@@ -266,6 +294,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EList<IProperty> getProperties() {
         if (properties == null) {
             properties = new EObjectContainmentEList<IProperty>(IProperty.class, this, ICanvasPackage.CANVAS_MODEL_STICKY__PROPERTIES);
@@ -278,6 +307,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public boolean isLocked() {
         return locked;
     }
@@ -287,6 +317,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLocked(boolean newLocked) {
         boolean oldLocked = locked;
         locked = newLocked;
@@ -299,6 +330,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getBorderColor() {
         return borderColor;
     }
@@ -308,6 +340,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setBorderColor(String newBorderColor) {
         String oldBorderColor = borderColor;
         borderColor = newBorderColor;
@@ -320,6 +353,30 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
+    public int getTextPosition() {
+        return textPosition;
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
+    public void setTextPosition(int newTextPosition) {
+        int oldTextPosition = textPosition;
+        textPosition = newTextPosition;
+        if (eNotificationRequired())
+            eNotify(new ENotificationImpl(this, Notification.SET, ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION, oldTextPosition, textPosition));
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
     public String getNotes() {
         return notes;
     }
@@ -329,6 +386,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setNotes(String newNotes) {
         String oldNotes = notes;
         notes = newNotes;
@@ -372,6 +430,8 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
                 return isLocked();
             case ICanvasPackage.CANVAS_MODEL_STICKY__BORDER_COLOR:
                 return getBorderColor();
+            case ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION:
+                return getTextPosition();
         }
         return super.eGet(featureID, resolve, coreType);
     }
@@ -407,6 +467,9 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
             case ICanvasPackage.CANVAS_MODEL_STICKY__BORDER_COLOR:
                 setBorderColor((String)newValue);
                 return;
+            case ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION:
+                setTextPosition((Integer)newValue);
+                return;
         }
         super.eSet(featureID, newValue);
     }
@@ -440,6 +503,9 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
             case ICanvasPackage.CANVAS_MODEL_STICKY__BORDER_COLOR:
                 setBorderColor(BORDER_COLOR_EDEFAULT);
                 return;
+            case ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION:
+                setTextPosition(TEXT_POSITION_EDEFAULT);
+                return;
         }
         super.eUnset(featureID);
     }
@@ -466,6 +532,8 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
                 return locked != LOCKED_EDEFAULT;
             case ICanvasPackage.CANVAS_MODEL_STICKY__BORDER_COLOR:
                 return BORDER_COLOR_EDEFAULT == null ? borderColor != null : !BORDER_COLOR_EDEFAULT.equals(borderColor);
+            case ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION:
+                return textPosition != TEXT_POSITION_EDEFAULT;
         }
         return super.eIsSet(featureID);
     }
@@ -510,6 +578,12 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
         if (baseClass == IBorderObject.class) {
             switch (derivedFeatureID) {
                 case ICanvasPackage.CANVAS_MODEL_STICKY__BORDER_COLOR: return IArchimatePackage.BORDER_OBJECT__BORDER_COLOR;
+                default: return -1;
+            }
+        }
+        if (baseClass == ITextPosition.class) {
+            switch (derivedFeatureID) {
+                case ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION: return IArchimatePackage.TEXT_POSITION__TEXT_POSITION;
                 default: return -1;
             }
         }
@@ -559,6 +633,12 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
                 default: return -1;
             }
         }
+        if (baseClass == ITextPosition.class) {
+            switch (baseFeatureID) {
+                case IArchimatePackage.TEXT_POSITION__TEXT_POSITION: return ICanvasPackage.CANVAS_MODEL_STICKY__TEXT_POSITION;
+                default: return -1;
+            }
+        }
         return super.eDerivedStructuralFeatureID(baseFeatureID, baseClass);
     }
 
@@ -571,7 +651,7 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (imagePath: "); //$NON-NLS-1$
         result.append(imagePath);
         result.append(", imagePosition: "); //$NON-NLS-1$
@@ -584,6 +664,8 @@ public class CanvasModelSticky extends DiagramModelObject implements ICanvasMode
         result.append(locked);
         result.append(", borderColor: "); //$NON-NLS-1$
         result.append(borderColor);
+        result.append(", textPosition: "); //$NON-NLS-1$
+        result.append(textPosition);
         result.append(')');
         return result.toString();
     }

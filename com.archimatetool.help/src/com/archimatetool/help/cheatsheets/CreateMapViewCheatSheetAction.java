@@ -18,12 +18,12 @@ import org.eclipse.ui.cheatsheets.ICheatSheetManager;
 import com.archimatetool.editor.ui.services.EditorManager;
 import com.archimatetool.editor.ui.services.ViewManager;
 import com.archimatetool.editor.views.tree.ITreeModelView;
-import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IDiagramModelReference;
 import com.archimatetool.model.IFolder;
+import com.archimatetool.model.ITextPosition;
 
 
 
@@ -36,6 +36,7 @@ public class CreateMapViewCheatSheetAction
 extends Action
 implements ICheatSheetAction {
     
+    @Override
     public void run(String[] params, ICheatSheetManager manager) {
         IViewPart viewPart = ViewManager.showViewPart(ITreeModelView.ID, true);
         if(viewPart == null) {
@@ -44,7 +45,7 @@ implements ICheatSheetAction {
             return;
         }
         
-        IArchimateModel model = (IArchimateModel)viewPart.getAdapter(IArchimateModel.class);
+        IArchimateModel model = viewPart.getAdapter(IArchimateModel.class);
         if(model == null) {
             MessageDialog.openWarning(Display.getCurrent().getActiveShell(), Messages.CreateMapViewCheatSheetAction_2,
                     Messages.CreateMapViewCheatSheetAction_3);
@@ -60,46 +61,64 @@ implements ICheatSheetAction {
         
         CommandStack stack = (CommandStack)model.getAdapter(CommandStack.class);
         if(stack != null) {
-            IArchimateDiagramModel diagramModel = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
-            diagramModel.setName(Messages.CreateMapViewCheatSheetAction_6);
-            
-            int y = 20; 
-            
-            for(IDiagramModel dm : diagramModels) {
-                IDiagramModelReference ref = IArchimateFactory.eINSTANCE.createDiagramModelReference();
-                ref.setReferencedModel(dm);
-                ref.setBounds(20, y, 400, 100);
-                diagramModel.getChildren().add(ref);
-                y += 120;
-            }
-            
-            IFolder folder = model.getDefaultFolderForElement(diagramModel);
-            
-            stack.execute(new NewViewCommand(folder, diagramModel));
+            stack.execute(new NewMapViewCommand(model));
         }
     }
     
-    private static class NewViewCommand extends Command {
-        IFolder fParent;
-        IDiagramModel fDiagramModel;
+    static class NewMapViewCommand extends Command {
+        IArchimateModel model;
+        IFolder parentFolder;
+        IDiagramModel diagramModel;
         
-        NewViewCommand(IFolder parent, IDiagramModel model) {
+        NewMapViewCommand(IArchimateModel model) {
             super(Messages.CreateMapViewCheatSheetAction_7);
-            fParent = parent;
-            fDiagramModel = model;
+            this.model = model;
         }
         
         @Override
         public void execute() {
-            fParent.getElements().add(0, fDiagramModel);
-            EditorManager.openDiagramEditor(fDiagramModel);
+            createMapView(model);
+            EditorManager.openDiagramEditor(diagramModel);
         }
         
         @Override
         public void undo() {
             // Close Editor FIRST!
-            EditorManager.closeDiagramEditor(fDiagramModel);
-            fParent.getElements().remove(fDiagramModel);
+            EditorManager.closeDiagramEditor(diagramModel);
+            parentFolder.getElements().remove(diagramModel);
+        }
+        
+        @Override
+        public void redo() {
+            parentFolder.getElements().add(0, diagramModel);
+            EditorManager.openDiagramEditor(diagramModel);
+        }
+        
+        private void createMapView(IArchimateModel smodel) {
+            diagramModel = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
+            diagramModel.setName(Messages.CreateMapViewCheatSheetAction_6);
+            
+            // Add diagram model *first* to get id!
+            parentFolder = model.getDefaultFolderForObject(diagramModel);
+            parentFolder.getElements().add(0, diagramModel);
+            
+            // Add diagram model references
+            int y = 20; 
+            
+            for(IDiagramModel dm : model.getDiagramModels()) {
+                // Don't add the new map view
+                if(dm == diagramModel) {
+                    continue;
+                }
+                
+                IDiagramModelReference ref = IArchimateFactory.eINSTANCE.createDiagramModelReference();
+                ref.setReferencedModel(dm);
+                ref.setBounds(20, y, 400, 100);
+                diagramModel.getChildren().add(ref);
+                y += 120;
+                
+                ref.setTextPosition(ITextPosition.TEXT_POSITION_TOP);
+            }
         }
     }
     

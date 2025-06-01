@@ -6,7 +6,9 @@
 package com.archimatetool.jasperreports;
 
 
-import junit.framework.TestSuite;
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
 import com.archimatetool.jasperreports.data.ArchimateModelDataSourceTests;
 import com.archimatetool.jasperreports.data.ElementsDataSourceTests;
@@ -15,21 +17,16 @@ import com.archimatetool.jasperreports.data.PropertiesModelDataSourceTests;
 import com.archimatetool.jasperreports.data.ViewChildrenDataSourceTests;
 import com.archimatetool.jasperreports.data.ViewModelDataSourceTests;
 
-@SuppressWarnings("nls")
+@Suite
+@SelectClasses({
+    JasperReportsExporterTests.class,
+    ArchimateModelDataSourceTests.class,
+    ElementsDataSourceTests.class,
+    FieldDataFactoryTests.class,
+    PropertiesModelDataSourceTests.class,
+    ViewChildrenDataSourceTests.class,
+    ViewModelDataSourceTests.class,
+})
+@SuiteDisplayName("All Jasper Reports Tests")
 public class AllTests {
-
-    public static junit.framework.Test suite() {
-		TestSuite suite = new TestSuite("com.archimatetool.jasperreports");
-
-		suite.addTest(JasperReportsExporterTests.suite());
-		suite.addTest(ArchimateModelDataSourceTests.suite());
-        suite.addTest(ElementsDataSourceTests.suite());
-        suite.addTest(FieldDataFactoryTests.suite());
-        suite.addTest(PropertiesModelDataSourceTests.suite());
-        suite.addTest(ViewChildrenDataSourceTests.suite());
-        suite.addTest(ViewModelDataSourceTests.suite());
-		
-        return suite;
-	}
-
 }

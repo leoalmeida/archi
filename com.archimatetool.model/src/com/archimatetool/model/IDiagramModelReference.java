@@ -13,16 +13,16 @@ package com.archimatetool.model;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IDiagramModelReference#getReferencedModel <em>Referenced Model</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getDiagramModelReference()
  * @model
  * @generated
  */
-public interface IDiagramModelReference extends IDiagramModelObject {
+public interface IDiagramModelReference extends IDiagramModelObject, ITextPosition, IIconic {
 
     /**
      * Returns the value of the '<em><b>Referenced Model</b></em>' reference.

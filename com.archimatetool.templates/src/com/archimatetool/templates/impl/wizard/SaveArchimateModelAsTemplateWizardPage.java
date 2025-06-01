@@ -19,6 +19,7 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -31,8 +32,10 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.PlatformUI;
 
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.UIUtils;
+import com.archimatetool.editor.utils.PlatformUtils;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateModel;
@@ -64,13 +67,13 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
 
     private TemplateManager fTemplateManager;
     
-    static File CURRENT_FOLDER = new File(System.getProperty("user.home")); //$NON-NLS-1$
+    private static final String PREFS_LAST_FOLDER = "SaveArchimateModelAsTemplateLastFolder"; //$NON-NLS-1$
     
     public SaveArchimateModelAsTemplateWizardPage(IArchimateModel model, TemplateManager templateManager) {
         super("SaveModelAsTemplateWizardPage"); //$NON-NLS-1$
         setTitle(Messages.SaveArchimateModelAsTemplateWizardPage_2);
         setDescription(Messages.SaveArchimateModelAsTemplateWizardPage_3);
-        setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ECLIPSE_IMAGE_NEW_WIZARD));
+        setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ECLIPSE_IMAGE_NEW_WIZARD));
         fModel = model;
         fTemplateManager = templateManager;
     }
@@ -94,13 +97,23 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         label = new Label(fileComposite, SWT.NULL);
         label.setText(Messages.SaveArchimateModelAsTemplateWizardPage_4);
         
-        fFileTextField = new Text(fileComposite, SWT.BORDER | SWT.SINGLE);
+        fFileTextField = UIUtils.createSingleTextControl(fileComposite, SWT.BORDER, false);
         fFileTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        File newFile = new File(CURRENT_FOLDER, Messages.SaveArchimateModelAsTemplateWizardPage_5 + ArchimateTemplateManager.ARCHIMATE_TEMPLATE_FILE_EXTENSION);
-        fFileTextField.setText(newFile.getPath());
-        // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fFileTextField);
+        
+        String defaultFileName = Messages.SaveArchimateModelAsTemplateWizardPage_5 + ArchimateTemplateManager.ARCHIMATE_TEMPLATE_FILE_EXTENSION;
+        
+        // Get last folder used
+        String lastFolderName = ArchiPlugin.getInstance().getPreferenceStore().getString(PREFS_LAST_FOLDER);
+        File lastFolder = new File(lastFolderName);
+        if(lastFolder.exists() && lastFolder.isDirectory()) {
+            fFileTextField.setText(new File(lastFolder, defaultFileName).getPath());
+        }
+        else {
+            fFileTextField.setText(new File(System.getProperty("user.home"), defaultFileName).getPath()); //$NON-NLS-1$
+        }
+
         fFileTextField.addModifyListener(new ModifyListener() {
+            @Override
             public void modifyText(ModifyEvent e) {
                 validateFields();
             }
@@ -114,7 +127,6 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
                 File file = chooseFile();
                 if(file != null) {
                     fFileTextField.setText(file.getPath());
-                    CURRENT_FOLDER = file.getParentFile();
                 }
             }
         });
@@ -127,14 +139,14 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         label = new Label(fieldGroup, SWT.NULL);
         label.setText(Messages.SaveArchimateModelAsTemplateWizardPage_7);
 
-        fNameTextField = new Text(fieldGroup, SWT.BORDER | SWT.SINGLE);
+        fNameTextField = UIUtils.createSingleTextControl(fieldGroup, SWT.BORDER, false);
         fNameTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         if(StringUtils.isSet(fModel.getName())) {
             fNameTextField.setText(fModel.getName());
         }
-        // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fNameTextField);
+
         fNameTextField.addModifyListener(new ModifyListener() {
+            @Override
             public void modifyText(ModifyEvent e) {
                 validateFields();
             }
@@ -148,6 +160,7 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         fDescriptionTextField = new Text(fieldGroup, SWT.BORDER | SWT.MULTI | SWT.WRAP | SWT.V_SCROLL);
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 120;
+        gd.widthHint = 550; // Stop overstretch
         fDescriptionTextField.setLayoutData(gd);
         if(StringUtils.isSet(fModel.getPurpose())) {
             fDescriptionTextField.setText(fModel.getPurpose());
@@ -187,15 +200,17 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         fModelViewsTreeViewer.setInput(fModel.getFolder(FolderType.DIAGRAMS));
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 120;
-        //gd.widthHint = 140;
+        gd.widthHint = 140;
         fModelViewsTreeViewer.getControl().setLayoutData(gd);
         fModelViewsTreeViewer.getControl().setEnabled(thumbsEnabled);
         
         fPreviewLabel = new Label(thumbContainer, SWT.BORDER);
+        fPreviewLabel.setBackground(new Color(255, 255, 255));
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 120;
         gd.widthHint = 150;
         fPreviewLabel.setLayoutData(gd);
+        fPreviewLabel.setAlignment(SWT.CENTER);
         
         // Dispose of the image here not in the main dispose() method because if the help system is showing then 
         // the TrayDialog is resized and this label is asked to relayout.
@@ -209,14 +224,12 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
         fModelViewsTreeViewer.addSelectionChangedListener(new ISelectionChangedListener() {
             @Override
             public void selectionChanged(SelectionChangedEvent event) {
-                disposePreviewImage();
-
                 Object o = ((IStructuredSelection)event.getSelection()).getFirstElement();
                 if(o instanceof IDiagramModel) {
                     TemplateUtils.createThumbnailPreviewImage((IDiagramModel)o, fPreviewLabel);
                 }
                 else {
-                    fPreviewLabel.setImage(null);
+                    disposePreviewImage();
                 }
             }
         });
@@ -278,8 +291,21 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
     private File chooseFile() {
         FileDialog dialog = new FileDialog(getShell(), SWT.SAVE);
         dialog.setText(Messages.SaveArchimateModelAsTemplateWizardPage_11);
-        dialog.setFilterExtensions(new String[] { "*" + fTemplateManager.getTemplateFileExtension(), "*.*" } ); //$NON-NLS-1$ //$NON-NLS-2$
+        
+        // On Mac, the extension is appended to the file name again. This is because it's not a registered extension like *.png or *.xml
+        // Not setting filter extensions avoids this.
+        if(!PlatformUtils.isMac()) {
+            dialog.setFilterExtensions(new String[] { "*" + fTemplateManager.getTemplateFileExtension(), "*.*" } ); //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        
+        File file = new File(fFileTextField.getText());
+        dialog.setFileName(file.getName());
+        
+        // Does nothing on macOS 10.15+. On Windows will work after Eclipse 4.21
+        dialog.setOverwrite(false);
+        
         String path = dialog.open();
+        
         if(path != null) {
             // Only Windows adds the extension by default
             if(dialog.getFilterIndex() == 0 && !path.endsWith(ArchimateTemplateManager.ARCHIMATE_TEMPLATE_FILE_EXTENSION)) {
@@ -287,6 +313,7 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
             }
             return new File(path);
         }
+        
         return null;
     }
     
@@ -315,8 +342,18 @@ public class SaveArchimateModelAsTemplateWizardPage extends WizardPage {
     }
     
     private void disposePreviewImage() {
-        if(fPreviewLabel != null && fPreviewLabel.getImage() != null && !fPreviewLabel.getImage().isDisposed()) {
+        if(fPreviewLabel != null && fPreviewLabel.getImage() != null) {
             fPreviewLabel.getImage().dispose();
+            fPreviewLabel.setImage(null);
         }
     }
+    
+    void storePreferences() {
+        // Store current folder
+        File parentFile = new File(getFileName()).getAbsoluteFile().getParentFile(); // Make sure to use absolute file
+        if(parentFile != null) {
+            ArchiPlugin.getInstance().getPreferenceStore().setValue(PREFS_LAST_FOLDER, parentFile.getAbsolutePath());
+        }
+    }
+
 }

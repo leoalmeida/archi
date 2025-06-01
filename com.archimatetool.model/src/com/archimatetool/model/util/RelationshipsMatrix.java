@@ -10,8 +10,10 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.emf.ecore.EClass;
@@ -19,7 +21,6 @@ import org.jdom2.Document;
 import org.jdom2.Element;
 import org.jdom2.input.SAXBuilder;
 
-import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimatePackage;
 
 
@@ -57,29 +58,28 @@ public class RelationshipsMatrix {
     static final String XML_ELEMENT_ROOT = "relationships"; //$NON-NLS-1$
     static final String XML_ELEMENT_KEYS = "keys"; //$NON-NLS-1$
     static final String XML_ELEMENT_KEY = "key"; //$NON-NLS-1$
-    static final String XML_ELEMENT_ELEMENTS = "elements"; //$NON-NLS-1$
     static final String XML_ELEMENT_SOURCE = "source"; //$NON-NLS-1$
     static final String XML_ELEMENT_TARGET = "target"; //$NON-NLS-1$
     static final String XML_ATTRIBUTE_CHAR = "char"; //$NON-NLS-1$
     static final String XML_ATTRIBUTE_RELATIONSHIP = "relationship"; //$NON-NLS-1$
     static final String XML_ATTRIBUTE_RELATIONS = "relations"; //$NON-NLS-1$
-    static final String XML_ATTRIBUTE_ELEMENT = "element"; //$NON-NLS-1$
+    static final String XML_ATTRIBUTE_CONCEPT = "concept"; //$NON-NLS-1$
 
     public static class TargetMatrix {
         EClass targetClass;
-        List<EClass> relationships = new ArrayList<EClass>();
+        Set<EClass> relationships = new LinkedHashSet<>();
         
         public EClass getTargetClass() {
             return targetClass;
         }
         
-        public List<EClass> getRelationships() {
+        public Set<EClass> getRelationships() {
             return relationships;
         }
     }
     
     /**
-     * Mapping of source elements to target elements and possible relations
+     * Mapping of source concepts to target concepts and possible relations
      */
     private Map<EClass, List<TargetMatrix>> matrixMap = new HashMap<EClass, List<TargetMatrix>>();
     
@@ -109,8 +109,11 @@ public class RelationshipsMatrix {
         return Collections.unmodifiableMap(relationsValueMap);
     }
 
-    boolean isValidRelationshipStart(IArchimateElement sourceElement, EClass relationshipType) {
-        EClass sourceType = getSuperEClass(sourceElement.eClass());
+    boolean isValidRelationshipStart(EClass sourceType, EClass relationshipType) {
+        // Use "Relationship" as a generic super type
+        if(IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(sourceType)) {
+            sourceType = IArchimatePackage.eINSTANCE.getArchimateRelationship();
+        }
         
         List<TargetMatrix> listMatrix = matrixMap.get(sourceType);
         if(listMatrix != null) {
@@ -129,12 +132,20 @@ public class RelationshipsMatrix {
             return false;
         }
         
-        if(!IArchimatePackage.eINSTANCE.getRelationship().isSuperTypeOf(relationshipType)) {
+        // relationshipType has to be a Relationship class
+        if(!IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(relationshipType)) {
             return false;
         }
         
-        sourceType = getSuperEClass(sourceType);
-        targetType = getSuperEClass(targetType);
+        // Use "Relationship" as a generic super type
+        if(IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(sourceType)) {
+            sourceType = IArchimatePackage.eINSTANCE.getArchimateRelationship();
+        }
+        
+        // Use "Relationship" as a generic super type
+        if(IArchimatePackage.eINSTANCE.getArchimateRelationship().isSuperTypeOf(targetType)) {
+            targetType = IArchimatePackage.eINSTANCE.getArchimateRelationship();
+        }
         
         List<TargetMatrix> listMatrix = matrixMap.get(sourceType);
         if(listMatrix != null) {
@@ -146,18 +157,6 @@ public class RelationshipsMatrix {
         }
         
         return false;
-    }
-    
-    /**
-     * @return The actual super EClass of an EClass
-     */
-    private EClass getSuperEClass(EClass eClass) {
-        // Use one super class type for Junctions
-        if(IArchimatePackage.eINSTANCE.getJunctionElement().isSuperTypeOf(eClass)) {
-            return IArchimatePackage.eINSTANCE.getJunction();
-        }
-        
-        return eClass;
     }
     
     private void loadKeyLetters() {
@@ -214,24 +213,28 @@ public class RelationshipsMatrix {
             return;
         }
         
-        // Iterate through all "source" elements
-        Element elementElements = doc.getRootElement().getChild(XML_ELEMENT_ELEMENTS);
-        if(elementElements == null) { // oops
-            System.err.println(getClass() + ": Couldn't find elements element."); //$NON-NLS-1$
-            return;
-        }
-        
-        for(Object object : elementElements.getChildren(XML_ELEMENT_SOURCE)) {
+        // Iterate through all "source" concepts
+        for(Object object : doc.getRootElement().getChildren(XML_ELEMENT_SOURCE)) {
             Element elementSource = (Element)object;
 
-            // Source element name
-            String sourceName = elementSource.getAttributeValue(XML_ATTRIBUTE_ELEMENT);
+            // Source concept name
+            String sourceName = elementSource.getAttributeValue(XML_ATTRIBUTE_CONCEPT);
             if(sourceName == null) {
                 continue;
             }
             
             // Get EClass source from mapping
-            EClass source = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(sourceName);
+            EClass source = null;
+            
+            // Use "Relationship" as a generic super type
+            if(sourceName.equals("Relationship")) { //$NON-NLS-1$
+                source = IArchimatePackage.eINSTANCE.getArchimateRelationship();
+            }
+            // Else use given class
+            else {
+                source = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(sourceName);
+            }
+            
             if(source == null) {
                 System.err.println(getClass() + ": Couldn't find source " + sourceName); //$NON-NLS-1$
                 continue;
@@ -243,18 +246,29 @@ public class RelationshipsMatrix {
             // Put it in the main matrix map
             matrixMap.put(source, matrixList);
             
-            // Iterate through all child "target" elements
+            // Iterate through all child "target" concepts
             for(Object objectChild : elementSource.getChildren(XML_ELEMENT_TARGET)) {
                 Element elementTarget = (Element)objectChild;
                 
-                // Target element name
-                String targetName = elementTarget.getAttributeValue(XML_ATTRIBUTE_ELEMENT);
+                // Target concept name
+                String targetName = elementTarget.getAttributeValue(XML_ATTRIBUTE_CONCEPT);
                 if(targetName == null) {
                     continue;
                 }
                 
+                EClass target = null;
+                
                 // Get EClass target from mapping
-                EClass target = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(targetName);
+
+                // Use "Relationship" as a generic super type
+                if(targetName.equals("Relationship")) { //$NON-NLS-1$
+                    target = IArchimatePackage.eINSTANCE.getArchimateRelationship();
+                }
+                // Else use given class
+                else {
+                    target = (EClass)IArchimatePackage.eINSTANCE.getEClassifier(targetName);
+                }
+                
                 if(target == null) {
                     System.err.println(getClass() + ": Couldn't find target " + targetName); //$NON-NLS-1$
                     continue;

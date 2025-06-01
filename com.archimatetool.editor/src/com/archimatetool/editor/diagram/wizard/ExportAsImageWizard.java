@@ -8,6 +8,7 @@ package com.archimatetool.editor.diagram.wizard;
 import java.io.File;
 import java.io.IOException;
 
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.wizard.Wizard;
@@ -15,6 +16,7 @@ import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.widgets.Display;
 
+import com.archimatetool.editor.Logger;
 import com.archimatetool.editor.diagram.ImageExportProviderManager.ImageExportProviderInfo;
 
 
@@ -27,17 +29,19 @@ import com.archimatetool.editor.diagram.ImageExportProviderManager.ImageExportPr
 public class ExportAsImageWizard extends Wizard {
     
     private IFigure fFigure;
+    private String fName;
     
     private ExportAsImagePage fPage;
     
-    public ExportAsImageWizard(IFigure figure) {
+    public ExportAsImageWizard(IFigure figure, String name) {
         fFigure = figure;
+        fName = name;
         setWindowTitle(Messages.ExportAsImageWizard_0);
     }
     
     @Override
     public void addPages() {
-        fPage = new ExportAsImagePage(fFigure);
+        fPage = new ExportAsImagePage(fFigure, fName);
         addPage(fPage);
     }
     
@@ -61,12 +65,18 @@ public class ExportAsImageWizard extends Wizard {
         
         // Make sure the file does not already exist
         if(file.exists()) {
-            boolean result = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
+            boolean result = MessageDialog.openQuestion(getShell(),
                     Messages.ExportAsImageWizard_3,
-                    NLS.bind(Messages.ExportAsImageWizard_4, file));
+                    NLS.bind(Messages.ExportAsImageWizard_4, file.getAbsolutePath()));
             if(!result) {
                 return false;
             }
+        }
+        
+        // Make sure parent folder exists
+        File parent = file.getParentFile();
+        if(parent != null) {
+            parent.mkdirs();
         }
         
         BusyIndicator.showWhile(Display.getCurrent(), new Runnable() {
@@ -78,10 +88,12 @@ public class ExportAsImageWizard extends Wizard {
                     fPage.storePreferences();
                 }
                 catch(Throwable ex) {
-                    ex.printStackTrace();
-                    MessageDialog.openError(Display.getCurrent().getActiveShell(),
+                    Logger.log(IStatus.ERROR, "Error exporting image", ex); //$NON-NLS-1$
+                    
+                    MessageDialog.openError(getShell(),
                             Messages.ExportAsImageWizard_5,
-                            Messages.ExportAsImageWizard_6 + " " + ex.getMessage()); //$NON-NLS-1$
+                            Messages.ExportAsImageWizard_6 + " " +  //$NON-NLS-1$
+                                    (ex.getMessage() == null ? ex.toString() : ex.getMessage()));
                 }
             }
         });

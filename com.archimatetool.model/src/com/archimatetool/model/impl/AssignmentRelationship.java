@@ -15,12 +15,10 @@ import com.archimatetool.model.IAssignmentRelationship;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Assignment Relationship</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class AssignmentRelationship extends Relationship implements IAssignmentRelationship {
+public class AssignmentRelationship extends ArchimateRelationship implements IAssignmentRelationship {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

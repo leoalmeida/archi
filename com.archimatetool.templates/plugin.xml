@@ -4,15 +4,25 @@
    <extension
          point="org.eclipse.ui.commands">
       <command
+            categoryId="org.eclipse.ui.category.file"
             defaultHandler="com.archimatetool.templates.impl.NewArchimateModelFromTemplateHandler"
+            description="%command.description"
             id="com.archimatetool.templates.modelFromTemplate"
-            name="New Model From Template">
+            name="%command.name">
       </command>
       <command
-            defaultHandler="com.archimatetool.templates.impl.SaveAsTemplateHandler"
+            categoryId="org.eclipse.ui.category.file"
+            description="%command.description.0"
             id="com.archimatetool.templates.saveAsTemplate"
-            name="Save As Template">
+            name="%command.name.0">
       </command>
+   </extension>
+   <extension
+         point="org.eclipse.ui.commandImages">
+      <image
+            commandId="com.archimatetool.templates.modelFromTemplate"
+            icon="img/newfile_wiz.png">
+      </image>
    </extension>
    <extension
          point="org.eclipse.ui.menus">
@@ -21,7 +31,7 @@
             locationURI="menu:new_menu?after=new_menu.ext">
          <command
                commandId="com.archimatetool.templates.modelFromTemplate"
-               icon="img/newfile.gif"
+               icon="img/newfile_wiz.png"
                label="%action.label"
                style="push">
          </command>
@@ -31,7 +41,7 @@
             locationURI="menu:com.archimatetool.menu.newDropdown">
          <command
                commandId="com.archimatetool.templates.modelFromTemplate"
-               icon="img/newfile.gif"
+               icon="img/newfile_wiz.png"
                label="%action.label"
                style="push">
          </command>
@@ -47,8 +57,16 @@
       </menuContribution>
    </extension>
    <extension
-         point="org.eclipse.ui.startup">
-      <startup></startup>
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="com.archimatetool.templates.impl.SaveAsTemplateHandler"
+            commandId="com.archimatetool.templates.saveAsTemplate">
+         <enabledWhen>
+            <reference
+                  definitionId="com.archimatetool.modelEnabled">
+            </reference>
+         </enabledWhen>
+      </handler>
    </extension>
 
 </plugin>

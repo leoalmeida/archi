@@ -5,63 +5,46 @@
  */
 package com.archimatetool.editor.views.tree.commands;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.gef.commands.CommandStack;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.editor.model.DiagramModelUtils;
-import com.archimatetool.editor.views.tree.TreeModelViewer;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IDiagramModelReference;
 import com.archimatetool.model.IFolder;
-import com.archimatetool.model.IRelationship;
 import com.archimatetool.model.util.ArchimateModelUtils;
 import com.archimatetool.testingtools.ArchimateTestModel;
 
 
-
-/**
- * It uses Mockito's mock objects
- */
-@RunWith(MockitoJUnitRunner.class)
 @SuppressWarnings("nls")
 public class DeleteCommandHandlerTests {
     
     static File TEST_MODEL_FILE = new File(TestSupport.getTestDataFolder(), "models/testDeleteHandler.archimate");
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DeleteCommandHandlerTests.class);
-    }
-    
     private ArchimateTestModel tm;
     private IArchimateModel model;
     
-    @Mock
-    private TreeModelViewer treeModelViewer;
-    
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() throws IOException {
         tm = new ArchimateTestModel(TEST_MODEL_FILE);
         model = tm.loadModelWithCommandStack();
@@ -76,6 +59,14 @@ public class DeleteCommandHandlerTests {
     }
     
     @Test
+    public void testCanDeleteAllRelations() {
+        // Can delete all ArchiMate relations
+        for(EClass eClass : ArchimateModelUtils.getRelationsClasses()) {
+            assertTrue(DeleteCommandHandler.canDelete(IArchimateFactory.eINSTANCE.create(eClass)));
+        }
+    }
+
+    @Test
     public void testCanDeleteCertainFolders() {
         IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
         
@@ -83,7 +74,7 @@ public class DeleteCommandHandlerTests {
         for(FolderType type : FolderType.values()) {
             folder.setType(type);
             
-            if(type == FolderType.DERIVED || type == FolderType.USER) { // Can delete these
+            if(type == FolderType.USER) { // Can delete these
                 assertTrue(DeleteCommandHandler.canDelete(folder));
             }
             else {
@@ -100,7 +91,7 @@ public class DeleteCommandHandlerTests {
                 ArchimateModelUtils.getObjectByID(model, "d856464a")
         };
         
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, elements);
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(elements);
         assertTrue(commandHandler.hasDiagramReferences());
         
         // This element isn't in a diagram
@@ -108,19 +99,19 @@ public class DeleteCommandHandlerTests {
                 ArchimateModelUtils.getObjectByID(model, "d856464a")
         };
         
-        commandHandler.setObjectsToBeDeleted(elements);
+        commandHandler = new DeleteCommandHandler(elements);
         assertFalse(commandHandler.hasDiagramReferences());
     }
     
     @Test
     public void testDelete_CannotDeleteMainFolders() {
         // Cannot delete the main folders
-        assertEquals(8,  model.getFolders().size());
+        Object[] folders = model.getFolders().toArray();
         
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, model.getFolders().toArray());
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(folders);
         commandHandler.delete();
         
-        assertEquals(8,  model.getFolders().size());
+        assertArrayEquals(folders, model.getFolders().toArray());
     }
     
     @Test
@@ -139,16 +130,16 @@ public class DeleteCommandHandlerTests {
         
         // Ensure these elements are referenced in diagrams
         for(IArchimateElement element : elements) {
-            assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
         }
         
         // Delete them
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, elements.toArray());
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(elements.toArray());
         commandHandler.delete();
         
         // Test that they are all gone in the model and in the referenced diagrams
         for(IArchimateElement element : elements) {
-            assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
             assertNull(ArchimateModelUtils.getObjectByID(model, element.getId()));
         }
         
@@ -158,7 +149,7 @@ public class DeleteCommandHandlerTests {
         
         // And find them all back again!
         for(IArchimateElement element : elements) {
-            assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
             assertNotNull(ArchimateModelUtils.getObjectByID(model, element.getId()));
         }
     }
@@ -185,7 +176,7 @@ public class DeleteCommandHandlerTests {
         }
         
         // Delete top folder
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, folder);
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(folder);
         commandHandler.delete();
         
         // Is top folder deleted?
@@ -197,7 +188,7 @@ public class DeleteCommandHandlerTests {
         // Are elements deleted?
         for(IArchimateElement element : elements) {
             assertNull(ArchimateModelUtils.getObjectByID(model, element.getId()));
-            assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
         }
     }
     
@@ -212,37 +203,37 @@ public class DeleteCommandHandlerTests {
         assertNotNull(businessRole);
         
         // Connecting relationship
-        IRelationship relationship = (IRelationship)ArchimateModelUtils.getObjectByID(model, "3bede7f0");
+        IArchimateRelationship relationship = (IArchimateRelationship)ArchimateModelUtils.getObjectByID(model, "3bede7f0");
         assertNotNull(relationship);
         
         // Relationship is there on a diagram
-        assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(relationship));
+        assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(relationship));
         
         // Zap
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, new Object[] { businessActor, businessRole } );
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(new Object[] { businessActor, businessRole } );
         commandHandler.delete();
         
         // All gone
         assertNull(ArchimateModelUtils.getObjectByID(model, relationship.getId()));
-        assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(relationship));
+        assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(relationship));
     }
     
     @Test
     public void testDelete_Relations_Deleted_Diagram_Connections() {
         // Connecting relationship
-        IRelationship relationship = (IRelationship)ArchimateModelUtils.getObjectByID(model, "3bede7f0");
+        IArchimateRelationship relationship = (IArchimateRelationship)ArchimateModelUtils.getObjectByID(model, "3bede7f0");
         assertNotNull(relationship);
         
         // Relationship is there on a diagram
-        assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(relationship));
+        assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(relationship));
         
         // Zap
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, new Object[] { relationship } );
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(new Object[] { relationship } );
         commandHandler.delete();
         
         // All gone
         assertNull(ArchimateModelUtils.getObjectByID(model, relationship.getId()));
-        assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(relationship));
+        assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(relationship));
     }
 
     @Test
@@ -254,7 +245,7 @@ public class DeleteCommandHandlerTests {
         assertNotNull(dmRef);
         
         // Zap
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, new Object[] { dm2 } );
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(new Object[] { dm2 } );
         commandHandler.delete();
         
         // All gone
@@ -292,17 +283,17 @@ public class DeleteCommandHandlerTests {
         assertEquals(8, allElements.size());
         
         // Zap
-        DeleteCommandHandler commandHandler = new DeleteCommandHandler(treeModelViewer, allElements.toArray() );
+        DeleteCommandHandler commandHandler = new DeleteCommandHandler(allElements.toArray() );
         commandHandler.delete();
         
         // Test that they are all gone in the models and in the referenced diagrams
         for(IArchimateElement element : elements1) {
-            assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
             assertNull(ArchimateModelUtils.getObjectByID(model, element.getId()));
         }
         
         for(IArchimateElement element : elements2) {
-            assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
             assertNull(ArchimateModelUtils.getObjectByID(model2, element.getId()));
         }
         
@@ -315,12 +306,12 @@ public class DeleteCommandHandlerTests {
         
         // And find them all back again!
         for(IArchimateElement element : elements1) {
-            assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
             assertNotNull(ArchimateModelUtils.getObjectByID(model, element.getId()));
         }
 
         for(IArchimateElement element : elements2) {
-            assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
+            assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
             assertNotNull(ArchimateModelUtils.getObjectByID(model2, element.getId()));
         }
     }

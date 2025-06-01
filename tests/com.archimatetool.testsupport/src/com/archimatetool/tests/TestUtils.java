@@ -157,6 +157,7 @@ public class TestUtils {
             page.closeAllEditors(false);
         }
     }
+    
 
     /*
      * We need to call this in cases where Display.getDefault() has not yet been called yet.

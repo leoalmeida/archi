@@ -11,50 +11,43 @@ import java.net.URL;
 
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.ui.IStartup;
 import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.osgi.framework.BundleContext;
 
-import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.jasperreports.preferences.IJasperPreferenceConstants;
 
 /**
  * Activator
- * Implement IStartup so that Menu Items are initialised
  * 
  * @author Phillip Beauvoir
  */
-public class JasperReportsPlugin extends AbstractUIPlugin implements IStartup {
+@SuppressWarnings("nls")
+public class JasperReportsPlugin extends AbstractUIPlugin {
     
-    public static final String PLUGIN_ID = "com.archimatetool.jasperreports"; //$NON-NLS-1$
+    public static final String PLUGIN_ID = "com.archimatetool.jasperreports";
+
+    // The shared instance
+    private static JasperReportsPlugin instance;
 
     /**
-     * The shared instance
+     * @return the shared instance
      */
-    public static JasperReportsPlugin INSTANCE;
-
-    /**
-     * The File location of this plugin folder
-     */
-    private static File fPluginFolder;
+    public static JasperReportsPlugin getInstance() {
+        return instance;
+    }
 
     public JasperReportsPlugin() {
-        INSTANCE = this;
+        instance = this;
     }
 
-    @Override
-    public void earlyStartup() {
-        // Do nothing
-    }
-    
     @Override
     public void start(BundleContext context) throws Exception {
         super.start(context);
         
-        // Add default folder
-        getDefaultUserTemplatesFolder();
+        // Create user templates folder
+        getUserTemplatesFolder().mkdirs();
     }
     
     /**
@@ -64,7 +57,6 @@ public class JasperReportsPlugin extends AbstractUIPlugin implements IStartup {
         String s = getPreferenceStore().getString(IJasperPreferenceConstants.JASPER_USER_REPORTS_FOLDER);
         if(StringUtils.isSetAfterTrim(s)) {
             File f = new File(s);
-            f.mkdirs();
             if(f.exists() && f.isDirectory()) {
                 return f;
             }
@@ -77,16 +69,14 @@ public class JasperReportsPlugin extends AbstractUIPlugin implements IStartup {
      * @return Default JR user templates folder
      */
     public File getDefaultUserTemplatesFolder() {
-        File folder = new File(Preferences.STORE.getString(IPreferenceConstants.USER_DATA_FOLDER), "jasper-reports"); //$NON-NLS-1$
-        folder.mkdirs();
-        return folder;
+        return new File(ArchiPlugin.getInstance().getUserDataFolder(), "jasper-reports");
     }
 
     /**
      * @return The Jasper Reports folder
      */
     public File getJasperReportsFolder() {
-        URL url = FileLocator.find(getBundle(), new Path("$nl$/reports"), null); //$NON-NLS-1$
+        URL url = FileLocator.find(getBundle(), new Path("$nl$/reports"), null);
         try {
             url = FileLocator.resolve(url);
         }
@@ -100,17 +90,13 @@ public class JasperReportsPlugin extends AbstractUIPlugin implements IStartup {
      * @return The File Location of this plugin
      */
     public File getPluginFolder() {
-        if(fPluginFolder == null) {
-            URL url = getBundle().getEntry("/"); //$NON-NLS-1$
-            try {
-                url = FileLocator.resolve(url);
-            }
-            catch(IOException ex) {
-                ex.printStackTrace();
-            }
-            fPluginFolder = new File(url.getPath());
+        try {
+            URL url = FileLocator.resolve(getBundle().getEntry("/"));
+            return new File(url.getPath());
         }
-        
-        return fPluginFolder;
+        catch(IOException ex) {
+            ex.printStackTrace();
+            return null;
+        }
     }
 }

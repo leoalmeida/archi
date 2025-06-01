@@ -11,8 +11,6 @@ public class Messages extends NLS {
 
     private static final String BUNDLE_NAME = "com.archimatetool.editor.diagram.commands.messages"; //$NON-NLS-1$
 
-    public static String AddDiagramArchimateConnectionCommand_0;
-
     public static String AddDiagramModelReferenceCommand_0;
 
     public static String AddDiagramObjectCommand_0;
@@ -25,15 +23,29 @@ public class Messages extends NLS {
 
     public static String ConnectionTextPositionCommand_0;
 
+    public static String CreateArchimateConnectionWithDialogCommand_0;
+
+    public static String CreateArchimateConnectionWithDialogCommand_1;
+
     public static String CreateBendpointCommand_0;
 
-    public static String CreateDiagramArchimateObjectCommand_0;
+    public static String CreateDiagramArchimateConnectionWithDialogCommand_0;
+
+    public static String CreateDiagramArchimateConnectionWithDialogCommand_1;
+
+    public static String CreateDiagramArchimateConnectionWithDialogCommand_2;
 
     public static String CreateDiagramConnectionCommand_0;
 
     public static String CreateDiagramObjectCommand_0;
 
     public static String DeleteBendpointCommand_0;
+
+    public static String DiagramModelObjectAlphaCommand_0;
+
+    public static String DiagramModelObjectLineStyleCommand_0;
+
+    public static String DiagramModelObjectOutlineAlphaCommand_0;
 
     public static String FillColorCommand_0;
 

@@ -5,12 +5,11 @@
  */
 package com.archimatetool.canvas.model;
 
+import com.archimatetool.model.IArchimatePackage;
+
 import org.eclipse.emf.ecore.EAttribute;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EPackage;
-
-import com.archimatetool.model.IArchimatePackage;
-
 
 /**
  * <!-- begin-user-doc -->
@@ -61,221 +60,6 @@ public interface ICanvasPackage extends EPackage {
     ICanvasPackage eINSTANCE = com.archimatetool.canvas.model.impl.CanvasPackage.init();
 
     /**
-     * The meta object id for the '{@link com.archimatetool.canvas.model.IIconic <em>Iconic</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see com.archimatetool.canvas.model.IIconic
-     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getIconic()
-     * @generated
-     */
-    int ICONIC = 0;
-
-    /**
-     * The feature id for the '<em><b>Id</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__ID = IArchimatePackage.DIAGRAM_MODEL_OBJECT__ID;
-
-    /**
-     * The feature id for the '<em><b>Name</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__NAME = IArchimatePackage.DIAGRAM_MODEL_OBJECT__NAME;
-
-    /**
-     * The feature id for the '<em><b>Diagram Model</b></em>' reference.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__DIAGRAM_MODEL = IArchimatePackage.DIAGRAM_MODEL_OBJECT__DIAGRAM_MODEL;
-
-    /**
-     * The feature id for the '<em><b>Font</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__FONT = IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT;
-
-    /**
-     * The feature id for the '<em><b>Font Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__FONT_COLOR = IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__TEXT_ALIGNMENT = IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT;
-
-    /**
-     * The feature id for the '<em><b>Text Position</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__TEXT_POSITION = IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION;
-
-    /**
-     * The feature id for the '<em><b>Line Width</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__LINE_WIDTH = IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH;
-
-    /**
-     * The feature id for the '<em><b>Line Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__LINE_COLOR = IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__BOUNDS = IArchimatePackage.DIAGRAM_MODEL_OBJECT__BOUNDS;
-
-    /**
-     * The feature id for the '<em><b>Source Connections</b></em>' containment reference list.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__SOURCE_CONNECTIONS = IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS;
-
-    /**
-     * The feature id for the '<em><b>Target Connections</b></em>' reference list.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__TARGET_CONNECTIONS = IArchimatePackage.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS;
-
-    /**
-     * The feature id for the '<em><b>Fill Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__FILL_COLOR = IArchimatePackage.DIAGRAM_MODEL_OBJECT__FILL_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Image Path</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__IMAGE_PATH = IArchimatePackage.DIAGRAM_MODEL_OBJECT_FEATURE_COUNT + 0;
-
-    /**
-     * The feature id for the '<em><b>Image Position</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC__IMAGE_POSITION = IArchimatePackage.DIAGRAM_MODEL_OBJECT_FEATURE_COUNT + 1;
-
-    /**
-     * The number of structural features of the '<em>Iconic</em>' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int ICONIC_FEATURE_COUNT = IArchimatePackage.DIAGRAM_MODEL_OBJECT_FEATURE_COUNT + 2;
-
-    /**
-     * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModel <em>Model</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see com.archimatetool.canvas.model.impl.CanvasModel
-     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModel()
-     * @generated
-     */
-    int CANVAS_MODEL = 4;
-
-    /**
-     * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModelSticky <em>Model Sticky</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see com.archimatetool.canvas.model.impl.CanvasModelSticky
-     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModelSticky()
-     * @generated
-     */
-    int CANVAS_MODEL_STICKY = 5;
-
-    /**
-     * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModelBlock <em>Model Block</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see com.archimatetool.canvas.model.impl.CanvasModelBlock
-     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModelBlock()
-     * @generated
-     */
-    int CANVAS_MODEL_BLOCK = 6;
-
-    /**
-     * Returns the meta object for class '{@link com.archimatetool.canvas.model.IIconic <em>Iconic</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for class '<em>Iconic</em>'.
-     * @see com.archimatetool.canvas.model.IIconic
-     * @generated
-     */
-    EClass getIconic();
-
-    /**
-     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.IIconic#getImagePosition <em>Image Position</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for the attribute '<em>Image Position</em>'.
-     * @see com.archimatetool.canvas.model.IIconic#getImagePosition()
-     * @see #getIconic()
-     * @generated
-     */
-    EAttribute getIconic_ImagePosition();
-
-    /**
-     * The meta object id for the '{@link com.archimatetool.canvas.model.INotesContent <em>Notes Content</em>}' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see com.archimatetool.canvas.model.INotesContent
-     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getNotesContent()
-     * @generated
-     */
-    int NOTES_CONTENT = 3;
-
-    /**
      * The meta object id for the '{@link com.archimatetool.canvas.model.IHintProvider <em>Hint Provider</em>}' class.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -283,7 +67,7 @@ public interface ICanvasPackage extends EPackage {
      * @see com.archimatetool.canvas.model.impl.CanvasPackage#getHintProvider()
      * @generated
      */
-    int HINT_PROVIDER = 1;
+    int HINT_PROVIDER = 0;
 
     /**
      * The feature id for the '<em><b>Hint Title</b></em>' attribute.
@@ -313,14 +97,14 @@ public interface ICanvasPackage extends EPackage {
     int HINT_PROVIDER_FEATURE_COUNT = 2;
 
     /**
-     * The meta object id for the '{@link com.archimatetool.help.hints.IHelpHintProvider <em>Help Hint Provider</em>}' class.
+     * The meta object id for the '{@link com.archimatetool.editor.ui.IHelpHintProvider <em>Help Hint Provider</em>}' class.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @see com.archimatetool.help.hints.IHelpHintProvider
+     * @see com.archimatetool.editor.ui.IHelpHintProvider
      * @see com.archimatetool.canvas.model.impl.CanvasPackage#getHelpHintProvider()
      * @generated
      */
-    int HELP_HINT_PROVIDER = 2;
+    int HELP_HINT_PROVIDER = 1;
 
     /**
      * The number of structural features of the '<em>Help Hint Provider</em>' class.
@@ -330,6 +114,16 @@ public interface ICanvasPackage extends EPackage {
      * @ordered
      */
     int HELP_HINT_PROVIDER_FEATURE_COUNT = 0;
+
+    /**
+     * The meta object id for the '{@link com.archimatetool.canvas.model.INotesContent <em>Notes Content</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see com.archimatetool.canvas.model.INotesContent
+     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getNotesContent()
+     * @generated
+     */
+    int NOTES_CONTENT = 2;
 
     /**
      * The feature id for the '<em><b>Notes</b></em>' attribute.
@@ -350,22 +144,14 @@ public interface ICanvasPackage extends EPackage {
     int NOTES_CONTENT_FEATURE_COUNT = 1;
 
     /**
-     * The feature id for the '<em><b>Archimate Model</b></em>' reference.
+     * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModel <em>Model</em>}' class.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
+     * @see com.archimatetool.canvas.model.impl.CanvasModel
+     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModel()
      * @generated
-     * @ordered
      */
-    int CANVAS_MODEL__ARCHIMATE_MODEL = IArchimatePackage.DIAGRAM_MODEL__ARCHIMATE_MODEL;
-
-    /**
-     * The feature id for the '<em><b>Id</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL__ID = IArchimatePackage.DIAGRAM_MODEL__ID;
+    int CANVAS_MODEL = 3;
 
     /**
      * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -377,13 +163,22 @@ public interface ICanvasPackage extends EPackage {
     int CANVAS_MODEL__NAME = IArchimatePackage.DIAGRAM_MODEL__NAME;
 
     /**
-     * The feature id for the '<em><b>Diagram Model</b></em>' reference.
+     * The feature id for the '<em><b>Id</b></em>' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL__DIAGRAM_MODEL = IArchimatePackage.DIAGRAM_MODEL__DIAGRAM_MODEL;
+    int CANVAS_MODEL__ID = IArchimatePackage.DIAGRAM_MODEL__ID;
+
+    /**
+     * The feature id for the '<em><b>Features</b></em>' containment reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL__FEATURES = IArchimatePackage.DIAGRAM_MODEL__FEATURES;
 
     /**
      * The feature id for the '<em><b>Children</b></em>' containment reference list.
@@ -449,13 +244,23 @@ public interface ICanvasPackage extends EPackage {
     int CANVAS_MODEL_FEATURE_COUNT = IArchimatePackage.DIAGRAM_MODEL_FEATURE_COUNT + 2;
 
     /**
+     * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModelSticky <em>Model Sticky</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see com.archimatetool.canvas.model.impl.CanvasModelSticky
+     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModelSticky()
+     * @generated
+     */
+    int CANVAS_MODEL_STICKY = 4;
+
+    /**
      * The feature id for the '<em><b>Id</b></em>' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__ID = ICONIC__ID;
+    int CANVAS_MODEL_STICKY__ID = IArchimatePackage.ICONIC__ID;
 
     /**
      * The feature id for the '<em><b>Name</b></em>' attribute.
@@ -464,79 +269,16 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__NAME = ICONIC__NAME;
+    int CANVAS_MODEL_STICKY__NAME = IArchimatePackage.ICONIC__NAME;
 
     /**
-     * The feature id for the '<em><b>Diagram Model</b></em>' reference.
+     * The feature id for the '<em><b>Features</b></em>' containment reference list.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__DIAGRAM_MODEL = ICONIC__DIAGRAM_MODEL;
-
-    /**
-     * The feature id for the '<em><b>Font</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__FONT = ICONIC__FONT;
-
-    /**
-     * The feature id for the '<em><b>Font Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__FONT_COLOR = ICONIC__FONT_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__TEXT_ALIGNMENT = ICONIC__TEXT_ALIGNMENT;
-
-    /**
-     * The feature id for the '<em><b>Text Position</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__TEXT_POSITION = ICONIC__TEXT_POSITION;
-
-    /**
-     * The feature id for the '<em><b>Line Width</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__LINE_WIDTH = ICONIC__LINE_WIDTH;
-
-    /**
-     * The feature id for the '<em><b>Line Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__LINE_COLOR = ICONIC__LINE_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY__BOUNDS = ICONIC__BOUNDS;
+    int CANVAS_MODEL_STICKY__FEATURES = IArchimatePackage.ICONIC__FEATURES;
 
     /**
      * The feature id for the '<em><b>Source Connections</b></em>' containment reference list.
@@ -545,7 +287,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__SOURCE_CONNECTIONS = ICONIC__SOURCE_CONNECTIONS;
+    int CANVAS_MODEL_STICKY__SOURCE_CONNECTIONS = IArchimatePackage.ICONIC__SOURCE_CONNECTIONS;
 
     /**
      * The feature id for the '<em><b>Target Connections</b></em>' reference list.
@@ -554,7 +296,61 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__TARGET_CONNECTIONS = ICONIC__TARGET_CONNECTIONS;
+    int CANVAS_MODEL_STICKY__TARGET_CONNECTIONS = IArchimatePackage.ICONIC__TARGET_CONNECTIONS;
+
+    /**
+     * The feature id for the '<em><b>Font</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__FONT = IArchimatePackage.ICONIC__FONT;
+
+    /**
+     * The feature id for the '<em><b>Font Color</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__FONT_COLOR = IArchimatePackage.ICONIC__FONT_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Line Width</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__LINE_WIDTH = IArchimatePackage.ICONIC__LINE_WIDTH;
+
+    /**
+     * The feature id for the '<em><b>Line Color</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__LINE_COLOR = IArchimatePackage.ICONIC__LINE_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__TEXT_ALIGNMENT = IArchimatePackage.ICONIC__TEXT_ALIGNMENT;
+
+    /**
+     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__BOUNDS = IArchimatePackage.ICONIC__BOUNDS;
 
     /**
      * The feature id for the '<em><b>Fill Color</b></em>' attribute.
@@ -563,7 +359,16 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__FILL_COLOR = ICONIC__FILL_COLOR;
+    int CANVAS_MODEL_STICKY__FILL_COLOR = IArchimatePackage.ICONIC__FILL_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Alpha</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_STICKY__ALPHA = IArchimatePackage.ICONIC__ALPHA;
 
     /**
      * The feature id for the '<em><b>Image Path</b></em>' attribute.
@@ -572,7 +377,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__IMAGE_PATH = ICONIC__IMAGE_PATH;
+    int CANVAS_MODEL_STICKY__IMAGE_PATH = IArchimatePackage.ICONIC__IMAGE_PATH;
 
     /**
      * The feature id for the '<em><b>Image Position</b></em>' attribute.
@@ -581,7 +386,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__IMAGE_POSITION = ICONIC__IMAGE_POSITION;
+    int CANVAS_MODEL_STICKY__IMAGE_POSITION = IArchimatePackage.ICONIC__IMAGE_POSITION;
 
     /**
      * The feature id for the '<em><b>Content</b></em>' attribute.
@@ -590,7 +395,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__CONTENT = ICONIC_FEATURE_COUNT + 0;
+    int CANVAS_MODEL_STICKY__CONTENT = IArchimatePackage.ICONIC_FEATURE_COUNT + 0;
 
     /**
      * The feature id for the '<em><b>Notes</b></em>' attribute.
@@ -599,7 +404,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__NOTES = ICONIC_FEATURE_COUNT + 1;
+    int CANVAS_MODEL_STICKY__NOTES = IArchimatePackage.ICONIC_FEATURE_COUNT + 1;
 
     /**
      * The feature id for the '<em><b>Properties</b></em>' containment reference list.
@@ -608,7 +413,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__PROPERTIES = ICONIC_FEATURE_COUNT + 2;
+    int CANVAS_MODEL_STICKY__PROPERTIES = IArchimatePackage.ICONIC_FEATURE_COUNT + 2;
 
     /**
      * The feature id for the '<em><b>Locked</b></em>' attribute.
@@ -617,7 +422,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__LOCKED = ICONIC_FEATURE_COUNT + 3;
+    int CANVAS_MODEL_STICKY__LOCKED = IArchimatePackage.ICONIC_FEATURE_COUNT + 3;
 
     /**
      * The feature id for the '<em><b>Border Color</b></em>' attribute.
@@ -626,70 +431,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_STICKY__BORDER_COLOR = ICONIC_FEATURE_COUNT + 4;
-
-    /**
-     * The number of structural features of the '<em>Model Sticky</em>' class.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_STICKY_FEATURE_COUNT = ICONIC_FEATURE_COUNT + 5;
-
-    /**
-     * The feature id for the '<em><b>Id</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_BLOCK__ID = ICONIC__ID;
-
-    /**
-     * The feature id for the '<em><b>Name</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_BLOCK__NAME = ICONIC__NAME;
-
-    /**
-     * The feature id for the '<em><b>Diagram Model</b></em>' reference.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_BLOCK__DIAGRAM_MODEL = ICONIC__DIAGRAM_MODEL;
-
-    /**
-     * The feature id for the '<em><b>Font</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_BLOCK__FONT = ICONIC__FONT;
-
-    /**
-     * The feature id for the '<em><b>Font Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_BLOCK__FONT_COLOR = ICONIC__FONT_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_BLOCK__TEXT_ALIGNMENT = ICONIC__TEXT_ALIGNMENT;
+    int CANVAS_MODEL_STICKY__BORDER_COLOR = IArchimatePackage.ICONIC_FEATURE_COUNT + 4;
 
     /**
      * The feature id for the '<em><b>Text Position</b></em>' attribute.
@@ -698,34 +440,53 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__TEXT_POSITION = ICONIC__TEXT_POSITION;
+    int CANVAS_MODEL_STICKY__TEXT_POSITION = IArchimatePackage.ICONIC_FEATURE_COUNT + 5;
 
     /**
-     * The feature id for the '<em><b>Line Width</b></em>' attribute.
+     * The number of structural features of the '<em>Model Sticky</em>' class.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__LINE_WIDTH = ICONIC__LINE_WIDTH;
+    int CANVAS_MODEL_STICKY_FEATURE_COUNT = IArchimatePackage.ICONIC_FEATURE_COUNT + 6;
 
     /**
-     * The feature id for the '<em><b>Line Color</b></em>' attribute.
+     * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModelBlock <em>Model Block</em>}' class.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see com.archimatetool.canvas.model.impl.CanvasModelBlock
+     * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModelBlock()
+     * @generated
+     */
+    int CANVAS_MODEL_BLOCK = 5;
+
+    /**
+     * The feature id for the '<em><b>Id</b></em>' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__LINE_COLOR = ICONIC__LINE_COLOR;
+    int CANVAS_MODEL_BLOCK__ID = IArchimatePackage.ICONIC__ID;
 
     /**
-     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
+     * The feature id for the '<em><b>Name</b></em>' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__BOUNDS = ICONIC__BOUNDS;
+    int CANVAS_MODEL_BLOCK__NAME = IArchimatePackage.ICONIC__NAME;
+
+    /**
+     * The feature id for the '<em><b>Features</b></em>' containment reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__FEATURES = IArchimatePackage.ICONIC__FEATURES;
 
     /**
      * The feature id for the '<em><b>Source Connections</b></em>' containment reference list.
@@ -734,7 +495,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__SOURCE_CONNECTIONS = ICONIC__SOURCE_CONNECTIONS;
+    int CANVAS_MODEL_BLOCK__SOURCE_CONNECTIONS = IArchimatePackage.ICONIC__SOURCE_CONNECTIONS;
 
     /**
      * The feature id for the '<em><b>Target Connections</b></em>' reference list.
@@ -743,7 +504,61 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__TARGET_CONNECTIONS = ICONIC__TARGET_CONNECTIONS;
+    int CANVAS_MODEL_BLOCK__TARGET_CONNECTIONS = IArchimatePackage.ICONIC__TARGET_CONNECTIONS;
+
+    /**
+     * The feature id for the '<em><b>Font</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__FONT = IArchimatePackage.ICONIC__FONT;
+
+    /**
+     * The feature id for the '<em><b>Font Color</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__FONT_COLOR = IArchimatePackage.ICONIC__FONT_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Line Width</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__LINE_WIDTH = IArchimatePackage.ICONIC__LINE_WIDTH;
+
+    /**
+     * The feature id for the '<em><b>Line Color</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__LINE_COLOR = IArchimatePackage.ICONIC__LINE_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__TEXT_ALIGNMENT = IArchimatePackage.ICONIC__TEXT_ALIGNMENT;
+
+    /**
+     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__BOUNDS = IArchimatePackage.ICONIC__BOUNDS;
 
     /**
      * The feature id for the '<em><b>Fill Color</b></em>' attribute.
@@ -752,7 +567,16 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__FILL_COLOR = ICONIC__FILL_COLOR;
+    int CANVAS_MODEL_BLOCK__FILL_COLOR = IArchimatePackage.ICONIC__FILL_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Alpha</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__ALPHA = IArchimatePackage.ICONIC__ALPHA;
 
     /**
      * The feature id for the '<em><b>Image Path</b></em>' attribute.
@@ -761,7 +585,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__IMAGE_PATH = ICONIC__IMAGE_PATH;
+    int CANVAS_MODEL_BLOCK__IMAGE_PATH = IArchimatePackage.ICONIC__IMAGE_PATH;
 
     /**
      * The feature id for the '<em><b>Image Position</b></em>' attribute.
@@ -770,7 +594,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__IMAGE_POSITION = ICONIC__IMAGE_POSITION;
+    int CANVAS_MODEL_BLOCK__IMAGE_POSITION = IArchimatePackage.ICONIC__IMAGE_POSITION;
 
     /**
      * The feature id for the '<em><b>Children</b></em>' containment reference list.
@@ -779,7 +603,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__CHILDREN = ICONIC_FEATURE_COUNT + 0;
+    int CANVAS_MODEL_BLOCK__CHILDREN = IArchimatePackage.ICONIC_FEATURE_COUNT + 0;
 
     /**
      * The feature id for the '<em><b>Properties</b></em>' containment reference list.
@@ -788,7 +612,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__PROPERTIES = ICONIC_FEATURE_COUNT + 1;
+    int CANVAS_MODEL_BLOCK__PROPERTIES = IArchimatePackage.ICONIC_FEATURE_COUNT + 1;
 
     /**
      * The feature id for the '<em><b>Locked</b></em>' attribute.
@@ -797,7 +621,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__LOCKED = ICONIC_FEATURE_COUNT + 2;
+    int CANVAS_MODEL_BLOCK__LOCKED = IArchimatePackage.ICONIC_FEATURE_COUNT + 2;
 
     /**
      * The feature id for the '<em><b>Border Color</b></em>' attribute.
@@ -806,7 +630,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__BORDER_COLOR = ICONIC_FEATURE_COUNT + 3;
+    int CANVAS_MODEL_BLOCK__BORDER_COLOR = IArchimatePackage.ICONIC_FEATURE_COUNT + 3;
 
     /**
      * The feature id for the '<em><b>Hint Title</b></em>' attribute.
@@ -815,7 +639,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__HINT_TITLE = ICONIC_FEATURE_COUNT + 4;
+    int CANVAS_MODEL_BLOCK__HINT_TITLE = IArchimatePackage.ICONIC_FEATURE_COUNT + 4;
 
     /**
      * The feature id for the '<em><b>Hint Content</b></em>' attribute.
@@ -824,7 +648,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__HINT_CONTENT = ICONIC_FEATURE_COUNT + 5;
+    int CANVAS_MODEL_BLOCK__HINT_CONTENT = IArchimatePackage.ICONIC_FEATURE_COUNT + 5;
 
     /**
      * The feature id for the '<em><b>Content</b></em>' attribute.
@@ -833,7 +657,16 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK__CONTENT = ICONIC_FEATURE_COUNT + 6;
+    int CANVAS_MODEL_BLOCK__CONTENT = IArchimatePackage.ICONIC_FEATURE_COUNT + 6;
+
+    /**
+     * The feature id for the '<em><b>Text Position</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_BLOCK__TEXT_POSITION = IArchimatePackage.ICONIC_FEATURE_COUNT + 7;
 
     /**
      * The number of structural features of the '<em>Model Block</em>' class.
@@ -842,7 +675,7 @@ public interface ICanvasPackage extends EPackage {
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_BLOCK_FEATURE_COUNT = ICONIC_FEATURE_COUNT + 7;
+    int CANVAS_MODEL_BLOCK_FEATURE_COUNT = IArchimatePackage.ICONIC_FEATURE_COUNT + 8;
 
     /**
      * The meta object id for the '{@link com.archimatetool.canvas.model.impl.CanvasModelImage <em>Model Image</em>}' class.
@@ -852,7 +685,7 @@ public interface ICanvasPackage extends EPackage {
      * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModelImage()
      * @generated
      */
-    int CANVAS_MODEL_IMAGE = 7;
+    int CANVAS_MODEL_IMAGE = 6;
 
     /**
      * The feature id for the '<em><b>Id</b></em>' attribute.
@@ -873,76 +706,13 @@ public interface ICanvasPackage extends EPackage {
     int CANVAS_MODEL_IMAGE__NAME = IArchimatePackage.DIAGRAM_MODEL_IMAGE__NAME;
 
     /**
-     * The feature id for the '<em><b>Diagram Model</b></em>' reference.
+     * The feature id for the '<em><b>Features</b></em>' containment reference list.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_IMAGE__DIAGRAM_MODEL = IArchimatePackage.DIAGRAM_MODEL_IMAGE__DIAGRAM_MODEL;
-
-    /**
-     * The feature id for the '<em><b>Font</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__FONT = IArchimatePackage.DIAGRAM_MODEL_IMAGE__FONT;
-
-    /**
-     * The feature id for the '<em><b>Font Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__FONT_COLOR = IArchimatePackage.DIAGRAM_MODEL_IMAGE__FONT_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__TEXT_ALIGNMENT = IArchimatePackage.DIAGRAM_MODEL_IMAGE__TEXT_ALIGNMENT;
-
-    /**
-     * The feature id for the '<em><b>Text Position</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__TEXT_POSITION = IArchimatePackage.DIAGRAM_MODEL_IMAGE__TEXT_POSITION;
-
-    /**
-     * The feature id for the '<em><b>Line Width</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__LINE_WIDTH = IArchimatePackage.DIAGRAM_MODEL_IMAGE__LINE_WIDTH;
-
-    /**
-     * The feature id for the '<em><b>Line Color</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__LINE_COLOR = IArchimatePackage.DIAGRAM_MODEL_IMAGE__LINE_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_IMAGE__BOUNDS = IArchimatePackage.DIAGRAM_MODEL_IMAGE__BOUNDS;
+    int CANVAS_MODEL_IMAGE__FEATURES = IArchimatePackage.DIAGRAM_MODEL_IMAGE__FEATURES;
 
     /**
      * The feature id for the '<em><b>Source Connections</b></em>' containment reference list.
@@ -963,6 +733,60 @@ public interface ICanvasPackage extends EPackage {
     int CANVAS_MODEL_IMAGE__TARGET_CONNECTIONS = IArchimatePackage.DIAGRAM_MODEL_IMAGE__TARGET_CONNECTIONS;
 
     /**
+     * The feature id for the '<em><b>Font</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__FONT = IArchimatePackage.DIAGRAM_MODEL_IMAGE__FONT;
+
+    /**
+     * The feature id for the '<em><b>Font Color</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__FONT_COLOR = IArchimatePackage.DIAGRAM_MODEL_IMAGE__FONT_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Line Width</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__LINE_WIDTH = IArchimatePackage.DIAGRAM_MODEL_IMAGE__LINE_WIDTH;
+
+    /**
+     * The feature id for the '<em><b>Line Color</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__LINE_COLOR = IArchimatePackage.DIAGRAM_MODEL_IMAGE__LINE_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__TEXT_ALIGNMENT = IArchimatePackage.DIAGRAM_MODEL_IMAGE__TEXT_ALIGNMENT;
+
+    /**
+     * The feature id for the '<em><b>Bounds</b></em>' containment reference.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__BOUNDS = IArchimatePackage.DIAGRAM_MODEL_IMAGE__BOUNDS;
+
+    /**
      * The feature id for the '<em><b>Fill Color</b></em>' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -970,6 +794,15 @@ public interface ICanvasPackage extends EPackage {
      * @ordered
      */
     int CANVAS_MODEL_IMAGE__FILL_COLOR = IArchimatePackage.DIAGRAM_MODEL_IMAGE__FILL_COLOR;
+
+    /**
+     * The feature id for the '<em><b>Alpha</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__ALPHA = IArchimatePackage.DIAGRAM_MODEL_IMAGE__ALPHA;
 
     /**
      * The feature id for the '<em><b>Border Color</b></em>' attribute.
@@ -988,6 +821,24 @@ public interface ICanvasPackage extends EPackage {
      * @ordered
      */
     int CANVAS_MODEL_IMAGE__IMAGE_PATH = IArchimatePackage.DIAGRAM_MODEL_IMAGE__IMAGE_PATH;
+
+    /**
+     * The feature id for the '<em><b>Properties</b></em>' containment reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__PROPERTIES = IArchimatePackage.DIAGRAM_MODEL_IMAGE__PROPERTIES;
+
+    /**
+     * The feature id for the '<em><b>Documentation</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_IMAGE__DOCUMENTATION = IArchimatePackage.DIAGRAM_MODEL_IMAGE__DOCUMENTATION;
 
     /**
      * The feature id for the '<em><b>Locked</b></em>' attribute.
@@ -1015,7 +866,7 @@ public interface ICanvasPackage extends EPackage {
      * @see com.archimatetool.canvas.model.impl.CanvasPackage#getCanvasModelConnection()
      * @generated
      */
-    int CANVAS_MODEL_CONNECTION = 8;
+    int CANVAS_MODEL_CONNECTION = 7;
 
     /**
      * The feature id for the '<em><b>Id</b></em>' attribute.
@@ -1036,13 +887,31 @@ public interface ICanvasPackage extends EPackage {
     int CANVAS_MODEL_CONNECTION__NAME = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__NAME;
 
     /**
-     * The feature id for the '<em><b>Diagram Model</b></em>' reference.
+     * The feature id for the '<em><b>Features</b></em>' containment reference list.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      * @ordered
      */
-    int CANVAS_MODEL_CONNECTION__DIAGRAM_MODEL = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__DIAGRAM_MODEL;
+    int CANVAS_MODEL_CONNECTION__FEATURES = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FEATURES;
+
+    /**
+     * The feature id for the '<em><b>Source Connections</b></em>' containment reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_CONNECTION__SOURCE_CONNECTIONS = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__SOURCE_CONNECTIONS;
+
+    /**
+     * The feature id for the '<em><b>Target Connections</b></em>' reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_CONNECTION__TARGET_CONNECTIONS = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TARGET_CONNECTIONS;
 
     /**
      * The feature id for the '<em><b>Font</b></em>' attribute.
@@ -1061,24 +930,6 @@ public interface ICanvasPackage extends EPackage {
      * @ordered
      */
     int CANVAS_MODEL_CONNECTION__FONT_COLOR = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR;
-
-    /**
-     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_CONNECTION__TEXT_ALIGNMENT = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT;
-
-    /**
-     * The feature id for the '<em><b>Text Position</b></em>' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     * @ordered
-     */
-    int CANVAS_MODEL_CONNECTION__TEXT_POSITION = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION;
 
     /**
      * The feature id for the '<em><b>Properties</b></em>' containment reference list.
@@ -1117,6 +968,15 @@ public interface ICanvasPackage extends EPackage {
     int CANVAS_MODEL_CONNECTION__LINE_COLOR = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__LINE_COLOR;
 
     /**
+     * The feature id for the '<em><b>Text Alignment</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_CONNECTION__TEXT_ALIGNMENT = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT;
+
+    /**
      * The feature id for the '<em><b>Text</b></em>' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -1124,6 +984,15 @@ public interface ICanvasPackage extends EPackage {
      * @ordered
      */
     int CANVAS_MODEL_CONNECTION__TEXT = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT;
+
+    /**
+     * The feature id for the '<em><b>Text Position</b></em>' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     * @ordered
+     */
+    int CANVAS_MODEL_CONNECTION__TEXT_POSITION = IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION;
 
     /**
      * The feature id for the '<em><b>Source</b></em>' reference.
@@ -1179,6 +1048,71 @@ public interface ICanvasPackage extends EPackage {
      */
     int CANVAS_MODEL_CONNECTION_FEATURE_COUNT = IArchimatePackage.DIAGRAM_MODEL_CONNECTION_FEATURE_COUNT + 1;
 
+
+    /**
+     * Returns the meta object for class '{@link com.archimatetool.canvas.model.IHintProvider <em>Hint Provider</em>}'.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the meta object for class '<em>Hint Provider</em>'.
+     * @see com.archimatetool.canvas.model.IHintProvider
+     * @generated
+     */
+    EClass getHintProvider();
+
+    /**
+     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.IHintProvider#getHintTitle <em>Hint Title</em>}'.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the meta object for the attribute '<em>Hint Title</em>'.
+     * @see com.archimatetool.canvas.model.IHintProvider#getHintTitle()
+     * @see #getHintProvider()
+     * @generated
+     */
+    EAttribute getHintProvider_HintTitle();
+
+    /**
+     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.IHintProvider#getHintContent <em>Hint Content</em>}'.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the meta object for the attribute '<em>Hint Content</em>'.
+     * @see com.archimatetool.canvas.model.IHintProvider#getHintContent()
+     * @see #getHintProvider()
+     * @generated
+     */
+    EAttribute getHintProvider_HintContent();
+
+    /**
+     * Returns the meta object for class '{@link com.archimatetool.editor.ui.IHelpHintProvider <em>Help Hint Provider</em>}'.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the meta object for class '<em>Help Hint Provider</em>'.
+     * @see com.archimatetool.editor.ui.IHelpHintProvider
+     * @model instanceClass="com.archimatetool.editor.ui.IHelpHintProvider"
+     * @generated
+     */
+    EClass getHelpHintProvider();
+
+    /**
+     * Returns the meta object for class '{@link com.archimatetool.canvas.model.INotesContent <em>Notes Content</em>}'.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the meta object for class '<em>Notes Content</em>'.
+     * @see com.archimatetool.canvas.model.INotesContent
+     * @generated
+     */
+    EClass getNotesContent();
+
+    /**
+     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.INotesContent#getNotes <em>Notes</em>}'.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @return the meta object for the attribute '<em>Notes</em>'.
+     * @see com.archimatetool.canvas.model.INotesContent#getNotes()
+     * @see #getNotesContent()
+     * @generated
+     */
+    EAttribute getNotesContent_Notes();
+
     /**
      * Returns the meta object for class '{@link com.archimatetool.canvas.model.ICanvasModel <em>Model</em>}'.
      * <!-- begin-user-doc -->
@@ -1230,70 +1164,6 @@ public interface ICanvasPackage extends EPackage {
     EClass getCanvasModelConnection();
 
     /**
-     * Returns the meta object for class '{@link com.archimatetool.canvas.model.IHintProvider <em>Hint Provider</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for class '<em>Hint Provider</em>'.
-     * @see com.archimatetool.canvas.model.IHintProvider
-     * @generated
-     */
-    EClass getHintProvider();
-
-    /**
-     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.IHintProvider#getHintTitle <em>Hint Title</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for the attribute '<em>Hint Title</em>'.
-     * @see com.archimatetool.canvas.model.IHintProvider#getHintTitle()
-     * @see #getHintProvider()
-     * @generated
-     */
-    EAttribute getHintProvider_HintTitle();
-
-    /**
-     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.IHintProvider#getHintContent <em>Hint Content</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for the attribute '<em>Hint Content</em>'.
-     * @see com.archimatetool.canvas.model.IHintProvider#getHintContent()
-     * @see #getHintProvider()
-     * @generated
-     */
-    EAttribute getHintProvider_HintContent();
-
-    /**
-     * Returns the meta object for class '{@link com.archimatetool.help.hints.IHelpHintProvider <em>Help Hint Provider</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for class '<em>Help Hint Provider</em>'.
-     * @see com.archimatetool.help.hints.IHelpHintProvider
-     * @model instanceClass="com.archimatetool.help.hints.IHelpHintProvider"
-     * @generated
-     */
-    EClass getHelpHintProvider();
-
-    /**
-     * Returns the meta object for class '{@link com.archimatetool.canvas.model.INotesContent <em>Notes Content</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for class '<em>Notes Content</em>'.
-     * @see com.archimatetool.canvas.model.INotesContent
-     * @generated
-     */
-    EClass getNotesContent();
-
-    /**
-     * Returns the meta object for the attribute '{@link com.archimatetool.canvas.model.INotesContent#getNotes <em>Notes</em>}'.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @return the meta object for the attribute '<em>Notes</em>'.
-     * @see com.archimatetool.canvas.model.INotesContent#getNotes()
-     * @see #getNotesContent()
-     * @generated
-     */
-    EAttribute getNotesContent_Notes();
-
-    /**
      * Returns the factory that creates the instances of the model.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -1316,22 +1186,58 @@ public interface ICanvasPackage extends EPackage {
      */
     interface Literals {
         /**
-         * The meta object literal for the '{@link com.archimatetool.canvas.model.IIconic <em>Iconic</em>}' class.
+         * The meta object literal for the '{@link com.archimatetool.canvas.model.IHintProvider <em>Hint Provider</em>}' class.
          * <!-- begin-user-doc -->
          * <!-- end-user-doc -->
-         * @see com.archimatetool.canvas.model.IIconic
-         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getIconic()
+         * @see com.archimatetool.canvas.model.IHintProvider
+         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getHintProvider()
          * @generated
          */
-        EClass ICONIC = eINSTANCE.getIconic();
+        EClass HINT_PROVIDER = eINSTANCE.getHintProvider();
 
         /**
-         * The meta object literal for the '<em><b>Image Position</b></em>' attribute feature.
+         * The meta object literal for the '<em><b>Hint Title</b></em>' attribute feature.
          * <!-- begin-user-doc -->
          * <!-- end-user-doc -->
          * @generated
          */
-        EAttribute ICONIC__IMAGE_POSITION = eINSTANCE.getIconic_ImagePosition();
+        EAttribute HINT_PROVIDER__HINT_TITLE = eINSTANCE.getHintProvider_HintTitle();
+
+        /**
+         * The meta object literal for the '<em><b>Hint Content</b></em>' attribute feature.
+         * <!-- begin-user-doc -->
+         * <!-- end-user-doc -->
+         * @generated
+         */
+        EAttribute HINT_PROVIDER__HINT_CONTENT = eINSTANCE.getHintProvider_HintContent();
+
+        /**
+         * The meta object literal for the '{@link com.archimatetool.editor.ui.IHelpHintProvider <em>Help Hint Provider</em>}' class.
+         * <!-- begin-user-doc -->
+         * <!-- end-user-doc -->
+         * @see com.archimatetool.editor.ui.IHelpHintProvider
+         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getHelpHintProvider()
+         * @generated
+         */
+        EClass HELP_HINT_PROVIDER = eINSTANCE.getHelpHintProvider();
+
+        /**
+         * The meta object literal for the '{@link com.archimatetool.canvas.model.INotesContent <em>Notes Content</em>}' class.
+         * <!-- begin-user-doc -->
+         * <!-- end-user-doc -->
+         * @see com.archimatetool.canvas.model.INotesContent
+         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getNotesContent()
+         * @generated
+         */
+        EClass NOTES_CONTENT = eINSTANCE.getNotesContent();
+
+        /**
+         * The meta object literal for the '<em><b>Notes</b></em>' attribute feature.
+         * <!-- begin-user-doc -->
+         * <!-- end-user-doc -->
+         * @generated
+         */
+        EAttribute NOTES_CONTENT__NOTES = eINSTANCE.getNotesContent_Notes();
 
         /**
          * The meta object literal for the '{@link com.archimatetool.canvas.model.impl.CanvasModel <em>Model</em>}' class.
@@ -1382,60 +1288,6 @@ public interface ICanvasPackage extends EPackage {
          * @generated
          */
         EClass CANVAS_MODEL_CONNECTION = eINSTANCE.getCanvasModelConnection();
-
-        /**
-         * The meta object literal for the '{@link com.archimatetool.canvas.model.IHintProvider <em>Hint Provider</em>}' class.
-         * <!-- begin-user-doc -->
-         * <!-- end-user-doc -->
-         * @see com.archimatetool.canvas.model.IHintProvider
-         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getHintProvider()
-         * @generated
-         */
-        EClass HINT_PROVIDER = eINSTANCE.getHintProvider();
-
-        /**
-         * The meta object literal for the '<em><b>Hint Title</b></em>' attribute feature.
-         * <!-- begin-user-doc -->
-         * <!-- end-user-doc -->
-         * @generated
-         */
-        EAttribute HINT_PROVIDER__HINT_TITLE = eINSTANCE.getHintProvider_HintTitle();
-
-        /**
-         * The meta object literal for the '<em><b>Hint Content</b></em>' attribute feature.
-         * <!-- begin-user-doc -->
-         * <!-- end-user-doc -->
-         * @generated
-         */
-        EAttribute HINT_PROVIDER__HINT_CONTENT = eINSTANCE.getHintProvider_HintContent();
-
-        /**
-         * The meta object literal for the '{@link com.archimatetool.help.hints.IHelpHintProvider <em>Help Hint Provider</em>}' class.
-         * <!-- begin-user-doc -->
-         * <!-- end-user-doc -->
-         * @see com.archimatetool.help.hints.IHelpHintProvider
-         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getHelpHintProvider()
-         * @generated
-         */
-        EClass HELP_HINT_PROVIDER = eINSTANCE.getHelpHintProvider();
-
-        /**
-         * The meta object literal for the '{@link com.archimatetool.canvas.model.INotesContent <em>Notes Content</em>}' class.
-         * <!-- begin-user-doc -->
-         * <!-- end-user-doc -->
-         * @see com.archimatetool.canvas.model.INotesContent
-         * @see com.archimatetool.canvas.model.impl.CanvasPackage#getNotesContent()
-         * @generated
-         */
-        EClass NOTES_CONTENT = eINSTANCE.getNotesContent();
-
-        /**
-         * The meta object literal for the '<em><b>Notes</b></em>' attribute feature.
-         * <!-- begin-user-doc -->
-         * <!-- end-user-doc -->
-         * @generated
-         */
-        EAttribute NOTES_CONTENT__NOTES = eINSTANCE.getNotesContent_Notes();
 
     }
 

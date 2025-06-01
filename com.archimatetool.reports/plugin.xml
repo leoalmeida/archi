@@ -9,7 +9,31 @@
          <command
                commandId="com.archimatetool.reports.command.HTML"
                id="com.archimatetool.reports.menuItem.HTML"
-               label="HTML..."
+               label="%action.label"
+               style="push">
+         </command>
+      </menuContribution>
+      <menuContribution
+            allPopups="false"
+            locationURI="menu:tools">
+         <separator
+               name="com.archimatetool.reports.separator1"
+               visible="true">
+         </separator>
+         <command
+               commandId="com.archimatetool.reports.command.PreviewHTML"
+               id="com.archimatetool.reports.menuItem.PreviewHTML"
+               label="%command.label.0"
+               style="push">
+         </command>
+      </menuContribution>
+      <menuContribution
+            allPopups="true"
+            locationURI="popup:com.archimatetool.editor.treeModelView?after=com.archimatetool.hammer.popup.separator">
+         <command
+               commandId="com.archimatetool.reports.command.PreviewHTML"
+               id="com.archimatetool.reports.popupmenu.PreviewHTML"
+               label="%command.label.0"
                style="push">
          </command>
       </menuContribution>
@@ -17,15 +41,37 @@
    <extension
          point="org.eclipse.ui.commands">
       <command
-            defaultHandler="com.archimatetool.reports.html.HTMLReportHandler"
+            categoryId="com.archimatetool.editor.category"
+            description="%command.label"
             id="com.archimatetool.reports.command.HTML"
-            name="%action.label">
+            name="%command.label">
+      </command>
+      <command
+            categoryId="com.archimatetool.editor.category"
+            description="%command.label.0"
+            id="com.archimatetool.reports.command.PreviewHTML"
+            name="%command.label.0">
       </command>
    </extension>
    <extension
-         point="org.eclipse.ui.startup">
-      <startup>
-      </startup>
+         point="org.eclipse.ui.handlers">
+      <handler
+            class="com.archimatetool.reports.html.HTMLReportHandler"
+            commandId="com.archimatetool.reports.command.HTML">
+         <enabledWhen>
+            <reference
+                  definitionId="com.archimatetool.modelEnabled">
+            </reference>
+         </enabledWhen>
+      </handler>
+      <handler
+            class="com.archimatetool.reports.html.PreviewHTMLReportHandler"
+            commandId="com.archimatetool.reports.command.PreviewHTML">
+         <enabledWhen>
+            <reference
+                  definitionId="com.archimatetool.modelEnabled">
+            </reference>
+         </enabledWhen>
+      </handler>
    </extension>
-
 </plugin>

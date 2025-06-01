@@ -5,14 +5,15 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateFactory;
@@ -26,7 +27,7 @@ public abstract class DiagramModelTests {
     private IArchimateModel model;
     protected IDiagramModel dm;
     
-    @Before
+    @BeforeEach
     public void runBeforeEachDiagramModelTest() {
         dm = getDiagramModel();
         model = IArchimateFactory.eINSTANCE.createArchimateModel();
@@ -55,10 +56,7 @@ public abstract class DiagramModelTests {
 
     @Test
     public void testGetID() {
-        assertNull(dm.getId());
-        
-        model.getFolder(FolderType.DIAGRAMS).getElements().add(dm);
-        assertNotNull(dm.getId());
+        CommonTests.testGetID(dm);
     }
 
     @Test
@@ -89,16 +87,22 @@ public abstract class DiagramModelTests {
         dm.setDocumentation("doc");
         
         dm.getProperties().add(IArchimateFactory.eINSTANCE.createProperty());
+        dm.getFeatures().add(IArchimateFactory.eINSTANCE.createFeature());
         
         IDiagramModel copy = (IDiagramModel)dm.getCopy();
         
         assertNotSame(dm, copy);
-        assertNull(copy.getId());
+        assertNotNull(copy.getId());
+        assertNotEquals(dm.getId(), copy.getId());
         assertEquals(dm.getName(), copy.getName());
         assertEquals(dm.getDocumentation(), copy.getDocumentation());
+        
         assertNotSame(dm.getProperties(), copy.getProperties());
         assertEquals(dm.getProperties().size(), copy.getProperties().size());
+        
+        assertNotSame(dm.getFeatures(), copy.getFeatures());
+        assertEquals(dm.getFeatures().size(), copy.getFeatures().size());
+
         assertNotSame(dm.getChildren(), copy.getChildren());
     }
-
 }

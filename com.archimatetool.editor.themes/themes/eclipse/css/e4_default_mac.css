@@ -1,65 +1,105 @@
 /*******************************************************************************
- * Copyright (c) 2010, 2014 IBM Corporation and others.
- * All rights reserved. This program and the accompanying materials
- * are made available under the terms of the Eclipse Public License v1.0
+ * Copyright (c) 2010, 2017 IBM Corporation and others.
+ *
+ * This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License 2.0
  * which accompanies this distribution, and is available at
- * http://www.eclipse.org/legal/epl-v10.html
+ * https://www.eclipse.org/legal/epl-2.0/
+ *
+ * SPDX-License-Identifier: EPL-2.0
  *
  * Contributors:
  *     IBM Corporation - initial API and implementation
  *     Lars Vogel <Lars.Vogel@gmail.com> - Bug 420836
+ *     Patrik Suzzi <psuzzi@gmail.com> - Bug 497591, 501250, 512385
+ *     Ingo Mohr <tellastory73@gmail.com> - Bug 566842
  *******************************************************************************/
 
 @import url("platform:/plugin/com.archimatetool.editor.themes/themes/eclipse/css/e4_basestyle.css");
 
 ColorDefinition#org-eclipse-ui-workbench-ACTIVE_UNSELECTED_TABS_COLOR_START {
-	color: #F6F6F6;
+	color: rgb(255, 255, 255);
 }
 
 ColorDefinition#org-eclipse-ui-workbench-ACTIVE_UNSELECTED_TABS_COLOR_END {
-	color: #D6D6D6;
+	color: rgb(255, 255, 255);
+}
+
+ColorDefinition#org-eclipse-ui-workbench-INACTIVE_UNSELECTED_TABS_COLOR_START {
+	color: rgb(255, 255, 255);
+}
+
+ColorDefinition#org-eclipse-ui-workbench-INACTIVE_UNSELECTED_TABS_COLOR_END {
+	color: rgb(255, 255, 255);
 }
 
 ColorDefinition#org-eclipse-ui-workbench-ACTIVE_TAB_OUTER_KEYLINE_COLOR {
-	color: #C4C5C1;
+	color: rgb(230, 230, 230);
+}
+
+ColorDefinition#org-eclipse-ui-workbench-ACTIVE_TAB_BG_START {
+	color: rgb(230, 230, 230);
+}
+
+ColorDefinition#org-eclipse-ui-workbench-ACTIVE_TAB_BG_END {
+	color: rgb(255, 255, 255);
+}
+
+ColorDefinition#org-eclipse-ui-workbench-INACTIVE_TAB_BG_START {
+	color: rgb(240, 240, 240);
+}
+
+ColorDefinition#org-eclipse-ui-workbench-INACTIVE_TAB_BG_END {
+	color: rgb(255, 255, 255);
 }
 
 .MTrimmedWindow {
-	background-color: #E8E8E8;
+	background-color: rgb(255, 255, 255);
+}
+
+.MTrimBar {
+	background-color: rgb(255, 255, 255);
+}
+
+.MTrimBar#org-eclipse-ui-main-toolbar {
+	background-color: rgb(255, 255, 255);
 }
 
 .MPartStack {
 	swt-simple: false;
-	swt-mru-visible: false;
+	swt-unselected-tabs-color: rgb(255, 255, 255);
+	swt-outer-keyline-color: rgb(230, 230, 230);
+	swt-inner-keyline-color: rgb(200, 200, 200);
+	swt-tab-outline: rgb(230, 230, 230);
 }
 
-.MTrimBar {
-	background-color: #E8E8E8;
+.MPartStack.active > Composite {
+	swt-selected-tab-fill: '#org-eclipse-ui-workbench-ACTIVE_TAB_BG_START' '#org-eclipse-ui-workbench-ACTIVE_TAB_BG_END' 100% 5%;
+	background-color:  rgb(255, 255, 255);
 }
 
-.MTrimBar#org-eclipse-ui-main-toolbar {
-	background-color:  #CFCFCF #A8A8A8 100%;
+.MPartStack.active {
+	swt-tab-outline: rgb(180, 180, 180);
+	swt-outer-keyline-color: rgb(180, 180, 180);
 }
 
-.MToolControl.TrimStack {
-	frame-image:  url(./macTSFrame.png);
-	handle-image:  url(./macHandle.png);
+CTabFolder.MArea {
+	background-color: rgb(255, 255, 255);
+	swt-selected-tab-fill: rgb(255, 255, 255);
+	swt-unselected-tabs-color: rgb(255, 255, 255);
+	swt-outer-keyline-color: rgb(230, 230, 230);
+	swt-inner-keyline-color: rgb(230, 230, 230);
+	swt-tab-outline: rgb(230, 230, 230);
 }
 
-#PerspectiveSwitcher {
-	background-color: #F0F0F0 #E8E8E8 100%;
-	eclipse-perspective-keyline-color: #515151 #515151;
+CTabFolder {
+  swt-selected-tabs-background: rgb(255, 255, 255);
 }
 
-#org-eclipse-ui-editorss {
-	swt-tab-height: 8px;
-	padding: 0px 5px 7px;
-}
-
-CTabFolder.MArea .MPartStack, CTabFolder.MArea .MPartStack.active {
-	swt-shadow-visible: false;
+CTabFolder CTabItem:selected {
+  background-color: rgb(230, 230, 230);
 }
 
 CTabFolder Canvas {
-	background-color: #F0F0F0;
+  background-color: rgb(255, 255, 255);
 }

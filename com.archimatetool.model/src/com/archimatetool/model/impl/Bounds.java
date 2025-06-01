@@ -21,13 +21,13 @@ import com.archimatetool.model.IBounds;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.Bounds#getX <em>X</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.Bounds#getY <em>Y</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.Bounds#getWidth <em>Width</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.Bounds#getHeight <em>Height</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -144,6 +144,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getX() {
         return x;
     }
@@ -153,6 +154,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setX(int newX) {
         int oldX = x;
         x = newX;
@@ -165,6 +167,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getY() {
         return y;
     }
@@ -174,6 +177,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setY(int newY) {
         int oldY = y;
         y = newY;
@@ -186,6 +190,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getWidth() {
         return width;
     }
@@ -195,6 +200,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setWidth(int newWidth) {
         int oldWidth = width;
         width = newWidth;
@@ -207,6 +213,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getHeight() {
         return height;
     }
@@ -216,6 +223,7 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public void setHeight(int newHeight) {
         height = newHeight;
     }
@@ -225,6 +233,29 @@ public class Bounds extends EObjectImpl implements IBounds {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
+    public void setLocation(int x, int y) {
+        setX(x);
+        setY(y);
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated NOT
+     */
+    @Override
+    public void setSize(int width, int height) {
+        setWidth(width);
+        setHeight(height);
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated NOT
+     */
+    @Override
     public IBounds getCopy() {
         return EcoreUtil.copy(this);
     }
@@ -326,7 +357,7 @@ public class Bounds extends EObjectImpl implements IBounds {
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (x: "); //$NON-NLS-1$
         result.append(x);
         result.append(", y: "); //$NON-NLS-1$

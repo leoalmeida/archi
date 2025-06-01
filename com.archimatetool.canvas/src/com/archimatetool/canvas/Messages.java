@@ -13,11 +13,15 @@ public class Messages extends NLS {
 
     public static String CanvasEditor_0;
 
-    public static String CanvasEditorActionBarContributor_0;
-
     public static String CanvasEditorPalette_0;
 
     public static String CanvasEditorPalette_1;
+
+    public static String CanvasEditorPalette_10;
+
+    public static String CanvasEditorPalette_11;
+
+    public static String CanvasEditorPalette_12;
 
     public static String CanvasEditorPalette_2;
 
@@ -35,25 +39,19 @@ public class Messages extends NLS {
 
     public static String CanvasEditorPalette_9;
 
-    public static String CanvasLabelProvider_0;
-
-    public static String CanvasLabelProvider_1;
-
-    public static String CanvasLabelProvider_2;
-
-    public static String CanvasLabelProvider_3;
-
-    public static String CanvasLabelProvider_4;
-
     public static String NewCanvasExtensionContributionFactory_0;
 
     public static String NewCanvasExtensionContributionFactory_1;
 
     public static String NewCanvasExtensionContributionFactory_2;
 
+    public static String NewCanvasExtensionContributionFactory_3;
+
     public static String NewModelWithCanvasExtensionContributionFactory_0;
 
     public static String NewModelWithCanvasExtensionContributionFactory_1;
+
+    public static String NewModelWithCanvasExtensionContributionFactory_2;
 
     public static String SaveAsCanvasExtensionContributionFactory_0;
     static {

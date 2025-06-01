@@ -8,7 +8,9 @@ package com.archimatetool.editor.views;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.ecore.EObject;
@@ -17,6 +19,9 @@ import org.eclipse.gef.ui.actions.RedoAction;
 import org.eclipse.gef.ui.actions.UndoAction;
 import org.eclipse.help.IContextProvider;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.IAction;
+import org.eclipse.jface.action.IStatusLineManager;
+import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
@@ -29,18 +34,22 @@ import org.eclipse.ui.views.properties.IPropertySheetPage;
 import org.eclipse.ui.views.properties.tabbed.ITabbedPropertySheetPageContributor;
 import org.eclipse.ui.views.properties.tabbed.TabbedPropertySheetPage;
 
-import com.archimatetool.editor.ArchimateEditorPlugin;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.model.IEditorModelManager;
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
+import com.archimatetool.editor.model.commands.EObjectNonNotifyingCompoundCommand;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
+import com.archimatetool.editor.ui.textrender.TextRenderer;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateModel;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IDiagramModelArchimateConnection;
 import com.archimatetool.model.IDiagramModelArchimateObject;
 import com.archimatetool.model.IDiagramModelContainer;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IFolder;
-import com.archimatetool.model.IRelationship;
+import com.archimatetool.model.IProperty;
 import com.archimatetool.model.util.ArchimateModelUtils;
 
 
@@ -63,15 +72,16 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
     protected RedoAction fActionRedo = new RedoAction(this);
     
     /**
-     * If true will not refresh viewer on multiple eCore notifications
+     * Application Preferences Listener
      */
-    private Boolean fIgnoreECoreNotifications = false;
-    
-    /**
-     * Buffer notifications to optimise updates
-     */
-    private List<Notification> notificationBuffer;
-    
+    private IPropertyChangeListener prefsListener;
+
+    protected IAction fActionSelectAll = new Action() {
+        @Override
+        public void run() {
+            selectAll();
+        }
+    };
     
     @Override
     public void createPartControl(Composite parent) {
@@ -84,35 +94,81 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
         
         // Global Handle Select All
         // We need to enforce this at a global level in order to enable/disable the main menu item
-        actionBars.setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), new Action() {
-            @Override
-            public void run() {
-                selectAll();
-            }
-        });
+        actionBars.setGlobalActionHandler(ActionFactory.SELECT_ALL.getId(), fActionSelectAll);
 
         // Register us as a Model Listener - this has to be done last, *after* the tree/selection listener is created
         IEditorModelManager.INSTANCE.addPropertyChangeListener(this);
         
-        // Update status bar on selection
-        hookStatusLineSelectionListener();
+        // Listen to selections
+        hookSelectionListener();
+        
+        // Prefs listener
+        prefsListener = this::applicationPreferencesChanged;
+        ArchiPlugin.getInstance().getPreferenceStore().addPropertyChangeListener(prefsListener);
     }
     
-    // Update status bar on selection
-    private void hookStatusLineSelectionListener() {
+    private void hookSelectionListener() {
         getViewer().addSelectionChangedListener(new ISelectionChangedListener() {   
+            @Override
             public void selectionChanged(SelectionChangedEvent event) {
+                // Update status bar on selection
                 Object selected = ((IStructuredSelection)event.getSelection()).getFirstElement();
-                if(selected != null) {
-                    Image image = ArchimateLabelProvider.INSTANCE.getImage(selected);
-                    String text = ArchimateLabelProvider.INSTANCE.getLabel(selected);
-                    getViewSite().getActionBars().getStatusLineManager().setMessage(image, text);
+                if(selected == null) {
+                    selected = getViewer().getInput();
                 }
-                else {
-                    getViewSite().getActionBars().getStatusLineManager().setMessage(null, ""); //$NON-NLS-1$
-                }
+                updateStatusBarWithSelection(selected);
+                
+                // Update shell text
+                updateShellTitleBarWithFileName();
             }
         });
+    }
+    
+    /**
+     * Update Status Bar with selected image and text
+     * @param selected
+     */
+    protected void updateStatusBarWithSelection(Object selected) {
+        IStatusLineManager status = getViewSite().getActionBars().getStatusLineManager();
+        
+        if(selected instanceof IArchimateModelObject) {
+            IArchimateModelObject object = (IArchimateModelObject)selected;
+            Image image = ArchiLabelProvider.INSTANCE.getImage(object);
+            
+            String text = ""; //$NON-NLS-1$
+            List<String> list = new ArrayList<String>();
+            
+            do {
+                list.add(ArchiLabelProvider.INSTANCE.getLabelNormalised(object));
+                object = (IArchimateModelObject)object.eContainer();
+            } while((object != null));
+            
+            for(int i = list.size() - 1; i >= 0; i--) {
+                text += list.get(i);
+                if(i != 0) {
+                    text += " > "; //$NON-NLS-1$
+                }
+            }
+            
+            status.setMessage(image, text);
+        }
+        else {
+            status.setMessage(null, ""); //$NON-NLS-1$
+        }
+    }
+
+    /**
+     * Update Shell title bar with file name of current model
+     */
+    protected void updateShellTitleBarWithFileName() {
+        String appname = ArchiPlugin.getInstance().getProductName();
+        
+        if(getActiveArchimateModel() != null && getActiveArchimateModel().getFile() != null) {
+            getSite().getShell().setText(appname + " - " + getActiveArchimateModel().getFile().getPath()); //$NON-NLS-1$
+        }
+        else {
+            getSite().getShell().setText(appname);
+        }
     }
     
     /**
@@ -126,6 +182,13 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
      */
     protected void selectAll() {
     }
+    
+    /**
+     * An Application Preference Property change event occurred
+     * @param event
+     */
+    protected void applicationPreferencesChanged(org.eclipse.jface.util.PropertyChangeEvent event) {
+    }
 
     /**
      * Update the Undo/Redo Actions
@@ -137,32 +200,31 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
     
     @Override
     public String getContributorId() {
-        return ArchimateEditorPlugin.PLUGIN_ID;
+        return ArchiPlugin.PLUGIN_ID;
     }
-
-    @SuppressWarnings("rawtypes")
+    
     @Override
-    public Object getAdapter(Class adapter) {
+    public <T> T getAdapter(Class<T> adapter) {
         /*
          * Return the PropertySheet Page
          */
         if(adapter == IPropertySheetPage.class) {
-            return new TabbedPropertySheetPage(this);
+            return adapter.cast(new TabbedPropertySheetPage(this));
         }
         
         // The Selected Archimate Model in scope
         if(adapter == IArchimateModel.class) {
-            return getActiveArchimateModel();
+            return adapter.cast(getActiveArchimateModel());
         }
         
         // CommandStack (requested by GEF's UndoAction and RedoAction and our SaveAction)
         if(adapter == CommandStack.class) {
             IArchimateModel model = getActiveArchimateModel();
             if(model != null) {
-                return model.getAdapter(CommandStack.class);
+                return adapter.cast(model.getAdapter(CommandStack.class));
             }
             else {
-                return EMPTY_COMMANDSTACK; // Need an Empty One!
+                return adapter.cast(EMPTY_COMMANDSTACK); // Need an Empty One!
             }
         }
 
@@ -177,25 +239,34 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
     // =================================================================================
     //                       Listen to Editor Model Changes
     // =================================================================================
+    
+    /**
+     * Buffer notifications to optimise updates
+     */
+    private List<Notification> notificationBuffer;
+    
+    @Override
     public void propertyChange(PropertyChangeEvent evt) {
         String propertyName = evt.getPropertyName();
         Object newValue = evt.getNewValue();
         
-        // Buffer all incoming notifications
+        // Start: Buffer all incoming notifications
         if(propertyName == IEditorModelManager.PROPERTY_ECORE_EVENTS_START) {
-            fIgnoreECoreNotifications = true;
-            notificationBuffer = new ArrayList<Notification>();
+            if(notificationBuffer == null) {
+                notificationBuffer = new ArrayList<>();
+            }
         }
-        // Refresh all buffered notifications
+        // End: Refresh Viewer with buffered notifications
         else if(propertyName == IEditorModelManager.PROPERTY_ECORE_EVENTS_END) {
-            refreshElementsFromBufferedNotifications();
-            fIgnoreECoreNotifications = false;
+            if(notificationBuffer != null && !notificationBuffer.isEmpty()) {
+                doRefreshFromNotifications(notificationBuffer);
+            }
             notificationBuffer = null;
         }
         // ECore model event
         else if(propertyName == IEditorModelManager.PROPERTY_ECORE_EVENT) {
-            // Normal event
-            if(!fIgnoreECoreNotifications) {
+            // No buffer, so treat as single event
+            if(notificationBuffer == null) {
                 eCoreChanged((Notification)newValue);
             }
             // Else add to buffer
@@ -207,144 +278,146 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
     
     /**
      * React to ECore Model Changes to refresh the view
-     * @param msg
      */
     protected void eCoreChanged(Notification msg) {
         int type = msg.getEventType();
         
-        // Large structural model change - refresh the whole thing
-        if(type == Notification.ADD_MANY || type == Notification.REMOVE_MANY || type == Notification.MOVE) {
-            getViewer().refresh();
+        // Not interested in these types
+        if(type == Notification.ADD_MANY || type == Notification.REMOVE_MANY || type == Notification.MOVE
+                || type == EObjectNonNotifyingCompoundCommand.START || type == EObjectNonNotifyingCompoundCommand.END) {
             return;
         }
         
-        // Update affected element node(s)
-        List<Object> elements = getElementsToUpdateFromNotification(msg);
-        getViewer().update(elements.toArray(), null);
+        try {
+            getViewer().getControl().setRedraw(false);
 
-        // Refresh parent node
-        Object parent = getParentToRefreshFromNotification(msg);
-        if(parent != null) {
-            getViewer().refresh(parent);
+            // Update affected element node(s)
+            Set<EObject> elements = getElementsToUpdateFromNotification(msg);
+            getViewer().update(elements.toArray(), null);
+
+            // Refresh parent node
+            Object parent = getParentToRefreshFromNotification(msg);
+            if(parent != null) {
+                getViewer().refresh(parent);
+            }
+        }
+        finally {
+            getViewer().getControl().setRedraw(true);
         }
     }
     
     /**
      * Refresh any tree elements from buffered notifications
      */
-    protected void refreshElementsFromBufferedNotifications() {
-        if(notificationBuffer == null) {
-            return;
-        }
-        
-        List<Object> refreshElements = new ArrayList<Object>();
-        List<Object> updateElements = new ArrayList<Object>();
-            
-        for(Notification msg : notificationBuffer) {
-            // Get parent nodes to refresh
-            Object parent = getParentToRefreshFromNotification(msg);
-            if(parent != null && !refreshElements.contains(parent)) {
-                refreshElements.add(parent);
-            }
-            
-            // Get elements to update
-            List<Object> elements = getElementsToUpdateFromNotification(msg);
-            for(Object object : elements) {
-                if(!updateElements.contains(object)) {
-                    updateElements.add(object);
-                }
-            }
-        }
-        
-        // Refresh and update nodes
-        getViewer().getControl().setRedraw(false);
-
-        for(Object object : refreshElements) {
-            getViewer().refresh(object);
-        }
-
-        for(Object object : updateElements) {
-            getViewer().update(object, null);
-        }
-
-        getViewer().getControl().setRedraw(true);
+    protected void doRefreshFromNotifications(List<Notification> notifications) {
     }
     
     /**
-     * @param msg
-     * @return The correct parent node (IFolder) to refresh when one of its children is added/removed
+     * @return The parent folder to refresh when one of its children is added/removed/set
      */
-    protected Object getParentToRefreshFromNotification(Notification msg) {
+    protected EObject getParentToRefreshFromNotification(Notification msg) {
         int type = msg.getEventType();
-        
-        Object element = null;
+        EObject element = null;
         
         if(type == Notification.REMOVE) {
-            element = msg.getNotifier();
-        }
-        else if(type == Notification.ADD) {
-            element = msg.getNewValue();
-            if(element instanceof EObject) {
-                element = ((EObject)element).eContainer();
-            }
-        }
-        else if(type == Notification.SET) {
-            // Name changed - need to refresh parent node because of using a ViewerSorter to sort on name
-            if(msg.getFeature() == IArchimatePackage.Literals.NAMEABLE__NAME) {
-                element = msg.getNotifier();
-                if(element instanceof EObject) {
-                    element = ((EObject)element).eContainer();
+            if(msg.getNotifier() instanceof EObject) {
+                element = (EObject)msg.getNotifier();
+                
+                // Property removed and element has format expression
+                if(msg.getOldValue() instanceof IProperty && hasFormatExpression(element)) {
+                    element = element.eContainer();
                 }
             }
         }
-        
-        if(element instanceof IDiagramModelArchimateObject) {
-            element = ((IDiagramModelArchimateObject)element).getArchimateElement();
+        else if(type == Notification.ADD) {
+            if(msg.getNewValue() instanceof EObject) {
+                element = ((EObject)msg.getNewValue()).eContainer();
+                
+                // Property added and element has format expression
+                if(msg.getNewValue() instanceof IProperty && hasFormatExpression(element)) {
+                    element = element.eContainer();
+                }
+            }
         }
-        else if(element instanceof IDiagramModelArchimateConnection) {
-            element = ((IDiagramModelArchimateConnection)element).getRelationship();
+        else if(type == Notification.SET) {
+            // Need to refresh parent node on name or label expression change because of using a ViewerSorter
+            if(msg.getNotifier() instanceof EObject) {
+                element = ((EObject)msg.getNotifier());
+                
+                // Name
+                if(msg.getFeature() == IArchimatePackage.Literals.NAMEABLE__NAME) {
+                    element = element.eContainer();
+                }
+                // Ancestor folder has label expression
+                else if(hasFormatExpression(element)) {
+                    element = element.eContainer();
+                    
+                    // Property set
+                    if(msg.getNotifier() instanceof IProperty) {
+                        element = element.eContainer();
+                    }
+                }
+            }
         }
         
         return (element instanceof IFolder) ? element : null;
     }
     
     /**
-     * @param msg
+     * @return true if this objects parent folder has a label expression
+     */
+    protected boolean hasFormatExpression(EObject eObject) {
+        while(eObject != null) {
+            if(eObject instanceof IFolder) {
+                if(TextRenderer.getDefault().hasFormatExpression((IFolder)eObject)) {
+                    return true;
+                }
+            }
+            eObject = eObject.eContainer();
+        }
+        
+        return false;
+    }
+    
+    /**
      * @return All the tree element nodes that may need updating when a change occurs
      */
-    protected List<Object> getElementsToUpdateFromNotification(Notification msg) {
-        int type = msg.getEventType();
+    protected Set<EObject> getElementsToUpdateFromNotification(Notification msg) {
+        Set<EObject> list = new HashSet<>();
         
-        List<Object> list = new ArrayList<Object>();
-        
-        Object element = null;
-        
-        if(type == Notification.REMOVE) {
-            element = msg.getOldValue();
-        }
-        else if(type == Notification.ADD) {
-            element = msg.getNewValue();
-        }
-        else if(type == Notification.SET) {
-            element = msg.getNotifier();
-        }
-        
-        // If it's a diagram object it may have child objects so treat it separately
-        if(element instanceof IDiagramModelObject) {
-            getElementsToUpdate(list, (IDiagramModelObject)element);
+        // If notifier is a folder ignore
+        if(msg.getNotifier() instanceof IFolder) {
             return list;
         }
         
-        // A diagram connection so get the relationship
+        int type = msg.getEventType();
+        
+        EObject element = null;
+        
+        if(type == Notification.REMOVE) {
+            element = (EObject)msg.getOldValue();
+        }
+        else if(type == Notification.ADD) {
+            element = (EObject)msg.getNewValue();
+        }
+        else if(type == Notification.SET) {
+            element = (EObject)msg.getNotifier();
+        }
+        
+        // If it's a diagram object or a diagram dig in and treat it separately
+        if(element instanceof IDiagramModelContainer) {
+            getDiagramElementsToUpdate(list, (IDiagramModelContainer)element);
+            return list;
+        }
+        
+        // If it's a diagram connection get the relationship
         if(element instanceof IDiagramModelArchimateConnection) {
-            element = ((IDiagramModelArchimateConnection)element).getRelationship();
+            element = ((IDiagramModelArchimateConnection)element).getArchimateRelationship();
         }
         
         // Got either a folder, a relationship or an element
         if(element != null) {
-            if(!list.contains(element)) {
-                list.add(element);
-            }
+            list.add(element);
             
             // If an element, also add any attached relationships
             if(element instanceof IArchimateElement) {
@@ -356,32 +429,31 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
     }
     
     /**
-     * Find all elements contained in IDiagramModelObject including any child objects
+     * Find all elements contained in Diagram or Diagram objects including any child objects
      */
-    private void getElementsToUpdate(List<Object> list, IDiagramModelObject dmo) {
-        if(dmo instanceof IDiagramModelArchimateObject) {
-            IArchimateElement element = ((IDiagramModelArchimateObject)dmo).getArchimateElement();
-            if(!list.contains(element)) {
-                list.add(element);
-                getRelationshipsToUpdate(list, element);
-            }
+    private void getDiagramElementsToUpdate(Set<EObject> list, IDiagramModelContainer container) {
+        // ArchiMate element
+        if(container instanceof IDiagramModelArchimateObject) {
+            IArchimateElement element = ((IDiagramModelArchimateObject)container).getArchimateElement();
+            list.add(element);
+            getRelationshipsToUpdate(list, element);
         }
         
-        if(dmo instanceof IDiagramModelContainer) {
-            for(IDiagramModelObject child : ((IDiagramModelContainer)dmo).getChildren()) {
-                getElementsToUpdate(list, child);
+        // Children
+        for(IDiagramModelObject child : container.getChildren()) {
+            if(child instanceof IDiagramModelContainer) {
+                getDiagramElementsToUpdate(list, (IDiagramModelContainer)child);
             }
         }
     }
     
     /**
      * Find all relationships to update from given element
+     * TODO: A3 Does this need to be for all concepts?
      */
-    private void getRelationshipsToUpdate(List<Object> list, IArchimateElement element) {
-        for(IRelationship relation : ArchimateModelUtils.getRelationships(element)) {
-            if(!list.contains(relation)) {
-                list.add(relation);
-            }
+    private void getRelationshipsToUpdate(Set<EObject> list, IArchimateElement element) {
+        for(IArchimateRelationship relation : ArchimateModelUtils.getAllRelationshipsForConcept(element)) {
+            list.add(relation);
         }
     }
     
@@ -395,5 +467,11 @@ implements IContextProvider, PropertyChangeListener, ITabbedPropertySheetPageCon
         
         // Unregister us as a Model Manager Listener
         IEditorModelManager.INSTANCE.removePropertyChangeListener(this);
+        
+        // Remove Prefs listener
+        ArchiPlugin.getInstance().getPreferenceStore().removePropertyChangeListener(prefsListener);
+        
+        // Update shell text
+        getSite().getShell().setText(ArchiPlugin.getInstance().getProductName());
     }
 }

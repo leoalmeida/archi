@@ -6,7 +6,8 @@
 package com.archimatetool.editor.utils;
 
 import java.net.MalformedURLException;
-import java.net.URL;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.util.regex.Pattern;
 
 import org.eclipse.ui.PartInitException;
@@ -20,19 +21,13 @@ import org.eclipse.ui.browser.IWorkbenchBrowserSupport;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class HTMLUtils {
-    
-    // Previous versions
-    // "(http|https|ftp)://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%&=]*)?"             // Original
-    // "(http|https|ftp)://([\\w-]+\\.)+[\\w-]+(/[\\w- ./?%~&=]*)?"            // Added ~
-    // "(http|https|ftp)://([\\w-]+\\.)+[\\w-]+(/[\\w-./?%~&=]*)?"             // Removed space
-    // "(http|https|ftp)://([\\w-]+\\.)+[\\w-]+(/[\\w-./?%~&=\\(\\)]*)?"       // Added \\( and \\)
-    // "(http|https|ftp)://([\\w-]+\\.)+[\\w-]+(/[\\w-./?%~#!&=\\(\\)]*)?";    // Added # and !
     
     /**
      * The reg expression for HTML links
      */
-    public static final String HTML_LINK_REGEX = "(http|https|ftp)://([\\w-]+\\.)+[\\w-]+([\\w-./?%~#!:&=\\(\\)]*)?";  // Removed leading / and added : //$NON-NLS-1$
+    public static final String HTML_LINK_REGEX = "(http|https|ftp|file)://\\S+";
     
     /**
      * The compiled pattern to match HTML links
@@ -42,7 +37,7 @@ public class HTMLUtils {
     /**
      * The reg expression for HTML tags
      */
-    public static final String HTML_TAG_REGEX = "<[^>]+>"; //$NON-NLS-1$
+    public static final String HTML_TAG_REGEX = "<[^>]+>";
 
     /** 
      * The compiled pattern to match HTML tags
@@ -51,57 +46,27 @@ public class HTMLUtils {
     
     /**
      * Strip tags out of a String
-     * @param str
-     * @return
      */
     public static String stripTags(String str) {
         if (str == null || str.indexOf('<') == -1 || str.indexOf('>') == -1) {
             return str;
         }
         
-        str = HTML_TAG_REGEX_PATTERN.matcher(str).replaceAll(""); //$NON-NLS-1$
+        str = HTML_TAG_REGEX_PATTERN.matcher(str).replaceAll("");
         return str;
     }
 
     /**
      * Open a link in a Browser
-     * @param href
      */
-    public static void openLinkInBrowser(String href) {
-        // format the href for an html file (file:///<filename.html>
-        // required for Mac only.
-        if(href.startsWith("file:")) { //$NON-NLS-1$
-            href = href.substring(5);
-            while(href.startsWith("/")) { //$NON-NLS-1$
-                href = href.substring(1);
-            }
-            href = "file:///" + href; //$NON-NLS-1$
-        }
-        
+    public static void openLinkInBrowser(String href) throws PartInitException, MalformedURLException {
         IWorkbenchBrowserSupport support = PlatformUI.getWorkbench().getBrowserSupport();
+        IWebBrowser browser = support.getExternalBrowser();
         try {
-            IWebBrowser browser = support.getExternalBrowser();
-            browser.openURL(new URL(urlEncodeForSpaces(href.toCharArray())));
+            browser.openURL(new URI(href.replaceAll(" ", "%20")).toURL());
         }
-        catch(MalformedURLException ex) {
-            ex.printStackTrace();
-        }
-        catch(PartInitException ex) {
-            ex.printStackTrace();
+        catch(URISyntaxException ex) {
+            throw new MalformedURLException(ex.toString());
         }
     }
-
-    private static String urlEncodeForSpaces(char[] input) {
-        StringBuffer retu = new StringBuffer(input.length);
-        for(int i = 0; i < input.length; i++) {
-            if(input[i] == ' ') {
-                retu.append("%20"); //$NON-NLS-1$
-            }
-            else {
-                retu.append(input[i]);
-            }
-        }
-        return retu.toString();
-    }
-    
 }

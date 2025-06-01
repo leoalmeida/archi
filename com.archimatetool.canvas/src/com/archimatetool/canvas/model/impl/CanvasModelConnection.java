@@ -26,10 +26,10 @@ import com.archimatetool.model.impl.DiagramModelConnection;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.canvas.model.impl.CanvasModelConnection#isLocked <em>Locked</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -78,6 +78,7 @@ public class CanvasModelConnection extends DiagramModelConnection implements ICa
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public boolean isLocked() {
         return locked;
     }
@@ -87,6 +88,7 @@ public class CanvasModelConnection extends DiagramModelConnection implements ICa
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLocked(boolean newLocked) {
         boolean oldLocked = locked;
         locked = newLocked;
@@ -193,7 +195,7 @@ public class CanvasModelConnection extends DiagramModelConnection implements ICa
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (locked: "); //$NON-NLS-1$
         result.append(locked);
         result.append(')');

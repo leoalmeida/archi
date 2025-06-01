@@ -11,10 +11,11 @@ import org.eclipse.gef.dnd.AbstractTransferDropTargetListener;
 import org.eclipse.jface.util.LocalSelectionTransfer;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.swt.dnd.DND;
 import org.eclipse.swt.dnd.DropTargetEvent;
 
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IDiagramModel;
 
 
@@ -88,14 +89,32 @@ public abstract class AbstractDiagramTransferDropTargetListener extends Abstract
         IArchimateModel targetArchimateModel = getTargetDiagramModel().getArchimateModel();
         
         for(Object object : selection.toArray()) {
-            if(object instanceof IArchimateModelElement) {
-                IArchimateModel sourceArchimateModel = ((IArchimateModelElement)object).getArchimateModel();
-                if(sourceArchimateModel != targetArchimateModel) {
+            if(object instanceof IArchimateModelObject) {
+                IArchimateModel sourceArchimateModel = ((IArchimateModelObject)object).getArchimateModel();
+                if(sourceArchimateModel == null || sourceArchimateModel != targetArchimateModel) {
                     return false;
                 }
             }
         }
         
         return true;
+    }
+    
+    /**
+     * Set cursor to DND.DROP_COPY
+     */
+    @Override
+    protected void handleDragOperationChanged() {
+        getCurrentEvent().detail = DND.DROP_COPY;
+        super.handleDragOperationChanged();
+    }
+
+    /**
+     * Set cursor to DND.DROP_COPY
+     */
+    @Override
+    protected void handleDragOver() {
+        getCurrentEvent().detail = DND.DROP_COPY;
+        super.handleDragOver();
     }
 }

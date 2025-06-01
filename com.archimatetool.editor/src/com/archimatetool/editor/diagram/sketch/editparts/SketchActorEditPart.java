@@ -12,11 +12,8 @@ import org.eclipse.gef.RequestConstants;
 import org.eclipse.gef.requests.LocationRequest;
 import org.eclipse.gef.tools.DirectEditManager;
 
-import com.archimatetool.editor.diagram.directedit.LabelDirectEditManager;
+import com.archimatetool.editor.diagram.directedit.MultiLineTextDirectEditManager;
 import com.archimatetool.editor.diagram.editparts.AbstractConnectedEditPart;
-import com.archimatetool.editor.diagram.editparts.IColoredEditPart;
-import com.archimatetool.editor.diagram.editparts.ITextEditPart;
-import com.archimatetool.editor.diagram.figures.IDiagramModelObjectFigure;
 import com.archimatetool.editor.diagram.policies.PartComponentEditPolicy;
 import com.archimatetool.editor.diagram.policies.PartDirectEditTitlePolicy;
 import com.archimatetool.editor.diagram.sketch.figures.SketchActorFigure;
@@ -30,8 +27,7 @@ import com.archimatetool.model.ISketchModelActor;
  * 
  * @author Phillip Beauvoir
  */
-public class SketchActorEditPart extends AbstractConnectedEditPart
-implements IColoredEditPart, ITextEditPart  {
+public class SketchActorEditPart extends AbstractConnectedEditPart {
     
     @Override
     protected IFigure createFigure() {
@@ -58,11 +54,6 @@ implements IColoredEditPart, ITextEditPart  {
     }
     
     @Override
-    public IDiagramModelObjectFigure getFigure() {
-        return (IDiagramModelObjectFigure)super.getFigure();
-    }
-
-    @Override
     public void performRequest(Request request) {
         // REQ_DIRECT_EDIT is Single-click when already selected or a Rename command
         // REQ_OPEN is Double-click
@@ -84,6 +75,7 @@ implements IColoredEditPart, ITextEditPart  {
     }
     
     protected DirectEditManager createDirectEditManager() {
-        return new LabelDirectEditManager(this, getFigure().getTextControl());
+        //return new LabelDirectEditManager(this, getFigure().getTextControl(), getModel().getName());
+        return new MultiLineTextDirectEditManager(this, true, getFigure().getTextControl());
     }
 }

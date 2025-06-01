@@ -16,17 +16,17 @@ import org.eclipse.emf.ecore.EObject;
  *
  * <p>
  * The following features are supported:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.IFolder#getElements <em>Elements</em>}</li>
  *   <li>{@link com.archimatetool.model.IFolder#getType <em>Type</em>}</li>
  * </ul>
- * </p>
  *
  * @see com.archimatetool.model.IArchimatePackage#getFolder()
  * @model
  * @generated
  */
-public interface IFolder extends IArchimateModelElement, IFolderContainer, INameable, IIdentifier, IDocumentable, IProperties {
+public interface IFolder extends IArchimateModelObject, IFolderContainer, IDocumentable, IProperties {
     /**
      * Returns the value of the '<em><b>Elements</b></em>' containment reference list.
      * The list contents are of type {@link org.eclipse.emf.ecore.EObject}.

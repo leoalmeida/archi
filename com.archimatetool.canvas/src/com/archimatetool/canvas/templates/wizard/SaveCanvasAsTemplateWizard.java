@@ -9,7 +9,10 @@ import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.charset.Charset;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.zip.ZipOutputStream;
 
 import org.eclipse.emf.ecore.EObject;
@@ -21,22 +24,21 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
-import org.jdom2.Document;
-import org.jdom2.Element;
 
 import com.archimatetool.canvas.model.ICanvasModel;
 import com.archimatetool.canvas.templates.model.CanvasModelTemplate;
 import com.archimatetool.canvas.templates.model.CanvasTemplateManager;
+import com.archimatetool.editor.diagram.commands.DiagramCommandFactory;
 import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.utils.ZipUtils;
-import com.archimatetool.jdom.JDOMUtils;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IDiagramModelReference;
 import com.archimatetool.model.IFolder;
 import com.archimatetool.model.ModelVersion;
+import com.archimatetool.model.util.UUIDFactory;
+import com.archimatetool.templates.model.ITemplate;
 import com.archimatetool.templates.model.ITemplateGroup;
-import com.archimatetool.templates.model.ITemplateXMLTags;
 import com.archimatetool.templates.model.TemplateManager;
 import com.archimatetool.templates.wizard.TemplateUtils;
 
@@ -49,6 +51,7 @@ import com.archimatetool.templates.wizard.TemplateUtils;
  */
 public class SaveCanvasAsTemplateWizard extends Wizard {
     
+    private IArchimateModel fModel;
     private ICanvasModel fCanvasModel;
     
     private SaveCanvasAsTemplateWizardPage fPage1;
@@ -65,7 +68,8 @@ public class SaveCanvasAsTemplateWizard extends Wizard {
     
     public SaveCanvasAsTemplateWizard(ICanvasModel canvasModel) {
         setWindowTitle(Messages.SaveCanvasAsTemplateWizard_0);
-        fCanvasModel = canvasModel;
+        
+        createTempModel(canvasModel); 
         fTemplateManager = new CanvasTemplateManager();
     }
     
@@ -79,12 +83,15 @@ public class SaveCanvasAsTemplateWizard extends Wizard {
 
     @Override
     public boolean performFinish() {
+        // Store Preferences
+        fPage1.storePreferences();
+        
         // This before the thread starts
         fZipFile = new File(fPage1.getFileName());
         
         // Make sure the file does not already exist
         if(fZipFile.exists()) {
-            boolean result = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
+            boolean result = MessageDialog.openQuestion(getShell(),
                     Messages.SaveCanvasAsTemplateWizard_1,
                     NLS.bind(Messages.SaveCanvasAsTemplateWizard_2, fZipFile));
             if(!result) {
@@ -111,6 +118,7 @@ public class SaveCanvasAsTemplateWizard extends Wizard {
                 catch(final IOException ex) {
                     ex.printStackTrace();
                     Display.getCurrent().asyncExec(new Runnable() { // Display after wizard closes
+                        @Override
                         public void run() {
                             MessageDialog.openError(getShell(), Messages.SaveCanvasAsTemplateWizard_3, ex.getMessage());
                         }
@@ -123,27 +131,22 @@ public class SaveCanvasAsTemplateWizard extends Wizard {
     }
     
     private void createZipFile(File zipFile) throws IOException {
-        ZipOutputStream zOut = null;
-        
-        try {
-            // Delete any existing zip first
-            zipFile.delete();
-            
-            // Start a zip stream
-            BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(zipFile));
-            zOut = new ZipOutputStream(out);
+        // Make sure parent folder exists
+        File parent = zipFile.getParentFile();
+        if(parent != null) {
+            parent.mkdirs();
+        }
 
-            // Model File
-            File modelFile = saveModelToTempFile();
-            ZipUtils.addFileToZip(modelFile, TemplateManager.ZIP_ENTRY_MODEL, zOut);
-            if(modelFile != null) {
-                modelFile.delete();
-            }
-            
+        try(ZipOutputStream zOut = new ZipOutputStream(new BufferedOutputStream(new FileOutputStream(zipFile)))) {
             // Manifest
             String manifest = createManifest();
-            ZipUtils.addStringToZip(manifest, TemplateManager.ZIP_ENTRY_MANIFEST, zOut);
-            
+            ZipUtils.addStringToZip(manifest, TemplateManager.ZIP_ENTRY_MANIFEST, zOut, Charset.forName("UTF-8")); //$NON-NLS-1$
+
+            // Model File
+            File tempFile = saveModelToTempFile();
+            ZipUtils.addFileToZip(tempFile, TemplateManager.ZIP_ENTRY_MODEL, zOut);
+            tempFile.delete();
+
             // Thumbnail
             if(fIncludeThumbnail) {
                 Image image = TemplateUtils.createThumbnailImage(fCanvasModel);
@@ -151,92 +154,81 @@ public class SaveCanvasAsTemplateWizard extends Wizard {
                 image.dispose();
             }
         }
-        finally {
-            if(zOut != null) {
-                try {
-                    zOut.flush();
-                    zOut.close();
-                }
-                catch(IOException ex) {
-                }
-            }
-        }
     }
     
     private String createManifest() throws IOException {
-        Document doc = new Document();
-        Element root = new Element(ITemplateXMLTags.XML_TEMPLATE_ELEMENT_MANIFEST);
-        doc.setRootElement(root);
+        // Create a new template and create the manifest from that
+        ITemplate template = new CanvasModelTemplate();
         
-        // Type
-        root.setAttribute(ITemplateXMLTags.XML_TEMPLATE_ATTRIBUTE_TYPE, CanvasModelTemplate.XML_CANVAS_TEMPLATE_ATTRIBUTE_TYPE_MODEL);
-
-        // Timestamp
-        root.setAttribute(ITemplateXMLTags.XML_TEMPLATE_ATTRIBUTE_TIMESTAMP, Long.toString(System.currentTimeMillis()));
-        
-        // Name
-        Element elementName = new Element(ITemplateXMLTags.XML_TEMPLATE_ELEMENT_NAME);
-        elementName.setText(fTemplateName);
-        root.addContent(elementName);
-        
-        // Description
-        Element elementDescription = new Element(ITemplateXMLTags.XML_TEMPLATE_ELEMENT_DESCRIPTION);
-        elementDescription.setText(fTemplateDescription);
-        root.addContent(elementDescription);
-        
-        // Thumbnail
+        template.setName(fTemplateName);
+        template.setDescription(fTemplateDescription);
         if(fIncludeThumbnail) {
-            String keyThumb = TemplateManager.ZIP_ENTRY_THUMBNAILS + "1.png"; //$NON-NLS-1$
-            Element elementKeyThumb = new Element(ITemplateXMLTags.XML_TEMPLATE_ELEMENT_KEY_THUMBNAIL);
-            elementKeyThumb.setText(keyThumb);
-            root.addContent(elementKeyThumb);
+            template.setKeyThumbnailPath(TemplateManager.ZIP_ENTRY_THUMBNAILS + "1.png"); //$NON-NLS-1$
         }
-        
-        return JDOMUtils.write2XMLString(doc);
-    }
 
+        return template.createManifest();
+    }
+    
     private File saveModelToTempFile() throws IOException {
         File tmpFile = File.createTempFile("architemplate", null); //$NON-NLS-1$
         tmpFile.deleteOnExit();
         
-        // Create a new container Archimate model
-        IArchimateModel tempModel = IArchimateFactory.eINSTANCE.createArchimateModel();
-        tempModel.setDefaults();
-        tempModel.eAdapters().clear(); // Remove this after default folders have been added, as we'll generate our own IDs
-        tempModel.setId(EcoreUtil.generateUUID());
-        tempModel.setFile(tmpFile);
-        tempModel.setVersion(ModelVersion.VERSION);
-        tempModel.setName(Messages.SaveCanvasAsTemplateWizard_4);
-
-        // Get the Canvas copy
-        ICanvasModel copyCanvas = EcoreUtil.copy(fCanvasModel);
+        fModel.setFile(tmpFile);
         
-        // Remove any unsupported elements
+        // Use the Archive Manager to save it
+        IArchiveManager archiveManager = (IArchiveManager)fModel.getAdapter(IArchiveManager.class);
+        archiveManager.saveModel();
+        
+        return tmpFile;
+    }
+    
+    private void createTempModel(ICanvasModel canvasModel) {
+        fModel = IArchimateFactory.eINSTANCE.createArchimateModel();
+        fModel.setDefaults();
+        fModel.setVersion(ModelVersion.VERSION);
+        fModel.setName(Messages.SaveCanvasAsTemplateWizard_4);
+        
+        // Create a copy of the Canvas and add the copy to a new Views folder
+        fCanvasModel = createCanvasCopy(canvasModel);
+        IFolder folder = fModel.getDefaultFolderForObject(fCanvasModel);
+        folder.getElements().add(fCanvasModel);
+        
+        // Clone the ArchiveManager for thumbnail generation and saving
+        IArchiveManager archiveManager = ((IArchiveManager)canvasModel.getAdapter(IArchiveManager.class)).clone(fModel);
+        fModel.setAdapter(IArchiveManager.class, archiveManager);
+    }
+    
+    private ICanvasModel createCanvasCopy(ICanvasModel canvasModel) {
+        ICanvasModel copyCanvas = EcoreUtil.copy(canvasModel);
+        
+        // Gather up diagram model references
+        List<IDiagramModelReference> toRemove = new ArrayList<>();
+        
         for(Iterator<EObject> iter = copyCanvas.eAllContents(); iter.hasNext();) {
             EObject eObject = iter.next();
-            if(eObject instanceof IDiagramModelReference) {
-                EcoreUtil.delete(eObject);
+            // Diagram model references and their connections will be orphaned
+            if(eObject instanceof IDiagramModelReference ref) {
+                toRemove.add(ref);
             }
         }
         
+        // Remove them
+        for(IDiagramModelReference ref : toRemove) {
+            DiagramCommandFactory.createDeleteDiagramObjectCommand(ref).execute();
+        }
+        
         // Generate new IDs
-        TemplateUtils.generateNewUUIDs(copyCanvas);
+        UUIDFactory.generateNewIDs(copyCanvas);
         
-        // Add the canvas copy to a new Views folder
-        IFolder folder = tempModel.getDefaultFolderForElement(copyCanvas);
-        folder.getElements().add(copyCanvas);
-        
-        // Use an Archive Manager to save it
-        IArchiveManager archiveManager = IArchiveManager.FACTORY.createArchiveManager(tempModel);
-        archiveManager.saveModel();
-        archiveManager.dispose();
-        
-        return tmpFile;
+        return copyCanvas;
     }
     
     @Override
     public void dispose() {
         super.dispose();
+        
         fTemplateManager.dispose();
+        fCanvasModel = null;
+        fModel = null;
     }
 }

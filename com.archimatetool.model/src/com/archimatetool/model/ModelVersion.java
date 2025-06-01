@@ -34,9 +34,26 @@ package com.archimatetool.model;
  * 2.6.0 - Add new model namespace URIs
  *       - Archi 2.7.0 added the Metadata element to the model. Keep the same model number as this is not catastrophic
  * 3.0.0 - Default widths and heights are not saved as -1
+ * 3.1.0 - Note has border types
+ * 3.1.1 - Group figure removes 18 pixel offset
+ * 4.0.0 - Everything changed for ArchiMate 3.0
+ * 4.0.1 - Add alpha attribute to IDiagramModelObject
+ * 4.4.0 - Add Properties to IDiagramModelNote
+ *       - Add Properties to IDiagramModelImage
+ *       - Add Documentation IDiagramModelImage
+ *       - Grouping's Text Alignment is checked for centre and converted to left
+ *       - Added IBorderType to Ecore
+ *       - Group can have Rectangle Border Type
+ *       - Group implements ITextPosition
+ * 4.6.0 - Add Features API
+ *       - ArchiMate 3.1 ValueStream concept and Association relationship directed attribute
+ * 4.9.0 - Add Profiles
+ *       - Add images to IDiagramModelArchimateObject
+ *       - Refactor IDiagramModelImageProvider, IIconic and more...
+ * 5.0.0 - ArchiMate 3.2
  * 
  * @author Phillip Beauvoir
  */
 public interface ModelVersion {
-    String VERSION = "3.0.0"; //$NON-NLS-1$
+    String VERSION = "5.0.0"; //$NON-NLS-1$
 }

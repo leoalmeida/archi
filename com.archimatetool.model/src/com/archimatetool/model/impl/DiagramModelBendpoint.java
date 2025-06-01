@@ -22,13 +22,13 @@ import com.archimatetool.model.IDiagramModelBendpoint;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelBendpoint#getStartX <em>Start X</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelBendpoint#getStartY <em>Start Y</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelBendpoint#getEndX <em>End X</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelBendpoint#getEndY <em>End Y</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -137,6 +137,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getStartX() {
         return startX;
     }
@@ -146,6 +147,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setStartX(int newStartX) {
         int oldStartX = startX;
         startX = newStartX;
@@ -158,6 +160,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getStartY() {
         return startY;
     }
@@ -167,6 +170,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setStartY(int newStartY) {
         int oldStartY = startY;
         startY = newStartY;
@@ -179,6 +183,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getEndX() {
         return endX;
     }
@@ -188,6 +193,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setEndX(int newEndX) {
         int oldEndX = endX;
         endX = newEndX;
@@ -200,6 +206,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getEndY() {
         return endY;
     }
@@ -209,6 +216,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setEndY(int newEndY) {
         int oldEndY = endY;
         endY = newEndY;
@@ -221,6 +229,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public EObject getCopy() {
         return EcoreUtil.copy(this);
     }
@@ -322,7 +331,7 @@ public class DiagramModelBendpoint extends EObjectImpl implements IDiagramModelB
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (startX: "); //$NON-NLS-1$
         result.append(startX);
         result.append(", startY: "); //$NON-NLS-1$

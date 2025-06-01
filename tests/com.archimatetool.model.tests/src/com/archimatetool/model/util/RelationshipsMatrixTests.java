@@ -5,78 +5,87 @@
  */
 package com.archimatetool.model.util;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Map;
 
-import junit.framework.JUnit4TestAdapter;
-
 import org.eclipse.emf.ecore.EClass;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IRelationship;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.util.RelationshipsMatrix.TargetMatrix;
 
 
 
 public class RelationshipsMatrixTests {
 
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(RelationshipsMatrixTests.class);
-    }
-    
     private RelationshipsMatrix matrix = RelationshipsMatrix.INSTANCE;
     
-    @Test(expected = UnsupportedOperationException.class)
     public void testGetRelationshipsMatrixIsUnmodifiable() {
         Map<EClass, List<TargetMatrix>> map = matrix.getRelationshipsMatrix();
-        map.put(IArchimatePackage.eINSTANCE.getAndJunction(), null);
+        assertThrows(UnsupportedOperationException.class, () -> {
+            map.put(IArchimatePackage.eINSTANCE.getJunction(), null);
+        });
     }
     
-    @Test(expected = UnsupportedOperationException.class)
+    @Test
     public void testGetRelationshipsValueMapIsUnmodifiable() {
         Map<EClass, Character> map = matrix.getRelationshipsValueMap();
-        map.put(IArchimatePackage.eINSTANCE.getAndJunction(), null);
+        assertThrows(UnsupportedOperationException.class, () -> {
+            map.put(IArchimatePackage.eINSTANCE.getJunction(), null);
+        });
     }
 
     @Test
-    public void testIsValidRelationshipStart() {
-        IArchimateElement sourceElement = IArchimateFactory.eINSTANCE.createAndJunction();
-        IRelationship relationship = IArchimateFactory.eINSTANCE.createFlowRelationship();
+    public void testIsValidRelationshipStart_Element() {
+        IArchimateElement sourceElement = IArchimateFactory.eINSTANCE.createJunction();
+        IArchimateRelationship relationship = IArchimateFactory.eINSTANCE.createFlowRelationship();
         
-        assertTrue(matrix.isValidRelationshipStart(sourceElement, relationship.eClass()));
-        assertTrue(matrix.isValidRelationshipStart(sourceElement, relationship.eClass()));
+        assertTrue(matrix.isValidRelationshipStart(sourceElement.eClass(), relationship.eClass()));
         
         relationship = IArchimateFactory.eINSTANCE.createTriggeringRelationship();
-        assertTrue(matrix.isValidRelationshipStart(sourceElement, relationship.eClass()));
+        assertTrue(matrix.isValidRelationshipStart(sourceElement.eClass(), relationship.eClass()));
         
-        relationship = IArchimateFactory.eINSTANCE.createUsedByRelationship();
-        assertFalse(matrix.isValidRelationshipStart(sourceElement, relationship.eClass()));
+        relationship = IArchimateFactory.eINSTANCE.createSpecializationRelationship();
+        assertTrue(matrix.isValidRelationshipStart(sourceElement.eClass(), relationship.eClass()));
 
         sourceElement = IArchimateFactory.eINSTANCE.createSystemSoftware();
         relationship = IArchimateFactory.eINSTANCE.createFlowRelationship();
-        assertTrue(matrix.isValidRelationshipStart(sourceElement, relationship.eClass()));
+        assertTrue(matrix.isValidRelationshipStart(sourceElement.eClass(), relationship.eClass()));
+        
         relationship = IArchimateFactory.eINSTANCE.createAccessRelationship();
-        assertTrue(matrix.isValidRelationshipStart(sourceElement, relationship.eClass()));
+        assertTrue(matrix.isValidRelationshipStart(sourceElement.eClass(), relationship.eClass()));
     }
 
     @Test
-    public void testIsValidRelationship() {
-        EClass sourceClass = IArchimatePackage.eINSTANCE.getAndJunction();
-        EClass targetClass = IArchimatePackage.eINSTANCE.getAndJunction();
+    public void testIsValidRelationshipStart_Relationship() {
+        for(EClass eClassSource : ArchimateModelUtils.getRelationsClasses()) {
+            assertTrue(matrix.isValidRelationshipStart(eClassSource, IArchimatePackage.eINSTANCE.getAssociationRelationship()));
+        }
+        
+        for(EClass eClassSource : ArchimateModelUtils.getRelationsClasses()) {
+            assertFalse(matrix.isValidRelationshipStart(eClassSource, IArchimatePackage.eINSTANCE.getInfluenceRelationship()));
+        }
+    }
+
+    @Test
+    public void testIsValidRelationship_ElementToElement() {
+        EClass sourceClass = IArchimatePackage.eINSTANCE.getJunction();
+        EClass targetClass = IArchimatePackage.eINSTANCE.getJunction();
         EClass relationship = IArchimatePackage.eINSTANCE.getFlowRelationship();
         assertTrue(matrix.isValidRelationship(sourceClass, targetClass, relationship));
 
         relationship = IArchimatePackage.eINSTANCE.getTriggeringRelationship();
         assertTrue(matrix.isValidRelationship(sourceClass, targetClass, relationship));
         
-        relationship = IArchimatePackage.eINSTANCE.getUsedByRelationship();
-        assertFalse(matrix.isValidRelationship(sourceClass, targetClass, relationship));
+        relationship = IArchimatePackage.eINSTANCE.getSpecializationRelationship();
+        assertTrue(matrix.isValidRelationship(sourceClass, targetClass, relationship));
         
         sourceClass = IArchimatePackage.eINSTANCE.getSystemSoftware();
         targetClass = IArchimatePackage.eINSTANCE.getSystemSoftware();
@@ -87,13 +96,36 @@ public class RelationshipsMatrixTests {
         assertFalse(matrix.isValidRelationship(sourceClass, targetClass, relationship));
         
         sourceClass = IArchimatePackage.eINSTANCE.getValue();
-        targetClass = IArchimatePackage.eINSTANCE.getOrJunction();
-        relationship = IArchimatePackage.eINSTANCE.getFlowRelationship();
-        assertFalse(matrix.isValidRelationship(sourceClass, targetClass, relationship));
+        targetClass = IArchimatePackage.eINSTANCE.getJunction();
+        relationship = IArchimatePackage.eINSTANCE.getSpecializationRelationship();
+        assertTrue(matrix.isValidRelationship(sourceClass, targetClass, relationship));
         
-        relationship = IArchimatePackage.eINSTANCE.getAccessRelationship();
-        assertFalse(matrix.isValidRelationship(sourceClass, targetClass, relationship));
+        relationship = IArchimatePackage.eINSTANCE.getSpecializationRelationship();
+        assertTrue(matrix.isValidRelationship(sourceClass, targetClass, relationship));
     }
     
     
+    @Test
+    public void testIsValidRelationship_RelationshipToAnother() {
+        EClass relationshipType = IArchimatePackage.eINSTANCE.getAssociationRelationship(); 
+        
+        EClass objectClass = IArchimatePackage.eINSTANCE.getBusinessActor();
+        EClass relationClass = IArchimatePackage.eINSTANCE.getCompositionRelationship();
+        
+        // OK from object to relation
+        assertTrue(matrix.isValidRelationship(objectClass, relationClass, relationshipType));
+
+        // OK from relation to object
+        assertTrue(matrix.isValidRelationship(relationClass, objectClass, relationshipType));
+
+        // Not OK from relation -> relation
+        assertFalse(matrix.isValidRelationship(relationClass, relationClass, relationshipType));
+        
+        // Not OK from relation -> Junction
+        objectClass = IArchimatePackage.eINSTANCE.getJunction();
+        assertFalse(matrix.isValidRelationship(relationClass, objectClass, relationshipType));
+        
+        // Not OK from Junction to relation
+        assertFalse(matrix.isValidRelationship(objectClass, relationClass, relationshipType));
+    }
 } 

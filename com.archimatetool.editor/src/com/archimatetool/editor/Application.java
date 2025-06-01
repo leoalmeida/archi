@@ -5,9 +5,6 @@
  */
 package com.archimatetool.editor;
 
-import java.io.IOException;
-import java.net.URL;
-
 import org.eclipse.core.runtime.Platform;
 import org.eclipse.equinox.app.IApplication;
 import org.eclipse.equinox.app.IApplicationContext;
@@ -15,114 +12,76 @@ import org.eclipse.osgi.service.datalocation.Location;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.PlatformUI;
 
-
-
+import com.archimatetool.editor.preferences.PrefUtils;
+import com.archimatetool.editor.utils.PlatformUtils;
 
 /**
  * The main application class for standalone RCP operation.
  * 
  * @author Phillip Beauvoir
  */
-public class Application
-implements IApplication {
+@SuppressWarnings("nls")
+public class Application implements IApplication {
 
     /**
      * ID of the Application
      */
-    public static String ID = ArchimateEditorPlugin.PLUGIN_ID + ".app"; //$NON-NLS-1$
-    
-    public static final String APPLICATION_VERSIONID = "com.archimatetool.editor.versionid"; //$NON-NLS-1$
-    public static final String APPLICATION_BUILDID = "com.archimatetool.editor.buildid"; //$NON-NLS-1$
-    
-	/**
-	 * Constructor
-	 */
-	public Application() {
-	}
-	
-	public Object start(IApplicationContext context) throws Exception {
-	    // Store the application version and build IDs in System Property
-	    String fullVersion = context.getBrandingBundle().getVersion().toString();
-	    String version = fullVersion.substring(0, 5);
-	    String build = fullVersion.substring(6);
-	    System.setProperty(APPLICATION_VERSIONID, version);
-	    System.setProperty(APPLICATION_BUILDID, build);
-	    
-	    /*
-	     * Platform specific startup if user launches app twice or from .archimate file on the desktop
-	     */
-	    IPlatformLauncher launcher = ArchimateEditorPlugin.INSTANCE.getPlatformLauncher();
-	    if(launcher != null) {
-	        launcher.startup();
-	        
-            /*
-             * If the application is already open (Windows), exit
-             */
-	        if(launcher.shouldApplicationExitEarly()) {
-                return EXIT_OK;
-            }
-	    }
-	    
-	    // Create Main Display
-	    Display display = PlatformUI.createDisplay();
-	    
-	    // Tell the Launcher that the display has been created
-	    if(launcher != null) {
-	        launcher.displayCreated(display);
-	    }
-	    
-	    // Hook into opening documents from the desktop
-	    OpenDocumentHandler.getInstance().hook(display);
-	    	    
-	    try {
-	        int returnCode = PlatformUI.createAndRunWorkbench(display, new ArchimateEditorWorkbenchAdvisor());
-	        if(returnCode == PlatformUI.RETURN_RESTART) {
-                return EXIT_RESTART;
-            }
-	        return EXIT_OK;
-	    }
-	    finally {
-	        display.dispose();
-	    }
-	}
-	
-	
-    public void stop() {
-    
+    public static String ID = ArchiPlugin.PLUGIN_ID + ".app";
+
+    public Application() {
     }
 
-    /**
-	 * Set the file location of the data store.<p>
-	 * We want to do this for an RCP standalone app but not when this is running as a plugin
-	 * becauae the location of the Workbench instance will be set already.
-	 * This has to be done before the Workbench starts.
-	 * Note that the launch configuration in the Eclipse IDE should have "@noDefault"
-     * as the workspace for the launch configuration.
-	 * 
-	 * @param url A url to a folder
-     * @throws IOException 
-     * @throws IllegalStateException 
-	 */
-	@SuppressWarnings("unused")
-    private void setWorkbenchDataLocation(URL url) throws IllegalStateException, IOException {
-        /*
-         * Ascertain the existing location. If it is null, we can set it.
-         * When run from the Eclipse IDE, setting the workspace location in the launch configuration
-         * to "@noDefault" will set it as null.
-         */
-        Location instanceLoc = Platform.getInstanceLocation();
-        if(instanceLoc == null) {
-            Logger.logError(
-                    "Instance Location is null, cannot set it in setWorkbenchDataLocation(URL)", //$NON-NLS-1$
-                    null);
+    @Override
+    public Object start(IApplicationContext context) throws Exception {
+        // If running on Windows or Linux lock the instance location so we can only launch Archi once
+        if(PlatformUtils.isWindows() || PlatformUtils.isLinux()) {
+            Location loc = Platform.getInstanceLocation();
+
+            if(loc.isLocked()) {
+                return EXIT_OK;
+            }
+
+            if(loc.isSet()) { // Ensure it's set to avoid IOException
+                loc.lock();   // Lock it
+            }
         }
-        else if(!instanceLoc.isSet()) {
-            instanceLoc.release();
-            /*
-             * If this is set to true, you can't run another instance
-             * of the app with this workspace open
-             */ 
-            instanceLoc.set(url, false);  
+        
+        // Check whether we are migrating from Archi 4 to 5
+        if(Archi4Migrator.check()) {
+            return EXIT_RESTART;
         }
-	}
+        
+        // Initialise internal preferences
+        PrefUtils.init();
+        
+        // Create Display
+        Display display = PlatformUI.createDisplay();
+
+        // Hook into opening documents from the desktop
+        OpenDocumentHandler.getInstance().hook(display);
+
+        try {
+            // Create and Run the Workbench
+            int returnCode = PlatformUI.createAndRunWorkbench(display, new ArchiWorkbenchAdvisor());
+
+            // Was it a restart?
+            boolean restart = returnCode == PlatformUI.RETURN_RESTART;
+
+            // Clean Workbench on exit/restart
+            WorkbenchCleaner.clean(restart);
+
+            if(restart) {
+                return EXIT_RESTART;
+            }
+
+            return EXIT_OK;
+        }
+        finally {
+            display.dispose();
+        }
+    }
+
+    @Override
+    public void stop() {
+    }
 }

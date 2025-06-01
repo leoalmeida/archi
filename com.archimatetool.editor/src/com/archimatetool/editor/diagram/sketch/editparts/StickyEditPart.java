@@ -20,12 +20,8 @@ import org.eclipse.gef.tools.DirectEditManager;
 
 import com.archimatetool.editor.diagram.directedit.MultiLineTextDirectEditManager;
 import com.archimatetool.editor.diagram.editparts.AbstractConnectedEditPart;
-import com.archimatetool.editor.diagram.editparts.IColoredEditPart;
-import com.archimatetool.editor.diagram.editparts.ILinedEditPart;
-import com.archimatetool.editor.diagram.editparts.ITextAlignedEditPart;
 import com.archimatetool.editor.diagram.editparts.SnapEditPartAdapter;
 import com.archimatetool.editor.diagram.figures.IContainerFigure;
-import com.archimatetool.editor.diagram.figures.IDiagramModelObjectFigure;
 import com.archimatetool.editor.diagram.policies.BasicContainerEditPolicy;
 import com.archimatetool.editor.diagram.policies.ContainerHighlightEditPolicy;
 import com.archimatetool.editor.diagram.policies.DiagramLayoutPolicy;
@@ -45,8 +41,7 @@ import com.archimatetool.model.ISketchModelSticky;
  * 
  * @author Phillip Beauvoir
  */
-public class StickyEditPart extends AbstractConnectedEditPart
-implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart  {
+public class StickyEditPart extends AbstractConnectedEditPart {
     
     @Override
     protected List<?> getModelChildren() {
@@ -94,14 +89,13 @@ implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart  {
     @Override
     protected void refreshFigure() {
         // Refresh the figure if necessary
-        ((IDiagramModelObjectFigure)getFigure()).refreshVisuals();
+        getFigure().refreshVisuals();
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
-    public Object getAdapter(Class adapter) {
+    public <T> T getAdapter(Class<T> adapter) {
         if(adapter == SnapToHelper.class) {
-            return new SnapEditPartAdapter(this).getSnapToHelper();
+            return adapter.cast(new SnapEditPartAdapter(this).getSnapToHelper());
         }
         
         return super.getAdapter(adapter);

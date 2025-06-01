@@ -17,9 +17,8 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.IArchimateImages;
-import com.archimatetool.editor.utils.PlatformUtils;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.utils.StringUtils;
 
 
@@ -77,11 +76,7 @@ public class FloatingPalette {
     }
     
     private void createShell() {
-        int style = SWT.TOOL | SWT.RESIZE | SWT.CLOSE;
-        if(PlatformUtils.isMac()) {
-            style |= SWT.ON_TOP; // SWT.ON_TOP is needed on Mac to ensure Focus click-through, but doesn't work on GTK
-        }
-        fShell = new Shell(fParentShell, style);
+        fShell = new Shell(fParentShell, SWT.TOOL | SWT.RESIZE | SWT.CLOSE);
         
         if(fPaletteState.isTranslucent) {
             fShell.setAlpha(210);
@@ -90,11 +85,12 @@ public class FloatingPalette {
         checkSafeBounds(fParentShell);
         fShell.setBounds(fPaletteState.bounds);
         
-        fShell.setImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.ICON_APP_16));
+        fShell.setImage(IArchiImages.ImageFactory.getImage(IArchiImages.ICON_APP));
         fShell.setText(Messages.FloatingPalette_0);
         
         // Disposed by system
         fShell.addDisposeListener(new DisposeListener() {
+            @Override
             public void widgetDisposed(DisposeEvent e) {
                 if(fClient != null) {
                     fClient.dispose();
@@ -122,7 +118,7 @@ public class FloatingPalette {
         GridData gd = new GridData(SWT.FILL, SWT.FILL, true, true);
         fClient.setLayoutData(gd);
         
-        fPalettePage = (PalettePage)fEditor.getAdapter(PalettePage.class);
+        fPalettePage = fEditor.getAdapter(PalettePage.class);
         fPalettePage.createControl(fClient);
     }
     
@@ -154,11 +150,11 @@ public class FloatingPalette {
     private void saveState(Shell shell) {
         Rectangle bounds = shell.getBounds();
         String s = "" + bounds.x + "," + bounds.y + "," + bounds.width + "," + bounds.height + "," + fPaletteState.isOpen; //$NON-NLS-1$ //$NON-NLS-2$ //$NON-NLS-3$ //$NON-NLS-4$ //$NON-NLS-5$
-        Preferences.STORE.setValue("pallete_floater_state", s); //$NON-NLS-1$
+        ArchiPlugin.getInstance().getPreferenceStore().setValue("pallete_floater_state", s); //$NON-NLS-1$
     }
     
     private void loadState() {
-        String s = Preferences.STORE.getString("pallete_floater_state"); //$NON-NLS-1$
+        String s = ArchiPlugin.getInstance().getPreferenceStore().getString("pallete_floater_state"); //$NON-NLS-1$
         if(StringUtils.isSet(s)) {
             try {
                 String[] bits = s.split(","); //$NON-NLS-1$

@@ -5,47 +5,41 @@
  */
 package com.archimatetool.editor.model;
 
-import junit.framework.TestSuite;
+import org.junit.platform.suite.api.SelectClasses;
+import org.junit.platform.suite.api.Suite;
+import org.junit.platform.suite.api.SuiteDisplayName;
 
 import com.archimatetool.editor.model.commands.CommandsTests;
+import com.archimatetool.editor.model.commands.SetConceptTypeCommandFactoryTests;
 import com.archimatetool.editor.model.compatibility.ModelCompatibilityTests;
-import com.archimatetool.editor.model.compatibility.handlers.FixDefaultSizesTests;
+import com.archimatetool.editor.model.compatibility.handlers.ArchiMate2To3HandlerTests;
+import com.archimatetool.editor.model.compatibility.handlers.FixDefaultSizesHandlerTests;
+import com.archimatetool.editor.model.compatibility.handlers.OutlineOpacityHandlerTests;
 import com.archimatetool.editor.model.impl.ArchiveManagerTests;
 import com.archimatetool.editor.model.impl.ByteArrayStorageTests;
 import com.archimatetool.editor.model.impl.EditorModelManagerTests;
-import com.archimatetool.editor.model.viewpoints.AllViewpointTests;
-import com.archimatetool.editor.model.viewpoints.ViewpointsManagerTests;
 
-@SuppressWarnings("nls")
+@Suite
+@SelectClasses({
+    // model
+    DiagramModelUtilsTests.class,
+    DiagramModelUtilsNestedRelationsTests.class,
+    IArchiveManagerTests.class,
+    ModelCheckerTests.class,
+    // model.commands
+    CommandsTests.class,
+    SetConceptTypeCommandFactoryTests.class,
+    // model.compatibility
+    ModelCompatibilityTests.class,
+    // model.compatibility.handlers
+    ArchiMate2To3HandlerTests.class,
+    FixDefaultSizesHandlerTests.class,
+    OutlineOpacityHandlerTests.class,
+    // model.impl
+    ArchiveManagerTests.class,
+    ByteArrayStorageTests.class,
+    EditorModelManagerTests.class
+})
+@SuiteDisplayName("All Model Tests")
 public class AllModelTests {
-
-    public static junit.framework.Test suite() {
-		TestSuite suite = new TestSuite("com.archimatetool.editor.model");
-		
-		// model
-        suite.addTest(DiagramModelUtilsTests.suite());
-        suite.addTest(DiagramModelUtilsNestedRelationsTests.suite());
-        suite.addTest(IArchiveManagerTests.suite());
-
-        // model.commands
-        suite.addTest(CommandsTests.suite());
-
-        // model.compatibility
-        suite.addTest(ModelCompatibilityTests.suite());
-        
-        // model.compatibility.handlers
-        suite.addTest(FixDefaultSizesTests.suite());
-
-        // model.impl
-        suite.addTest(ArchiveManagerTests.suite());
-        suite.addTest(ByteArrayStorageTests.suite());
-		suite.addTest(EditorModelManagerTests.suite());
-		
-        // model.viewpoints
-		suite.addTest(AllViewpointTests.suite());
-		suite.addTest(ViewpointsManagerTests.suite());
-
-		return suite;
-	}
-
 }

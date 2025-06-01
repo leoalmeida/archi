@@ -8,22 +8,22 @@ package com.archimatetool.editor.diagram.editparts;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.draw2d.ChopboxAnchor;
 import org.eclipse.draw2d.ConnectionAnchor;
 import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.gef.ConnectionEditPart;
 import org.eclipse.gef.EditPart;
 import org.eclipse.gef.NodeEditPart;
 import org.eclipse.gef.Request;
 import org.eclipse.jface.util.PropertyChangeEvent;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelConnection;
-import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.IFeature;
+import com.archimatetool.model.IFeatures;
+import com.archimatetool.model.util.LightweightEContentAdapter;
 
 
 /**
@@ -35,12 +35,14 @@ public abstract class AbstractConnectedEditPart
 extends AbstractBaseEditPart
 implements NodeEditPart {
     
-    private Adapter adapter = new AdapterImpl() {
-        @Override
-        public void notifyChanged(Notification msg) {
-            eCoreChanged(msg);
-        }
-    };
+    protected AbstractConnectedEditPart() {
+    }
+    
+    protected AbstractConnectedEditPart(Class<?> figureClass) {
+        super(figureClass);
+    }
+
+    private Adapter adapter = new LightweightEContentAdapter(this::eCoreChanged, IFeature.class);
     
     /**
      * Message from the ECore Adapter
@@ -48,6 +50,12 @@ implements NodeEditPart {
      */
     protected void eCoreChanged(Notification msg) {
         Object feature = msg.getFeature();
+        
+        // Archi Features
+        if(IFeatures.isFeatureNotification(msg)) {
+            refreshFigure();
+            return;
+        }
 
         switch(msg.getEventType()) {
             // Children added or removed or moved
@@ -56,15 +64,9 @@ implements NodeEditPart {
             case Notification.REMOVE:
             case Notification.REMOVE_MANY:
             case Notification.MOVE:
-                if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS) {
-                    refreshSourceConnections();
-                }
-                else if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS) {
-                    refreshTargetConnections();
-                }
-                else {
-                    refreshChildren();
-                }
+                refreshSourceConnections();
+                refreshTargetConnections();
+                refreshChildren();
                 break;
 
             case Notification.SET:
@@ -75,16 +77,23 @@ implements NodeEditPart {
                 // Locked
                 else if(feature == IArchimatePackage.Literals.LOCKABLE__LOCKED) {
                     updateEditPolicies(); // Update Edit Policies of this and parent
-                    if(getParent() instanceof AbstractDiagramPart) {
-                        ((AbstractDiagramPart)getParent()).updateEditPolicies();
+                    if(getParent() instanceof AbstractDiagramPart part) {
+                        part.updateEditPolicies();
                     }
-                    else if(getParent() instanceof AbstractBaseEditPart) {
-                        ((AbstractBaseEditPart)getParent()).updateEditPolicies();
+                    else if(getParent() instanceof AbstractBaseEditPart part) {
+                        part.updateEditPolicies();
                     }
                 }
                 else {
                     refreshFigure();
                 }
+                
+                // Update Connection Anchors if Border Type changes
+                if(feature == IArchimatePackage.Literals.BORDER_TYPE__BORDER_TYPE
+                        && msg.getNotifier() == getModel()) {
+                    refreshConnectionAnchors();
+                }
+                
                 break;
 
             default:
@@ -94,7 +103,13 @@ implements NodeEditPart {
     
     @Override
     protected void applicationPreferencesChanged(PropertyChangeEvent event) {
-        if(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR.equals(event.getProperty())) {
+        // Hidden connections
+        if(IPreferenceConstants.HIDDEN_RELATIONS_TYPES.equals(event.getProperty()) ||
+                IPreferenceConstants.USE_NESTED_CONNECTIONS.equals(event.getProperty())) {
+            refreshSourceConnections();
+            refreshTargetConnections();
+        }
+        else if(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR.equals(event.getProperty())) {
             refreshConnectionAnchors();
         }
         
@@ -106,11 +121,22 @@ implements NodeEditPart {
         return adapter;
     }
     
+    /**
+     * Make this public
+     */
     @Override
-    public IDiagramModelObject getModel() {
-        return (IDiagramModelObject)super.getModel();
+    public void refreshSourceConnections() {
+        super.refreshSourceConnections();
     }
-
+    
+    /**
+     * Make this public
+     */
+    @Override
+    public void refreshTargetConnections() {
+        super.refreshTargetConnections();
+    }
+    
     @Override
     protected List<IDiagramModelConnection> getModelSourceConnections() {
         return getFilteredModelSourceConnections();
@@ -121,32 +147,47 @@ implements NodeEditPart {
         return getFilteredModelTargetConnections();
     }
     
+    @Override
     public ConnectionAnchor getSourceConnectionAnchor(ConnectionEditPart connection) {
-    	if(Preferences.STORE.getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
+    	if(canUseOrthogonalAnchor() && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
     	    return new OrthogonalAnchor(getFigure(), connection, true);
     	}
+    	
     	return getDefaultConnectionAnchor();
     }
 
+    @Override
     public ConnectionAnchor getTargetConnectionAnchor(ConnectionEditPart connection) {
-    	if(Preferences.STORE.getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
+    	if(canUseOrthogonalAnchor() && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
     		return new OrthogonalAnchor(getFigure(), connection, false);
     	}
+    	
     	return getDefaultConnectionAnchor();
     }
 
+    @Override
     public ConnectionAnchor getSourceConnectionAnchor(Request request) {
-    	if(Preferences.STORE.getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
+    	if(canUseOrthogonalAnchor() && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
     	    return new OrthogonalAnchor(getFigure(), request, true);
     	}
+    	
     	return getDefaultConnectionAnchor();
     }
 
+    @Override
     public ConnectionAnchor getTargetConnectionAnchor(Request request) {
-    	if(Preferences.STORE.getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
+    	if(canUseOrthogonalAnchor() && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.USE_ORTHOGONAL_ANCHOR)) {
     	    return new OrthogonalAnchor(getFigure(), request, false);
     	}
+    	
     	return getDefaultConnectionAnchor();
+    }
+    
+    /**
+     * @return Whether this Edit Part and Figure can use the Orthogonal Anchor
+     */
+    protected boolean canUseOrthogonalAnchor() {
+        return true;
     }
     
     /**
@@ -154,7 +195,7 @@ implements NodeEditPart {
      *         Default is a Chopbox connection anchor
      */
     protected ConnectionAnchor getDefaultConnectionAnchor() {
-        return new ChopboxAnchor(getFigure());
+        return getFigure().getDefaultConnectionAnchor();
     }
     
     /**
@@ -185,7 +226,7 @@ implements NodeEditPart {
      * @return A list of filtered connections
      */
     private List<IDiagramModelConnection> getFilteredConnections(List<IDiagramModelConnection> originalList) {
-        IConnectionEditPartFilter[] filters = getEditPartFilterProvider().getEditPartFilters(IConnectionEditPartFilter.class);
+        IConnectionEditPartFilter[] filters = getRootEditPartFilterProvider().getEditPartFilters(IConnectionEditPartFilter.class);
         if(filters != null) {
             List<IDiagramModelConnection> filteredList = new ArrayList<IDiagramModelConnection>();
             

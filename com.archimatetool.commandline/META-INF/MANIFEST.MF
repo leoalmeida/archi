@@ -1,0 +1,17 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Archi Command Line
+Bundle-SymbolicName: com.archimatetool.commandline;singleton:=true
+Bundle-Localization: plugin
+Bundle-Version: 5.6.0.qualifier
+Bundle-Vendor: Archi
+Require-Bundle: org.eclipse.core.runtime;visibility:=reexport,
+ org.eclipse.ui;visibility:=reexport,
+ com.archimatetool.editor;visibility:=reexport
+Bundle-ActivationPolicy: lazy
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Export-Package: com.archimatetool.commandline,
+ org.apache.commons.cli
+Bundle-ClassPath: lib/commons-cli-1.9.0.jar,
+ .
+Automatic-Module-Name: com.archimatetool.commandline

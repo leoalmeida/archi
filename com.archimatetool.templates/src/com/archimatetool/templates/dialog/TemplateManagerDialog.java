@@ -7,15 +7,14 @@ package com.archimatetool.templates.dialog;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 import org.eclipse.jface.dialogs.IInputValidator;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.layout.TableColumnLayout;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
@@ -23,8 +22,6 @@ import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.custom.CLabel;
 import org.eclipse.swt.custom.SashForm;
-import org.eclipse.swt.events.ModifyEvent;
-import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -40,7 +37,7 @@ import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.TreeItem;
 import org.eclipse.ui.PlatformUI;
 
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.ui.components.ExtendedTitleAreaDialog;
 import com.archimatetool.editor.utils.StringUtils;
@@ -78,7 +75,7 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
     protected ITemplate fSelectedTemplate;
     protected ITemplateGroup fSelectedTemplateGroup;
     
-    protected List<ITemplate> fModifiedTemplates = new ArrayList<ITemplate>();
+    protected Set<ITemplate> fModifiedTemplates = new HashSet<>();
 
     protected TemplateManager fTemplateManager;
     
@@ -86,7 +83,7 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
     
     public TemplateManagerDialog(Shell parentShell, TemplateManager templateManager) {
         super(parentShell, "TemplateManagerDialog"); //$NON-NLS-1$
-        setTitleImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.ECLIPSE_IMAGE_NEW_WIZARD));
+        setTitleImage(IArchiImages.ImageFactory.getImage(IArchiImages.ECLIPSE_IMAGE_NEW_WIZARD));
         setShellStyle(getShellStyle() | SWT.RESIZE);
         
         fTemplateManager = templateManager;
@@ -138,7 +135,7 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         fTableViewer.addSelectionChangedListener(new ISelectionChangedListener() {
             @Override
             public void selectionChanged(SelectionChangedEvent event) {
-                Object o = ((IStructuredSelection)event.getSelection()).getFirstElement();
+                Object o = event.getStructuredSelection().getFirstElement();
                 fSelectedControl = fTableViewer;
                 updateControls(o);
             }
@@ -153,7 +150,7 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         
         label = new CLabel(treeComp, SWT.NULL);
         label.setText(Messages.TemplateManagerDialog_5);
-        //label.setImage(IArchimateImages.ImageFactory.getImage(ImageFactory.ECLIPSE_IMAGE_FOLDER));
+        //label.setImage(IArchiImages.ImageFactory.getImage(ImageFactory.ECLIPSE_IMAGE_FOLDER));
         
         fTreeViewer = new TemplatesTreeViewer(treeComp, SWT.MULTI);
         fTreeViewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
@@ -161,7 +158,7 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         fTreeViewer.addSelectionChangedListener(new ISelectionChangedListener() {
             @Override
             public void selectionChanged(SelectionChangedEvent event) {
-                Object o = ((IStructuredSelection)event.getSelection()).getFirstElement();
+                Object o = event.getStructuredSelection().getFirstElement();
                 fSelectedControl = fTreeViewer;
                 updateControls(o);
             }
@@ -222,33 +219,27 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         fNameLabel.setText(Messages.TemplateManagerDialog_9);
         fNameLabel.setEnabled(false);
         
-        fNameTextField = new Text(fieldContainer, SWT.BORDER | SWT.SINGLE);
+        fNameTextField = UIUtils.createSingleTextControl(fieldContainer, SWT.BORDER, false);
         fNameTextField.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
         fNameTextField.setEnabled(false);
-        // Single text control so strip CRLFs
-        UIUtils.conformSingleTextControl(fNameTextField);
 
-        fNameTextField.addModifyListener(new ModifyListener() {
-            public void modifyText(ModifyEvent e) {
-                String text = fNameTextField.getText();
-                if(fIsSettingFields || !StringUtils.isSet(text)) {
-                    return;
-                }
-                        
-                // Edit Template name
-                if(fSelectedTemplate != null) {
-                    fSelectedTemplate.setName(text);
-                    if(!fModifiedTemplates.contains(fSelectedTemplate)) {
-                        fModifiedTemplates.add(fSelectedTemplate);
-                    }
-                    fTableViewer.refresh();
-                    fTreeViewer.refresh();
-                }
-                // Edit Group name
-                else if(fSelectedTemplateGroup != null) {
-                    fSelectedTemplateGroup.setName(text);
-                    fTreeViewer.refresh();
-                }
+        fNameTextField.addModifyListener(e -> {
+            String text = fNameTextField.getText();
+            if(fIsSettingFields || !StringUtils.isSet(text)) {
+                return;
+            }
+
+            // Edit Template name
+            if(fSelectedTemplate != null) {
+                fSelectedTemplate.setName(text);
+                fModifiedTemplates.add(fSelectedTemplate);
+                fTableViewer.refresh();
+                fTreeViewer.refresh();
+            }
+            // Edit Group name
+            else if(fSelectedTemplateGroup != null) {
+                fSelectedTemplateGroup.setName(text);
+                fTreeViewer.refresh();
             }
         });
 
@@ -261,18 +252,14 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         gd = new GridData(GridData.FILL_BOTH);
         gd.heightHint = 100;
         fDescriptionTextField.setLayoutData(gd);
-        fDescriptionTextField.addModifyListener(new ModifyListener() {
-            public void modifyText(ModifyEvent e) {
-                String text = fDescriptionTextField.getText();
-                if(fIsSettingFields || !StringUtils.isSet(text)) {
-                    return;
-                }
-                if(fSelectedTemplate != null) {
-                    fSelectedTemplate.setDescription(fDescriptionTextField.getText());
-                    if(!fModifiedTemplates.contains(fSelectedTemplate)) {
-                        fModifiedTemplates.add(fSelectedTemplate);
-                    }
-                }
+        fDescriptionTextField.addModifyListener(e -> {
+            String text = fDescriptionTextField.getText();
+            if(fIsSettingFields || !StringUtils.isSet(text)) {
+                return;
+            }
+            if(fSelectedTemplate != null) {
+                fSelectedTemplate.setDescription(fDescriptionTextField.getText());
+                fModifiedTemplates.add(fSelectedTemplate);
             }
         });
 
@@ -291,25 +278,23 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
     protected void okPressed() {
         super.okPressed();
 
-        BusyIndicator.showWhile(Display.getCurrent(), new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    // Save main manifest
-                    fTemplateManager.saveUserTemplatesManifest();
+        BusyIndicator.showWhile(Display.getCurrent(), () -> {
+            try {
+                // Save main manifest
+                fTemplateManager.saveUserTemplatesManifest();
 
-                    // Save changes
-                    for(ITemplate template : fModifiedTemplates) {
-                        template.save();
-                    }
-                    
-                    // Dispose
-                    fTemplateManager.dispose();
+                // Save changes
+                for(ITemplate template : fModifiedTemplates) {
+                    template.save();
                 }
-                catch(IOException ex) {
-                    ex.printStackTrace();
-                    MessageDialog.openError(null, Messages.TemplateManagerDialog_12, ex.getMessage());
-                }
+            }
+            catch(IOException ex) {
+                ex.printStackTrace();
+                MessageDialog.openError(null, Messages.TemplateManagerDialog_12, ex.getMessage());
+            }
+            finally {
+                // Dispose
+                fTemplateManager.dispose();
             }
         });
     }
@@ -339,18 +324,13 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
             return;
         }
         
-        BusyIndicator.showWhile(null, new Runnable()  {
-            @Override
-            public void run() {
-                try {
-                    ITemplate template = fTemplateManager.createTemplate(file);
-                    template.setFile(file);
-                    fTemplateManager.addUserTemplate(template);
-                    fTableViewer.refresh();
-                }
-                catch(IOException ex) {
-                    MessageDialog.openError(getShell(), Messages.TemplateManagerDialog_18, ex.getMessage());
-                }
+        BusyIndicator.showWhile(null, () -> {
+            try {
+                fTemplateManager.addUserTemplate(fTemplateManager.createTemplate(file));
+                fTableViewer.refresh();
+            }
+            catch(IOException ex) {
+                MessageDialog.openError(getShell(), Messages.TemplateManagerDialog_18, ex.getMessage());
             }
         });
     }
@@ -398,11 +378,11 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
     protected void deleteSelectedObjects() {
         // Table
         if(fSelectedControl == fTableViewer) {
-            for(Object o : ((IStructuredSelection)fTableViewer.getSelection()).toArray()) {
-                if(o instanceof ITemplate) {
-                    fTemplateManager.getUserTemplates().remove(o);
+            for(Object o : fTableViewer.getStructuredSelection().toArray()) {
+                if(o instanceof ITemplate template) {
+                    fTemplateManager.getUserTemplates().remove(template);
                     for(ITemplateGroup group : fTemplateManager.getUserTemplateGroups()) {
-                        group.removeTemplate((ITemplate)o);
+                        group.removeTemplate(template);
                     }
                 }
             }
@@ -413,15 +393,14 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         else if(fSelectedControl == fTreeViewer) {
             // Do it this way because we can't get template parents
             for(TreeItem item : fTreeViewer.getTree().getSelection()) {
-                if(item.getData() instanceof ITemplate) {
-                    ITemplate template = (ITemplate)item.getData();
+                if(item.getData() instanceof ITemplate template) {
                     TreeItem parent = item.getParentItem();
-                    if(parent.getData() instanceof ITemplateGroup) {
-                        ((ITemplateGroup)parent.getData()).removeTemplate(template);
+                    if(parent.getData() instanceof ITemplateGroup group) {
+                        group.removeTemplate(template);
                     }
                 }
-                else if(item.getData() instanceof ITemplateGroup) {
-                    fTemplateManager.getUserTemplateGroups().remove(item.getData());
+                else if(item.getData() instanceof ITemplateGroup group) {
+                    fTemplateManager.getUserTemplateGroups().remove(group);
                 }
             }
             fTreeViewer.refresh();
@@ -447,16 +426,16 @@ public class TemplateManagerDialog extends ExtendedTitleAreaDialog {
         // Buttons
         fButtonRemove.setEnabled(o instanceof ITemplate || o instanceof ITemplateGroup);
         
-        if(o instanceof ITemplate) {
-            fSelectedTemplate = (ITemplate)o;
+        if(o instanceof ITemplate template) {
+            fSelectedTemplate = template;
             fSelectedTemplateGroup = null;
             fNameTextField.setText(StringUtils.safeString(fSelectedTemplate.getName()));
             fDescriptionTextField.setText(StringUtils.safeString(fSelectedTemplate.getDescription()));
             fFileTextField.setText(StringUtils.safeString(fSelectedTemplate.getFile().getAbsolutePath()));
         }
-        else if(o instanceof ITemplateGroup) {
+        else if(o instanceof ITemplateGroup group) {
             fSelectedTemplate = null;
-            fSelectedTemplateGroup = (ITemplateGroup)o;
+            fSelectedTemplateGroup = group;
             fNameTextField.setText(StringUtils.safeString(fSelectedTemplateGroup.getName()));
         }
         

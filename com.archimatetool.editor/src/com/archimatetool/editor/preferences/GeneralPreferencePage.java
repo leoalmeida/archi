@@ -5,45 +5,30 @@
  */
 package com.archimatetool.editor.preferences;
 
-import java.util.List;
-
-import org.eclipse.e4.core.contexts.IEclipseContext;
-import org.eclipse.e4.ui.css.swt.theme.ITheme;
-import org.eclipse.e4.ui.css.swt.theme.IThemeEngine;
-import org.eclipse.e4.ui.model.application.MApplication;
 import org.eclipse.jface.preference.PreferencePage;
-import org.eclipse.jface.viewers.ComboViewer;
-import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredContentProvider;
-import org.eclipse.jface.viewers.IStructuredSelection;
-import org.eclipse.jface.viewers.LabelProvider;
-import org.eclipse.jface.viewers.SelectionChangedEvent;
-import org.eclipse.jface.viewers.StructuredSelection;
-import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Spinner;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPreferencePage;
 import org.eclipse.ui.PlatformUI;
 
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.diagram.util.AnimationUtil;
 import com.archimatetool.editor.utils.PlatformUtils;
+
 
 /**
  * General Preferences Page
  * 
  * @author Phillip Beauvoir
  */
-@SuppressWarnings("restriction")
 public class GeneralPreferencePage
 extends PreferencePage
 implements IWorkbenchPreferencePage, IPreferenceConstants {
@@ -53,18 +38,29 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     private Button fBackupOnSaveButton;
     
     private Spinner fMRUSizeSpinner;
+    
+    private Button fShowUnusedElementsInModelTreeButton;
+    private Button fAutoSearchButton;
+    private Button fWarnOnDeleteButton;
+    private Button fShowSpecializationsModelTreeButton;
+    
+    private Button fAddDocumentationNoteButton;
+    private Button fScaleImagesButton;
+    
+    private Button fUseEdgeBrowserButton;
+    
+    private Button fEnableJSHintsButton;
+    private Button fEnableExternalHostsHintsButton;
+
+    private Button fUseLabelExpressionsButton;
+    
+    private Button fDoAnimationViewButton;
+    private Spinner fAnimationViewTimeSpinner;
     private Button fAnimateVisualiserNodesButton;
-    
-    private ComboViewer fThemeComboViewer;
-    
-    private IThemeEngine fThemeEngine;
-    private ITheme fCurrentTheme;
-    private String fDefaultTheme;
-    
-    private Button fShowStatusLineButton;
+    private Spinner fAnimationVisualiserTimeSpinner;
 
 	public GeneralPreferencePage() {
-		setPreferenceStore(Preferences.STORE);
+		setPreferenceStore(ArchiPlugin.getInstance().getPreferenceStore());
 	}
 	
     @Override
@@ -73,28 +69,24 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
 
         Composite client = new Composite(parent, SWT.NULL);
-        client.setLayout(new GridLayout());
-        
-        GridData gd;
+        GridLayout layout = new GridLayout(2, false);
+        layout.marginWidth = layout.marginHeight = 0;
+        client.setLayout(layout);
         
         Group fileGroup = new Group(client, SWT.NULL);
         fileGroup.setText(Messages.GeneralPreferencePage_0);
         fileGroup.setLayout(new GridLayout(2, false));
-        fileGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        fileGroup.setLayoutData(createHorizontalGridData(2));
         
         // Automatically open views when opening a model file
         fOpenDiagramsOnLoadButton = new Button(fileGroup, SWT.CHECK);
         fOpenDiagramsOnLoadButton.setText(Messages.GeneralPreferencePage_1);
-        gd = new GridData(GridData.FILL_HORIZONTAL);
-        gd.horizontalSpan = 2;
-        fOpenDiagramsOnLoadButton.setLayoutData(gd);
+        fOpenDiagramsOnLoadButton.setLayoutData(createHorizontalGridData(2));
 
         // Backup file on save
         fBackupOnSaveButton = new Button(fileGroup, SWT.CHECK);
         fBackupOnSaveButton.setText(Messages.GeneralPreferencePage_5);
-        gd = new GridData(GridData.FILL_HORIZONTAL);
-        gd.horizontalSpan = 2;
-        fBackupOnSaveButton.setLayoutData(gd);
+        fBackupOnSaveButton.setLayoutData(createHorizontalGridData(2));
         
         // Size of recently opened file list
         Label label = new Label(fileGroup, SWT.NULL);
@@ -104,97 +96,144 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         fMRUSizeSpinner.setMinimum(3);
         fMRUSizeSpinner.setMaximum(15);
         
-        // Appearance
-        Group appearanceGroup = new Group(client, SWT.NULL);
-        appearanceGroup.setText(Messages.GeneralPreferencePage_3);
-        appearanceGroup.setLayout(new GridLayout(2, false));
-        appearanceGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+        // Model Tree
+        Group modelTreeGroup = new Group(client, SWT.NULL);
+        modelTreeGroup.setText(Messages.GeneralPreferencePage_10);
+        modelTreeGroup.setLayout(new GridLayout(2, false));
+        modelTreeGroup.setLayoutData(createHorizontalGridData(2));
         
-        // Themes
-        label = new Label(appearanceGroup, SWT.NULL);
-        label.setText(Messages.GeneralPreferencePage_4);
-        fThemeComboViewer = new ComboViewer(appearanceGroup, SWT.READ_ONLY);
-        gd = new GridData(GridData.FILL_HORIZONTAL);
-        fThemeComboViewer.getCombo().setLayoutData(gd);
+        fShowUnusedElementsInModelTreeButton = new Button(modelTreeGroup, SWT.CHECK);
+        fShowUnusedElementsInModelTreeButton.setText(Messages.GeneralPreferencePage_11);
+        fShowUnusedElementsInModelTreeButton.setLayoutData(createHorizontalGridData(2));
         
-        fThemeComboViewer.setContentProvider(new IStructuredContentProvider() {
-            public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-            }
+        fAutoSearchButton = new Button(modelTreeGroup, SWT.CHECK);
+        fAutoSearchButton.setText(Messages.GeneralPreferencePage_6);
+        fAutoSearchButton.setLayoutData(createHorizontalGridData(2));
+        fAutoSearchButton.setToolTipText(Messages.GeneralPreferencePage_7);
+        
+        fWarnOnDeleteButton = new Button(modelTreeGroup, SWT.CHECK);
+        fWarnOnDeleteButton.setText(Messages.GeneralPreferencePage_16);
+        fWarnOnDeleteButton.setLayoutData(createHorizontalGridData(2));
+        
+        fShowSpecializationsModelTreeButton = new Button(modelTreeGroup, SWT.CHECK);
+        fShowSpecializationsModelTreeButton.setText(Messages.GeneralPreferencePage_24);
+        fShowSpecializationsModelTreeButton.setLayoutData(createHorizontalGridData(2));
+        
+        // Label Expressions
+        Group expressionsGroup = new Group(client, SWT.NULL);
+        expressionsGroup.setText(Messages.GeneralPreferencePage_17);
+        expressionsGroup.setLayout(new GridLayout(2, false));
+        expressionsGroup.setLayoutData(createHorizontalGridData(2));
+        
+        fUseLabelExpressionsButton = new Button(expressionsGroup, SWT.CHECK);
+        fUseLabelExpressionsButton.setText(Messages.GeneralPreferencePage_18);
+        fUseLabelExpressionsButton.setLayoutData(createHorizontalGridData(2));
+        
+        // Other
+        Group otherGroup = new Group(client, SWT.NULL);
+        otherGroup.setText(Messages.GeneralPreferencePage_12);
+        otherGroup.setLayout(new GridLayout(2, false));
+        otherGroup.setLayoutData(createHorizontalGridData(2));
+        
+        fAddDocumentationNoteButton = new Button(otherGroup, SWT.CHECK);
+        fAddDocumentationNoteButton.setText(Messages.GeneralPreferencePage_20);
+        fAddDocumentationNoteButton.setToolTipText(Messages.GeneralPreferencePage_23);
+        fAddDocumentationNoteButton.setLayoutData(createHorizontalGridData(2));
+        
+        fScaleImagesButton = new Button(otherGroup, SWT.CHECK);
+        fScaleImagesButton.setText(Messages.GeneralPreferencePage_13);
+        fScaleImagesButton.setLayoutData(createHorizontalGridData(2));
+        fScaleImagesButton.setToolTipText(Messages.GeneralPreferencePage_14);
+        
+        // Internal Browser
+        Group browserGroup = new Group(client, SWT.NULL);
+        browserGroup.setText(Messages.GeneralPreferencePage_19);
+        browserGroup.setLayout(new GridLayout(1, false));
+        browserGroup.setLayoutData(createHorizontalGridData(2));
+
+        // Edge Browser on Windows
+        if(PlatformUtils.isWindows()) {
+            fUseEdgeBrowserButton = new Button(browserGroup, SWT.CHECK);
+            fUseEdgeBrowserButton.setText(Messages.GeneralPreferencePage_15);
+        }
+        
+        fEnableJSHintsButton = new Button(browserGroup, SWT.CHECK);
+        fEnableJSHintsButton.setText(Messages.GeneralPreferencePage_21);
+        
+        fEnableExternalHostsHintsButton = new Button(browserGroup, SWT.CHECK);
+        fEnableExternalHostsHintsButton.setText(Messages.GeneralPreferencePage_22);
+
+        // -------------- Animation ----------------------------
+        
+        if(AnimationUtil.supportsAnimation()) {
+            Group animationGroup = new Group(client, SWT.NULL);
+            animationGroup.setText(Messages.GeneralPreferencePage_3);
+            animationGroup.setLayout(new GridLayout(4, true));
+            animationGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+            animationGroup.setLayoutData(createHorizontalGridData(2));
             
-            public void dispose() {
-            }
+            // Animate View
+            fDoAnimationViewButton = new Button(animationGroup, SWT.CHECK);
+            fDoAnimationViewButton.setText(Messages.GeneralPreferencePage_4);
+            fDoAnimationViewButton.setLayoutData(createHorizontalGridData(2));
+
+            // Animation View Speed
+            label = new Label(animationGroup, SWT.NULL);
+            label.setText(Messages.GeneralPreferencePage_8);
+
+            fAnimationViewTimeSpinner = new Spinner(animationGroup, SWT.BORDER);
+            fAnimationViewTimeSpinner.setMinimum(10);
+            fAnimationViewTimeSpinner.setMaximum(500);
+
+            // Animate Visualiser
+            fAnimateVisualiserNodesButton = new Button(animationGroup, SWT.CHECK);
+            fAnimateVisualiserNodesButton.setText(Messages.GeneralPreferencePage_9);
+            fAnimateVisualiserNodesButton.setLayoutData(createHorizontalGridData(2));
             
-            public Object[] getElements(Object inputElement) {
-                return (Object[])inputElement;
-            }
-        });
-        
-        fThemeComboViewer.setLabelProvider(new LabelProvider() {
-            @Override
-            public String getText(Object element) {
-                return ((ITheme)element).getLabel();
-            }
-        });
-        
-        fThemeComboViewer.setSorter(new ViewerSorter());
-        
-        // Show Status Line
-        fShowStatusLineButton = new Button(appearanceGroup, SWT.CHECK);
-        fShowStatusLineButton.setText(Messages.GeneralPreferencePage_9);
-        gd = new GridData(GridData.FILL_HORIZONTAL);
-        gd.horizontalSpan = 2;
-        fShowStatusLineButton.setLayoutData(gd);
-        
-        label = new Label(appearanceGroup, SWT.NULL);
-        label.setText(Messages.GeneralPreferencePage_8);
-        gd = new GridData(GridData.FILL_HORIZONTAL);
-        gd.horizontalSpan = 2;
-        label.setLayoutData(gd);
-        
-        // Visualiser
-        Group visualiserGroup = new Group(client, SWT.NULL);
-        visualiserGroup.setText(Messages.GeneralPreferencePage_6);
-        visualiserGroup.setLayout(new GridLayout(2, false));
-        visualiserGroup.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-        
-        fAnimateVisualiserNodesButton = new Button(visualiserGroup, SWT.CHECK);
-        fAnimateVisualiserNodesButton.setText(Messages.GeneralPreferencePage_7);
-        gd = new GridData(GridData.FILL_HORIZONTAL);
-        gd.horizontalSpan = 2;
-        fAnimateVisualiserNodesButton.setLayoutData(gd);
+            // Animation Visualiser Speed
+            label = new Label(animationGroup, SWT.NULL);
+            label.setText(Messages.GeneralPreferencePage_8);
+
+            fAnimationVisualiserTimeSpinner = new Spinner(animationGroup, SWT.BORDER);
+            fAnimationVisualiserTimeSpinner.setMinimum(10);
+            fAnimationVisualiserTimeSpinner.setMaximum(500);
+        }
         
         setValues();
-        
-        fThemeComboViewer.addSelectionChangedListener(new ISelectionChangedListener() {
-            public void selectionChanged(SelectionChangedEvent event) {
-                ITheme theme = (ITheme)((IStructuredSelection)fThemeComboViewer.getSelection()).getFirstElement();
-                if(theme != null && theme != fThemeEngine.getActiveTheme()) {
-                    setTheme(theme, false);
-                }
-            }
-        });
         
         return client;
     }
 
     private void setValues() {
-        setSpinnerValues();
+        fMRUSizeSpinner.setSelection(getPreferenceStore().getInt(MRU_MAX));
+        
         fBackupOnSaveButton.setSelection(getPreferenceStore().getBoolean(BACKUP_ON_SAVE));
         fOpenDiagramsOnLoadButton.setSelection(getPreferenceStore().getBoolean(OPEN_DIAGRAMS_ON_LOAD));
-        fAnimateVisualiserNodesButton.setSelection(getPreferenceStore().getBoolean(ANIMATE_VISUALISER_NODES));
-        fShowStatusLineButton.setSelection(getPreferenceStore().getBoolean(SHOW_STATUS_LINE));
+        
+        fShowUnusedElementsInModelTreeButton.setSelection(getPreferenceStore().getBoolean(HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE));
+        fAutoSearchButton.setSelection(getPreferenceStore().getBoolean(TREE_SEARCH_AUTO));
+        fWarnOnDeleteButton.setSelection(getPreferenceStore().getBoolean(SHOW_WARNING_ON_DELETE_FROM_TREE));
+        fShowSpecializationsModelTreeButton.setSelection(getPreferenceStore().getBoolean(SHOW_SPECIALIZATIONS_IN_MODEL_TREE));
+        
+        fUseLabelExpressionsButton.setSelection(getPreferenceStore().getBoolean(USE_LABEL_EXPRESSIONS_IN_ANALYSIS_TABLE));
 
-        // Themes
-        List<ITheme> themes = fThemeEngine.getThemes();
-        fThemeComboViewer.setInput(themes.toArray());
-        ITheme activeTheme = fThemeEngine.getActiveTheme();
-        if(activeTheme != null) {
-            fThemeComboViewer.setSelection(new StructuredSelection(activeTheme));
+        fScaleImagesButton.setSelection(getPreferenceStore().getBoolean(SCALE_IMAGE_EXPORT));
+        
+        fAddDocumentationNoteButton.setSelection(getPreferenceStore().getBoolean(ADD_DOCUMENTATION_NOTE_ON_RELATION_CHANGE));
+        
+        if(fUseEdgeBrowserButton != null) {
+            fUseEdgeBrowserButton.setSelection(getPreferenceStore().getBoolean(EDGE_BROWSER));
         }
-    }
-    
-    private void setSpinnerValues() {
-        fMRUSizeSpinner.setSelection(getPreferenceStore().getInt(MRU_MAX));
+        
+        fEnableJSHintsButton.setSelection(getPreferenceStore().getBoolean(HINTS_BROWSER_JS_ENABLED));
+        fEnableExternalHostsHintsButton.setSelection(getPreferenceStore().getBoolean(HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED));
+
+        if(AnimationUtil.supportsAnimation()) {
+            fDoAnimationViewButton.setSelection(getPreferenceStore().getBoolean(ANIMATE_VIEW));
+            fAnimationViewTimeSpinner.setSelection(getPreferenceStore().getInt(ANIMATION_VIEW_TIME));
+            fAnimateVisualiserNodesButton.setSelection(getPreferenceStore().getBoolean(ANIMATE_VISUALISER_NODES));
+            fAnimationVisualiserTimeSpinner.setSelection(getPreferenceStore().getInt(ANIMATE_VISUALISER_TIME));
+        }
     }
     
     @Override
@@ -202,15 +241,32 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         getPreferenceStore().setValue(BACKUP_ON_SAVE, fBackupOnSaveButton.getSelection());
         getPreferenceStore().setValue(OPEN_DIAGRAMS_ON_LOAD, fOpenDiagramsOnLoadButton.getSelection());
         getPreferenceStore().setValue(MRU_MAX, fMRUSizeSpinner.getSelection());
-        getPreferenceStore().setValue(ANIMATE_VISUALISER_NODES, fAnimateVisualiserNodesButton.getSelection());
-        getPreferenceStore().setValue(SHOW_STATUS_LINE, fShowStatusLineButton.getSelection());
         
-        ITheme theme = (ITheme)((IStructuredSelection)fThemeComboViewer.getSelection()).getFirstElement();
-        if(theme != null) {
-            setTheme(theme, true);
-            fCurrentTheme = theme;
+        getPreferenceStore().setValue(HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE, fShowUnusedElementsInModelTreeButton.getSelection());
+        getPreferenceStore().setValue(TREE_SEARCH_AUTO, fAutoSearchButton.getSelection());
+        getPreferenceStore().setValue(SHOW_WARNING_ON_DELETE_FROM_TREE, fWarnOnDeleteButton.getSelection());
+        getPreferenceStore().setValue(SHOW_SPECIALIZATIONS_IN_MODEL_TREE, fShowSpecializationsModelTreeButton.getSelection());
+        
+        getPreferenceStore().setValue(USE_LABEL_EXPRESSIONS_IN_ANALYSIS_TABLE, fUseLabelExpressionsButton.getSelection());
+        
+        getPreferenceStore().setValue(SCALE_IMAGE_EXPORT, fScaleImagesButton.getSelection());
+        
+        getPreferenceStore().setValue(ADD_DOCUMENTATION_NOTE_ON_RELATION_CHANGE, fAddDocumentationNoteButton.getSelection());
+        
+        if(fUseEdgeBrowserButton != null) {
+            getPreferenceStore().setValue(EDGE_BROWSER, fUseEdgeBrowserButton.getSelection());
         }
+        
+        getPreferenceStore().setValue(HINTS_BROWSER_JS_ENABLED, fEnableJSHintsButton.getSelection());
+        getPreferenceStore().setValue(HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED, fEnableExternalHostsHintsButton.getSelection());
 
+        if(AnimationUtil.supportsAnimation()) {
+            getPreferenceStore().setValue(ANIMATE_VIEW, fDoAnimationViewButton.getSelection());
+            getPreferenceStore().setValue(ANIMATION_VIEW_TIME, fAnimationViewTimeSpinner.getSelection());
+            getPreferenceStore().setValue(ANIMATE_VISUALISER_NODES, fAnimateVisualiserNodesButton.getSelection());
+            getPreferenceStore().setValue(ANIMATE_VISUALISER_TIME, fAnimationVisualiserTimeSpinner.getSelection());
+        }
+        
         return true;
     }
     
@@ -219,80 +275,42 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         fBackupOnSaveButton.setSelection(getPreferenceStore().getDefaultBoolean(BACKUP_ON_SAVE));
         fOpenDiagramsOnLoadButton.setSelection(getPreferenceStore().getDefaultBoolean(OPEN_DIAGRAMS_ON_LOAD));
         fMRUSizeSpinner.setSelection(getPreferenceStore().getDefaultInt(MRU_MAX));
-        fAnimateVisualiserNodesButton.setSelection(getPreferenceStore().getDefaultBoolean(ANIMATE_VISUALISER_NODES));
-        fShowStatusLineButton.setSelection(getPreferenceStore().getDefaultBoolean(SHOW_STATUS_LINE));
         
-        setTheme(fDefaultTheme, false);
+        fShowUnusedElementsInModelTreeButton.setSelection(getPreferenceStore().getDefaultBoolean(HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE));
+        fAutoSearchButton.setSelection(getPreferenceStore().getDefaultBoolean(TREE_SEARCH_AUTO));
+        fWarnOnDeleteButton.setSelection(getPreferenceStore().getDefaultBoolean(SHOW_WARNING_ON_DELETE_FROM_TREE));
+        fShowSpecializationsModelTreeButton.setSelection(getPreferenceStore().getDefaultBoolean(SHOW_SPECIALIZATIONS_IN_MODEL_TREE));
         
-        ITheme activeTheme = fThemeEngine.getActiveTheme();
-        if(activeTheme != null) {
-            fThemeComboViewer.setSelection(new StructuredSelection(activeTheme));
+        fUseLabelExpressionsButton.setSelection(getPreferenceStore().getDefaultBoolean(USE_LABEL_EXPRESSIONS_IN_ANALYSIS_TABLE));
+        
+        fScaleImagesButton.setSelection(getPreferenceStore().getDefaultBoolean(SCALE_IMAGE_EXPORT));
+        
+        fAddDocumentationNoteButton.setSelection(getPreferenceStore().getDefaultBoolean(ADD_DOCUMENTATION_NOTE_ON_RELATION_CHANGE));
+        
+        if(fUseEdgeBrowserButton != null) {
+            fUseEdgeBrowserButton.setSelection(getPreferenceStore().getDefaultBoolean(EDGE_BROWSER));
+        }
+        
+        fEnableJSHintsButton.setSelection(getPreferenceStore().getDefaultBoolean(HINTS_BROWSER_JS_ENABLED));
+        fEnableExternalHostsHintsButton.setSelection(getPreferenceStore().getDefaultBoolean(HINTS_BROWSER_EXTERNAL_HOSTS_ENABLED));
+
+        if(AnimationUtil.supportsAnimation()) {
+            fDoAnimationViewButton.setSelection(getPreferenceStore().getDefaultBoolean(ANIMATE_VIEW));
+            fAnimationViewTimeSpinner.setSelection(getPreferenceStore().getDefaultInt(ANIMATION_VIEW_TIME));
+            fAnimateVisualiserNodesButton.setSelection(getPreferenceStore().getDefaultBoolean(ANIMATE_VISUALISER_NODES));
+            fAnimationVisualiserTimeSpinner.setSelection(getPreferenceStore().getDefaultInt(ANIMATE_VISUALISER_TIME));
         }
         
         super.performDefaults();
     }
     
+    private GridData createHorizontalGridData(int span) {
+        GridData gd = new GridData(GridData.FILL_HORIZONTAL);
+        gd.horizontalSpan = span;
+        return gd;
+    }
+    
     @Override
-    public boolean performCancel() {
-        if(fCurrentTheme != fThemeEngine.getActiveTheme()) {
-            setTheme(fCurrentTheme, false);
-        }
-        
-        return super.performCancel();
-    }
-    
     public void init(IWorkbench workbench) {
-        // e4 method (taken from org.eclipse.ui.internal.dialogs.ViewsPreferencePage init(IWorkbench))
-        MApplication application = (MApplication)workbench.getService(MApplication.class);
-        IEclipseContext context = application.getContext();
-        fDefaultTheme = (String)context.get("cssTheme"); // This is "org.eclipse.e4.ui.css.theme.e4_default" //$NON-NLS-1$
-        fThemeEngine = context.get(IThemeEngine.class);
-        fCurrentTheme = fThemeEngine.getActiveTheme();
-/*
-        // e3 method
-        Bundle bundle = FrameworkUtil.getBundle(ArchimateEditorPlugin.class);
-        BundleContext context = bundle.getBundleContext();
-        ServiceReference<IThemeManager> ref = context.getServiceReference(IThemeManager.class);
-        IThemeManager themeManager = context.getService(ref);
-        fThemeEngine = themeManager.getEngineForDisplay(Display.getCurrent());
-        fDefaultTheme = "org.eclipse.e4.ui.css.theme.e4_default"; //$NON-NLS-1$
-*/
-    }
-    
-    
-    /// Hacks for e4 bug https://bugs.eclipse.org/bugs/show_bug.cgi?id=435915
-    /// Changing the Appearance Theme causes any hidden Shell to momentarily appear
-    /// So find an empty Shell (the one created by FigureUtilities.getGC()) and set its Alpha to 0
-    /// before setting the theme. This hides the Shell and unhides it.
-    //////////////////////////////////////////////
-    
-    private void setTheme(ITheme theme, boolean restore) {
-        if(PlatformUtils.isWindows()) {
-            dissolveEmptyShells(0);
-            fThemeEngine.setTheme(theme, restore); // must be true to persist
-            dissolveEmptyShells(255);
-        }
-        else {
-            fThemeEngine.setTheme(theme, restore); // must be true to persist
-        }
-    }
-    
-    private void setTheme(String themeId, boolean restore) {
-        if(PlatformUtils.isWindows()) {
-            dissolveEmptyShells(0);
-            fThemeEngine.setTheme(themeId, restore); // must be true to persist
-            dissolveEmptyShells(255);
-        }
-        else {
-            fThemeEngine.setTheme(themeId, restore); // must be true to persist
-        }
-    }
-
-    private void dissolveEmptyShells(int value) {
-        for(Shell shell : Display.getCurrent().getShells()) {
-            if(shell.getChildren().length == 0) {
-                shell.setAlpha(value);
-            }
-        }
     }
 }

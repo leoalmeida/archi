@@ -5,37 +5,33 @@
  */
 package com.archimatetool.jasperreports.data;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import junit.framework.JUnit4TestAdapter;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JRField;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IProperty;
 
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRField;
+
 
 @SuppressWarnings("nls")
 public class PropertiesModelDataSourceTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(PropertiesModelDataSourceTests.class);
-    }
     
     private PropertiesModelDataSource ds;
     private IArchimateModel model;
     
     
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() {
         model = IArchimateFactory.eINSTANCE.createArchimateModel();
         
@@ -53,12 +49,12 @@ public class PropertiesModelDataSourceTests {
     }
     
     @Test
-    public void testGetElement() {
+    public void getElementNull() {
         assertNull(ds.getElement());
     }
 
     @Test
-    public void testNext() throws JRException {
+    public void next() throws JRException {
         for(int i = 0; i < 2; i++) {
             assertTrue(ds.next());
         }
@@ -66,7 +62,12 @@ public class PropertiesModelDataSourceTests {
     }
     
     @Test
-    public void testGetFieldValue() throws JRException {
+    public void size() {
+        assertEquals(2, ds.size());
+    }
+    
+    @Test
+    public void getFieldValue() throws JRException {
         ds.next();
         
         JRField field = mock(JRField.class);
@@ -81,7 +82,7 @@ public class PropertiesModelDataSourceTests {
     }
 
     @Test
-    public void testMoveFirst() throws JRException {
+    public void moveFirst() throws JRException {
         assertNull(ds.getElement());
         
         ds.next();

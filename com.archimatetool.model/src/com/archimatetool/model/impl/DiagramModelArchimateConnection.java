@@ -5,17 +5,18 @@
  */
 package com.archimatetool.model.impl;
 
+import org.eclipse.emf.common.notify.NotificationChain;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
+import org.eclipse.emf.ecore.InternalEObject;
 
-import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IArchimateRelationship;
+import com.archimatetool.model.IConnectable;
+import com.archimatetool.model.IDiagramModelArchimateComponent;
 import com.archimatetool.model.IDiagramModelArchimateConnection;
-import com.archimatetool.model.IDiagramModelArchimateObject;
-import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IFolder;
-import com.archimatetool.model.IRelationship;
-import com.archimatetool.model.util.Logger;
 
 
 /**
@@ -24,18 +25,19 @@ import com.archimatetool.model.util.Logger;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
- * <ul>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelArchimateConnection#getRelationship <em>Relationship</em>}</li>
- * </ul>
  * </p>
+ * <ul>
+ *   <li>{@link com.archimatetool.model.impl.DiagramModelArchimateConnection#getArchimateRelationship <em>Archimate Relationship</em>}</li>
+ * </ul>
  *
  * @generated
  */
 public class DiagramModelArchimateConnection extends DiagramModelConnection implements IDiagramModelArchimateConnection {
+
     /**
      * Wrapped Archimate relationship
      */
-    private IRelationship fRelationship;
+    private IArchimateRelationship fRelationship;
 
     /**
      * <!-- begin-user-doc -->
@@ -58,8 +60,8 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
 
     @Override
     public String getName() {
-        if(getRelationship() != null) {
-            return getRelationship().getName();
+        if(getArchimateRelationship() != null) {
+            return getArchimateRelationship().getName();
         }
         else {
             return super.getName();
@@ -68,34 +70,33 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
 
     @Override
     public void setName(String name) {
-        if(getRelationship() != null) {
-            getRelationship().setName(name);
+        if(getArchimateRelationship() != null) {
+            getArchimateRelationship().setName(name);
         }
     }
     
     @Override
-    public void connect(IDiagramModelObject source, IDiagramModelObject target) {
-        if(!(source instanceof IDiagramModelArchimateObject) && !(target instanceof IDiagramModelArchimateObject)) {
-            throw new IllegalArgumentException("Should be Archimate objects for source and target!"); //$NON-NLS-1$
+    public void connect(IConnectable source, IConnectable target) {
+        // Source and Target has to be IDiagramModelArchimateObject or IDiagramModelArchimateConnection
+        if((source instanceof IDiagramModelArchimateComponent) && (target instanceof IDiagramModelArchimateComponent)) {
+            super.connect(source, target);
         }
-        super.connect(source, target);
+        else {
+            throw new IllegalArgumentException("Should be Archimate objects/connections for source and target!"); //$NON-NLS-1$
+        }
     }
 
     @Override
     public void reconnect() {
-        if(source != null && target != null) {
-            super.reconnect();
-
-            // Set the source/target in the Archimate model if need be
-            IRelationship relationship = getRelationship();
-            IArchimateElement src = ((IDiagramModelArchimateObject)source).getArchimateElement();
-            IArchimateElement tgt = ((IDiagramModelArchimateObject)target).getArchimateElement();
-            if(relationship.getSource() != src) { //optimised
-                relationship.setSource(src); 
-            }
-            if(relationship.getTarget() != tgt) { //optimised
-                relationship.setTarget(tgt);
-            }
+        super.reconnect();
+        
+        // Set the source/target in the Relationship
+        if(source instanceof IDiagramModelArchimateComponent && target instanceof IDiagramModelArchimateComponent) {
+            IArchimateConcept srcConcept = ((IDiagramModelArchimateComponent)source).getArchimateConcept();
+            IArchimateConcept tgtConcept = ((IDiagramModelArchimateComponent)target).getArchimateConcept();
+            
+            getArchimateRelationship().setSource(srcConcept); 
+            getArchimateRelationship().setTarget(tgtConcept);
         }
     }
 
@@ -104,11 +105,8 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
      * <!-- end-user-doc -->
      * @generated NOT
      */
-    public IRelationship getRelationship() {
-        if(fRelationship == null) {
-            Logger.logError("getRelationship() returning null", new Throwable()); //$NON-NLS-1$
-        }
-        
+    @Override
+    public IArchimateRelationship getArchimateRelationship() {
         return fRelationship;
     }
 
@@ -117,11 +115,17 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
      * <!-- end-user-doc -->
      * @generated NOT
      */
-    public void setRelationship(IRelationship relationship) {
-        if(relationship == null) {
-            Logger.logError("setRelationship() setting null", new Throwable()); //$NON-NLS-1$
+    @Override
+    public void setArchimateRelationship(IArchimateRelationship relationship) {
+        // If we already have a relationship we *must* remove it from the referenced list first
+        if(fRelationship != null) {
+            ((ArchimateRelationship)fRelationship).diagramConnections.remove(this);
         }
         
+        if(relationship != null) {
+            ((ArchimateRelationship)relationship).diagramConnections.add(this);
+        }
+
         fRelationship = relationship;
     }
 
@@ -130,19 +134,9 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
      * <!-- end-user-doc -->
      * @generated NOT
      */
-    public void addRelationshipToModel(IFolder parent) {
-        IRelationship relationship = getRelationship();
-
-        if(relationship != null && relationship.eContainer() != null) {
-            throw new IllegalArgumentException("Relationship already has parent folder"); //$NON-NLS-1$
-        }
-        
-        // If parent is null use default folder
-        if(parent == null) {
-            parent = getDiagramModel().getArchimateModel().getDefaultFolderForElement(relationship);
-        }
-        
-        parent.getElements().add(relationship);
+    @Override
+    public IArchimateRelationship getArchimateConcept() {
+        return getArchimateRelationship();
     }
 
     /**
@@ -150,11 +144,50 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
      * <!-- end-user-doc -->
      * @generated NOT
      */
-    public void removeRelationshipFromModel() {
-        IRelationship relationship = getRelationship();
+    @Override
+    public void setArchimateConcept(IArchimateConcept concept) {
+        if(concept != null && !(concept instanceof IArchimateRelationship)) {
+            throw new IllegalArgumentException("Should be of type IArchimateRelationship"); //$NON-NLS-1$
+        }
+        setArchimateRelationship((IArchimateRelationship)concept);
+    }
+    
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated NOT
+     */
+    @Override
+    public void addArchimateConceptToModel(IFolder parent) {
+        IArchimateRelationship relationship = getArchimateRelationship();
+
+        if(relationship != null && relationship.eContainer() != null) {
+            throw new IllegalArgumentException("Relationship already has parent folder"); //$NON-NLS-1$
+        }
+        
+        // If parent is null use default folder
+        if(parent == null) {
+            parent = getDiagramModel().getArchimateModel().getDefaultFolderForObject(relationship);
+        }
+        
+        if(relationship != null) {
+            parent.getElements().add(relationship);
+            relationship.reconnect();
+        }
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated NOT
+     */
+    @Override
+    public void removeArchimateConceptFromModel() {
+        IArchimateRelationship relationship = getArchimateRelationship();
         if(relationship != null) {
             IFolder folder = (IFolder)relationship.eContainer();
             if(folder != null) {
+                relationship.disconnect(); // Do this first so a notification is sent before removing from model
                 folder.getElements().remove(relationship);
             }
         }
@@ -163,9 +196,27 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
     @Override
     public EObject getCopy() {
         IDiagramModelArchimateConnection newConnection = (IDiagramModelArchimateConnection)super.getCopy();
-        IRelationship relationship = (IRelationship)getRelationship().getCopy();
-        newConnection.setRelationship(relationship);
+        IArchimateRelationship relationship = (IArchimateRelationship)getArchimateRelationship().getCopy();
+        newConnection.setArchimateRelationship(relationship);
         return newConnection;
+    }
+    
+    @Override
+    public NotificationChain eInverseAdd(InternalEObject otherEnd, int featureID, Class<?> baseClass, NotificationChain msgs) {
+        // Add a reference to this in the Archimate Relationship
+        if(fRelationship != null) { // this will be null when a copy of this object is made
+            ((ArchimateRelationship)fRelationship).diagramConnections.add(this);
+        }
+        return super.eInverseAdd(otherEnd, featureID, baseClass, msgs);
+    }
+    
+    @Override
+    public NotificationChain eInverseRemove(InternalEObject otherEnd, int featureID, Class<?> baseClass, NotificationChain msgs) {
+        // Remove the reference to this in the Archimate Relationship
+        if(fRelationship != null) { // this may be null...possibly?
+            ((ArchimateRelationship)fRelationship).diagramConnections.remove(this);
+        }
+        return super.eInverseRemove(otherEnd, featureID, baseClass, msgs);
     }
     
     /**
@@ -176,8 +227,8 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
     @Override
     public Object eGet(int featureID, boolean resolve, boolean coreType) {
         switch (featureID) {
-            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__RELATIONSHIP:
-                return getRelationship();
+            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__ARCHIMATE_RELATIONSHIP:
+                return getArchimateRelationship();
         }
         return super.eGet(featureID, resolve, coreType);
     }
@@ -190,8 +241,8 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
     @Override
     public void eSet(int featureID, Object newValue) {
         switch (featureID) {
-            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__RELATIONSHIP:
-                setRelationship((IRelationship)newValue);
+            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__ARCHIMATE_RELATIONSHIP:
+                setArchimateRelationship((IArchimateRelationship)newValue);
                 return;
         }
         super.eSet(featureID, newValue);
@@ -205,8 +256,8 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
     @Override
     public void eUnset(int featureID) {
         switch (featureID) {
-            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__RELATIONSHIP:
-                setRelationship((IRelationship)null);
+            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__ARCHIMATE_RELATIONSHIP:
+                setArchimateRelationship((IArchimateRelationship)null);
                 return;
         }
         super.eUnset(featureID);
@@ -220,8 +271,8 @@ public class DiagramModelArchimateConnection extends DiagramModelConnection impl
     @Override
     public boolean eIsSet(int featureID) {
         switch (featureID) {
-            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__RELATIONSHIP:
-                return getRelationship() != null;
+            case IArchimatePackage.DIAGRAM_MODEL_ARCHIMATE_CONNECTION__ARCHIMATE_RELATIONSHIP:
+                return getArchimateRelationship() != null;
         }
         return super.eIsSet(featureID);
     }

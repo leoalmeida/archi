@@ -6,17 +6,16 @@
 package com.archimatetool.editor.propertysections;
 
 import org.eclipse.core.runtime.IAdaptable;
-import org.eclipse.gef.EditPart;
 import org.eclipse.jface.viewers.ILabelProvider;
 import org.eclipse.jface.viewers.ILabelProviderListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.swt.graphics.Image;
 
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.editor.utils.StringUtils;
-import com.archimatetool.model.IArchimateElement;
-import com.archimatetool.model.IDiagramModelArchimateConnection;
-import com.archimatetool.model.IDiagramModelArchimateObject;
+import com.archimatetool.model.IArchimateConcept;
+import com.archimatetool.model.IArchimateModelObject;
+import com.archimatetool.model.IArchimateRelationship;
 
 
 
@@ -27,84 +26,109 @@ import com.archimatetool.model.IDiagramModelArchimateObject;
  */
 public class PropertiesLabelProvider implements ILabelProvider {
 
-    public Image getImage(Object element) {
-        if(!(element instanceof IStructuredSelection)) {
+    @Override
+    public Image getImage(Object object) {
+        if(!(object instanceof IStructuredSelection selection)) {
             return null;
         }
         
-        element = ((IStructuredSelection)element).getFirstElement();
-
-        if(element instanceof EditPart) {
-            element = ((EditPart)element).getModel();
-        }
-
-        // Archimate Element 
-        if(element instanceof IDiagramModelArchimateObject) {
-            element = ((IDiagramModelArchimateObject)element).getArchimateElement();
-        }
-
-        // Archimate Relationship
-        if(element instanceof IDiagramModelArchimateConnection) {
-            element = ((IDiagramModelArchimateConnection)element).getRelationship();
-        }
-
-        return ArchimateLabelProvider.INSTANCE.getImage(element);
-    }
-
-    public String getText(Object element) {
-        if(!(element instanceof IStructuredSelection)) {
-            return ""; //$NON-NLS-1$
-        }
-        
-        element = ((IStructuredSelection)element).getFirstElement();
-        
-        // Archimate Element
-        if(element instanceof IArchimateElement) {
-            return getArchimateElementText((IArchimateElement)element);
-        }
-        else if(element instanceof IAdaptable) {
-            IArchimateElement archimateElement = (IArchimateElement)((IAdaptable)element).getAdapter(IArchimateElement.class);
-            if(archimateElement != null) {
-                return getArchimateElementText(archimateElement);
+        // If we have selected more than one object check if they are all the same type
+        if(selection.size() > 1) {
+            Object[] objects = selection.toArray();
+            for(int i = 0; i < objects.length - 1; i++) {
+                Object object1 = getAdaptable(objects[i]);
+                Object object2 = getAdaptable(objects[i+1]);
+                // Different
+                if(ArchiLabelProvider.INSTANCE.getImage(object1) != ArchiLabelProvider.INSTANCE.getImage(object2)) {
+                    return null;
+                }
             }
         }
+        
+        Object firstSelected = getAdaptable(selection.getFirstElement());
+        return ArchiLabelProvider.INSTANCE.getImage(firstSelected);
+    }
 
-        // Other Diagram Edit Part, so get model object
-        if(element instanceof EditPart) {
-            element = ((EditPart)element).getModel();
+    @Override
+    public String getText(Object object) {
+        if(!(object instanceof IStructuredSelection selection)) {
+            return " "; //$NON-NLS-1$
         }
         
+        if(selection.size() > 1) {
+            return Messages.PropertiesLabelProvider_0;
+        }
+        
+        Object firstSelected = getAdaptable(selection.getFirstElement());
+        
+        firstSelected = ArchiLabelProvider.INSTANCE.getWrappedElement(firstSelected);
+        
+        // An Archimate Concept is a special text
+        if(firstSelected instanceof IArchimateConcept concept) {
+            return getArchimateConceptText(concept);
+        }
+
         // Check the main label provider
-        String text = ArchimateLabelProvider.INSTANCE.getLabel(element);
+        String text = ArchiLabelProvider.INSTANCE.getLabel(firstSelected);
         if(StringUtils.isSet(text)) {
-            return StringUtils.escapeAmpersandsInText(text);
+            return normalise(text);
         }
         
         return " "; // Ensure the title bar is displayed //$NON-NLS-1$
     }
-
-    private String getArchimateElementText(IArchimateElement element) {
-        String name = StringUtils.escapeAmpersandsInText(element.getName());
+    
+    String getArchimateConceptText(IArchimateConcept concept) {
+        String text = ""; //$NON-NLS-1$
+        String name = normalise(concept.getName());
+        String typeName = ArchiLabelProvider.INSTANCE.getDefaultName(concept.eClass());
         
-        String typeName = ArchimateLabelProvider.INSTANCE.getDefaultName(element.eClass());
-        
-        if(name.length() > 0) {
-            return name + " (" + typeName + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+        if(StringUtils.isSet(name)) {
+            text = name + " (" + typeName + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+        }
+        else {
+            text = typeName;
         }
         
-        return typeName;
+        if(concept instanceof IArchimateRelationship relationship) {
+            text += " ("; //$NON-NLS-1$
+            text += normalise(ArchiLabelProvider.INSTANCE.getLabel(relationship.getSource()));
+            text += " - "; //$NON-NLS-1$
+            text += normalise(ArchiLabelProvider.INSTANCE.getLabel(relationship.getTarget()));
+            text += ")"; //$NON-NLS-1$
+        }
+        
+        return text;
     }
     
+    /**
+     * Return the underlying adaptable type if there is one
+     * Some Classes like AbstractIssueType (in the Model Checker) will use this to return the right type
+     */
+    private Object getAdaptable(Object object) {
+        return object instanceof IAdaptable adaptable ? adaptable.getAdapter(IArchimateModelObject.class) : object;
+    }
+    
+    /**
+     * Remove ampersands as well as newlines
+     */
+    private String normalise(String text) {
+        return StringUtils.normaliseNewLineCharacters(StringUtils.escapeAmpersandsInText(text));
+    }
+    
+    @Override
     public void addListener(ILabelProviderListener listener) {
     }
 
+    @Override
     public void dispose() {
     }
 
+    @Override
     public boolean isLabelProperty(Object element, String property) {
         return false;
     }
 
+    @Override
     public void removeListener(ILabelProviderListener listener) {
     }
 

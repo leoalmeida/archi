@@ -30,9 +30,8 @@ import com.archimatetool.editor.views.tree.commands.MoveFolderCommand;
 import com.archimatetool.editor.views.tree.commands.MoveObjectCommand;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IFolder;
-import com.archimatetool.model.INameable;
 
 
 
@@ -49,12 +48,12 @@ public class TreeModelViewerDragDropHandler {
     /**
      * Drag operations we support
      */
-    private int fDragOperations = DND.DROP_COPY | DND.DROP_MOVE | DND.DROP_LINK; 
+    private int fDragOperations = DND.DROP_COPY | DND.DROP_MOVE;
 
     /**
      * Drop operations we support on the tree
      */
-    private int fDropOperations = DND.DROP_MOVE; 
+    private int fDropOperations = DND.DROP_MOVE;
 
     /**
      * Whether we have a valid tree selection
@@ -79,11 +78,13 @@ public class TreeModelViewerDragDropHandler {
     private void registerDragSupport() {
         fViewer.addDragSupport(fDragOperations, sourceTransferTypes, new DragSourceListener() {
             
+            @Override
             public void dragFinished(DragSourceEvent event) {
                 LocalSelectionTransfer.getTransfer().setSelection(null);
                 fIsValidTreeSelection = false; // Reset to default
             }
 
+            @Override
             public void dragSetData(DragSourceEvent event) {
                 // For consistency set the data to the selection even though
                 // the selection is provided by the LocalSelectionTransfer
@@ -91,6 +92,7 @@ public class TreeModelViewerDragDropHandler {
                 event.data = LocalSelectionTransfer.getTransfer().getSelection();
             }
 
+            @Override
             public void dragStart(DragSourceEvent event) {
                 // Drag started from the Tree
                 IStructuredSelection selection = (IStructuredSelection)fViewer.getSelection();
@@ -104,16 +106,20 @@ public class TreeModelViewerDragDropHandler {
     
     private void registerDropSupport() {
         fViewer.addDropSupport(fDropOperations, targetTransferTypes, new DropTargetListener() {
+            @Override
             public void dragEnter(DropTargetEvent event) {
             }
 
+            @Override
             public void dragLeave(DropTargetEvent event) {
             }
 
+            @Override
             public void dragOperationChanged(DropTargetEvent event) {
                 event.detail = getEventDetail(event);
             }
 
+            @Override
             public void dragOver(DropTargetEvent event) {
                 event.detail = getEventDetail(event);
                 
@@ -124,11 +130,17 @@ public class TreeModelViewerDragDropHandler {
                 event.feedback |= DND.FEEDBACK_SCROLL | DND.FEEDBACK_EXPAND;
             }
 
+            @Override
             public void drop(DropTargetEvent event) {
                 doDropOperation(event);
             }
 
+            @Override
             public void dropAccept(DropTargetEvent event) {
+                // Need to check and veto this!!!!
+                // User's mouse movements can still register DND in the background when
+                // app is doing long running operation and create non-allowed drag operations!!!
+                event.detail = getEventDetail(event);
             }
             
             private int getEventDetail(DropTargetEvent event) {
@@ -159,8 +171,8 @@ public class TreeModelViewerDragDropHandler {
                 return false;
             }
             // Don't allow mixed parent models
-            if(object instanceof IArchimateModelElement) {
-                IArchimateModel m = ((IArchimateModelElement)object).getArchimateModel();
+            if(object instanceof IArchimateModelObject) {
+                IArchimateModel m = ((IArchimateModelObject)object).getArchimateModel();
                 if(model != null && m != model) {
                     return false;
                 }
@@ -231,9 +243,9 @@ public class TreeModelViewerDragDropHandler {
                     compoundCommand.add(new MoveFolderCommand(newParent, (IFolder)object));
                 }
             }
-            else if(object instanceof INameable) {
+            else if(object instanceof IArchimateModelObject) {
                 if(!newParent.getElements().contains(object)) {
-                    compoundCommand.add(new MoveObjectCommand(newParent, (INameable)object));                    
+                    compoundCommand.add(new MoveObjectCommand(newParent, (IArchimateModelObject)object));                    
                 }
             }
         }

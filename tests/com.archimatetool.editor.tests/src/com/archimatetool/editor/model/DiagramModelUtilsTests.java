@@ -5,34 +5,35 @@
  */
 package com.archimatetool.editor.model;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 
-import junit.framework.JUnit4TestAdapter;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
-import org.junit.BeforeClass;
-import org.junit.Test;
-
+import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IArchimateRelationship;
 import com.archimatetool.model.IAssignmentRelationship;
+import com.archimatetool.model.IBounds;
 import com.archimatetool.model.IDiagramModel;
+import com.archimatetool.model.IDiagramModelArchimateComponent;
 import com.archimatetool.model.IDiagramModelArchimateConnection;
 import com.archimatetool.model.IDiagramModelArchimateObject;
-import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelConnection;
 import com.archimatetool.model.IDiagramModelGroup;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IDiagramModelReference;
-import com.archimatetool.model.IRelationship;
 import com.archimatetool.testingtools.ArchimateTestModel;
 import com.archimatetool.tests.TestData;
 
@@ -48,11 +49,7 @@ public class DiagramModelUtilsTests {
     private static ArchimateTestModel tm;
     private static IArchimateModel model;
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelUtilsTests.class);
-    }
-    
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() throws IOException {
         tm = new ArchimateTestModel(TestData.TEST_MODEL_FILE_ARCHISURANCE);
         tm.loadModel();
@@ -62,59 +59,53 @@ public class DiagramModelUtilsTests {
     // =================================================================================================
     
     // Test Data
+    String elementID_1 = "521";
+    List<String> expectedDiagramIDs_1 = Arrays.asList("4025", "3761", "3722", "3999", "4165", "4224");
     
-    String[][] data1 = {
-            { "521" } ,                                         // element id
-            { "4025", "3761", "3722", "3999", "4165", "4224" }  // expected ids of diagrams
-    };
-    
-    String[][] data2 = {
-            { "1399" } ,                // element id
-            { "4056", "4279", "4318" }  // expected ids of diagrams
-    };
+    String elementID_2 = "1399";
+    List<String> expectedDiagramIDs_2 = Arrays.asList("4056", "4279", "4318");
 
     @Test
-    public void testFindReferencedDiagramsForElement() {
+    public void findReferencedDiagramsForArchimateConcept() {
         IArchimateElement element = null; 
         
         // Null element should at least return an empty list
-        List<IDiagramModel> list = DiagramModelUtils.findReferencedDiagramsForElement(element);
+        List<IDiagramModel> list = DiagramModelUtils.findReferencedDiagramsForArchimateConcept(element);
         assertNotNull(list);
         assertEquals(0, list.size());
         
-        testFindReferencedDiagramsForElement(data1);
-        testFindReferencedDiagramsForElement(data2);
+        findReferencedDiagramsForArchimateConcept(elementID_1, expectedDiagramIDs_1);
+        findReferencedDiagramsForArchimateConcept(elementID_2, expectedDiagramIDs_2);
     }
     
-    private void testFindReferencedDiagramsForElement(String[][] data) {
-        IArchimateElement element = (IArchimateElement)tm.getObjectByID(data[0][0]);
+    private void findReferencedDiagramsForArchimateConcept(String elementID, List<String> diagramIDs) {
+        IArchimateElement element = (IArchimateElement)tm.getObjectByID(elementID);
         assertNotNull(element);
         
-        List<IDiagramModel> list = DiagramModelUtils.findReferencedDiagramsForElement(element);
-        assertEquals(data[1].length, list.size());
+        List<IDiagramModel> diagramModels = DiagramModelUtils.findReferencedDiagramsForArchimateConcept(element);
+        assertEquals(diagramIDs.size(), diagramModels.size());
         
-        for(int i = 0; i < data[1].length; i++) {
-            String id = data[1][i];
-            assertEquals(id, list.get(i).getId());
+        for(IDiagramModel dm : diagramModels) {
+            assertTrue(diagramIDs.contains(dm.getId()));
         }
     }
-    
+
     @Test
-    public void testIsElementReferencedInDiagrams() {
+    public void isArchimateConceptReferencedInDiagrams() {
         // This should be in a diagram
-        IArchimateElement element = (IArchimateElement)tm.getObjectByID(data1[0][0]);
+        IArchimateElement element = (IArchimateElement)tm.getObjectByID(elementID_1);
         assertNotNull(element);
-        assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
+        assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
         
         // This should be in a diagram
-        element = (IArchimateElement)tm.getObjectByID(data2[0][0]);
+        element = (IArchimateElement)tm.getObjectByID(elementID_2);
         assertNotNull(element);
-        assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
+        assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
         
         // This should not be in a diagram
         element = IArchimateFactory.eINSTANCE.createBusinessActor();
-        model.getDefaultFolderForElement(element).getElements().add(element);
-        assertFalse(DiagramModelUtils.isElementReferencedInDiagrams(element));
+        model.getDefaultFolderForObject(element).getElements().add(element);
+        assertFalse(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
         
         // Unless we add it to a diagram
         // And we'll nest it inside a Group to be cunning
@@ -122,29 +113,7 @@ public class DiagramModelUtilsTests {
         IDiagramModelGroup group = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
         group.getChildren().add(dmo);
         model.getDefaultDiagramModel().getChildren().add(group);
-        assertTrue(DiagramModelUtils.isElementReferencedInDiagrams(element));
-    }
-    
-    @Test
-    public void testIsElementReferencedInDiagram() {
-        testIsElementReferencedInDiagram(data1);
-        testIsElementReferencedInDiagram(data2);
-        
-        // This should not be in a diagram
-        IArchimateElement element = IArchimateFactory.eINSTANCE.createBusinessActor();
-        model.getDefaultFolderForElement(element).getElements().add(element);
-        assertFalse(DiagramModelUtils.isElementReferencedInDiagram(model.getDefaultDiagramModel(), element));
-    }    
-    
-    private void testIsElementReferencedInDiagram(String[][] data) {
-        IArchimateElement element = (IArchimateElement)tm.getObjectByID(data[0][0]);
-        assertNotNull(element);
-        
-        for(int i = 0; i < data[1].length; i++) {
-            IDiagramModel dm = (IDiagramModel)tm.getObjectByID(data[1][i]);
-            assertNotNull(dm);
-            assertTrue(DiagramModelUtils.isElementReferencedInDiagram(dm, element));
-        }
+        assertTrue(DiagramModelUtils.isArchimateConceptReferencedInDiagrams(element));
     }
     
     // =================================================================================================
@@ -165,14 +134,14 @@ public class DiagramModelUtilsTests {
        dmo4 <-- conn3 --> dmo1
     */
     
-    private void createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(IArchimateElement element, IDiagramModel parent) {
+    private void createDataForDiagramModelArchimateObjects(IArchimateElement element, IDiagramModel parent) {
         dmo1 = ArchimateTestModel.createDiagramModelArchimateObjectAndAddToParent(element, parent);
         dmo2 = ArchimateTestModel.createDiagramModelArchimateObjectAndAddToParent(element, parent);
         dmo3 = ArchimateTestModel.createDiagramModelArchimateObjectAndAddToParent(element, dmo2);
         dmo4 = ArchimateTestModel.createDiagramModelArchimateObjectAndAddToParent(element, dmo3);
     }
     
-    private void createTestDiagramModelConnectionsForFindDiagramModelComponents(IRelationship relationship) {
+    private void createDataForDiagramModelConnections(IArchimateRelationship relationship) {
         conn1 = ArchimateTestModel.createDiagramModelArchimateConnection(relationship);
         conn1.connect(dmo1, dmo2);
         conn2 = ArchimateTestModel.createDiagramModelArchimateConnection(relationship);
@@ -182,19 +151,19 @@ public class DiagramModelUtilsTests {
     }
 
     @Test
-    public void testFindDiagramModelComponentsForElement_WithArchimateElement() {
+    public void findDiagramModelComponentsForArchimateConcept_Element() {
         IArchimateElement element = IArchimateFactory.eINSTANCE.createBusinessActor();
         IDiagramModel diagramModel = tm.addNewArchimateDiagramModel();
         
         // Should not be found
-        List<IDiagramModelComponent> list = DiagramModelUtils.findDiagramModelComponentsForElement(diagramModel, element);
+        List<IDiagramModelArchimateComponent> list = DiagramModelUtils.findDiagramModelComponentsForArchimateConcept(diagramModel, element);
         assertTrue(list.isEmpty());
         
         // Add the element to various IDiagramModelArchimateObject objects
-        createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(element, diagramModel);
+        createDataForDiagramModelArchimateObjects(element, diagramModel);
         
         // Should be found in diagram
-        list = DiagramModelUtils.findDiagramModelComponentsForElement(diagramModel, element);
+        list = DiagramModelUtils.findDiagramModelComponentsForArchimateConcept(diagramModel, element);
         assertEquals(4, list.size());
         assertTrue(list.contains(dmo1));
         assertTrue(list.contains(dmo2));
@@ -203,22 +172,22 @@ public class DiagramModelUtilsTests {
     }
     
     @Test
-    public void testFindDiagramModelComponentsForElement_WithRelationship() {
-        IRelationship relationship = IArchimateFactory.eINSTANCE.createAssociationRelationship();
+    public void findDiagramModelComponentsForArchimateConcept_Relationship() {
+        IArchimateRelationship relationship = IArchimateFactory.eINSTANCE.createAssociationRelationship();
         IDiagramModel diagramModel = tm.addNewArchimateDiagramModel();
         
         // Should not be found
-        List<IDiagramModelComponent> list = DiagramModelUtils.findDiagramModelComponentsForElement(diagramModel, relationship);
+        List<IDiagramModelArchimateComponent> list = DiagramModelUtils.findDiagramModelComponentsForArchimateConcept(diagramModel, relationship);
         assertTrue(list.isEmpty());
         
         // Create various IDiagramModelArchimateObject objects
-        createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel);
+        createDataForDiagramModelArchimateObjects(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel);
         
         // And make some connections using the relationship
-        createTestDiagramModelConnectionsForFindDiagramModelComponents(relationship);
+        createDataForDiagramModelConnections(relationship);
         
         // Found in diagram
-        list = DiagramModelUtils.findDiagramModelComponentsForElement(diagramModel, relationship);
+        list = DiagramModelUtils.findDiagramModelComponentsForArchimateConcept(diagramModel, relationship);
         assertEquals(3, list.size());
         assertTrue(list.contains(conn1));
         assertTrue(list.contains(conn2));
@@ -226,7 +195,7 @@ public class DiagramModelUtilsTests {
     }
     
     @Test
-    public void testFindDiagramModelObjectsForElement() {
+    public void findDiagramModelObjectsForElement() {
         IArchimateElement element = IArchimateFactory.eINSTANCE.createBusinessActor();
         IDiagramModel diagramModel = tm.addNewArchimateDiagramModel();
         
@@ -235,22 +204,16 @@ public class DiagramModelUtilsTests {
         assertTrue(list.isEmpty());        
         
         // Add the element to various IDiagramModelArchimateObject objects
-        createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(element, diagramModel);
+        createDataForDiagramModelArchimateObjects(element, diagramModel);
         
-        // Should be found in containers
+        // Should be found in a dm
         list = DiagramModelUtils.findDiagramModelObjectsForElement(diagramModel, element);
         assertEquals(4, list.size());
-        
-        list = DiagramModelUtils.findDiagramModelObjectsForElement(dmo2, element);
-        assertEquals(2, list.size());
-        
-        list = DiagramModelUtils.findDiagramModelObjectsForElement(dmo3, element);
-        assertEquals(1, list.size());
     }
     
     @Test
-    public void testFindDiagramModelConnectionsForRelation() {
-        IRelationship relationship = IArchimateFactory.eINSTANCE.createAssociationRelationship();
+    public void findDiagramModelConnectionsForRelation() {
+        IArchimateRelationship relationship = IArchimateFactory.eINSTANCE.createAssociationRelationship();
         IDiagramModel diagramModel = tm.addNewArchimateDiagramModel();
         
         // Should not be found
@@ -258,28 +221,20 @@ public class DiagramModelUtilsTests {
         assertTrue(list.isEmpty());
         
         // Create various IDiagramModelArchimateObject objects
-        createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel);
+        createDataForDiagramModelArchimateObjects(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel);
         
         // And make some connections using the relationship
-        createTestDiagramModelConnectionsForFindDiagramModelComponents(relationship);
+        createDataForDiagramModelConnections(relationship);
         
-        // Should be found in some containers
+        // Should be found in a dm
         list = DiagramModelUtils.findDiagramModelConnectionsForRelation(diagramModel, relationship);
         assertEquals(3, list.size());
-        
-        list = DiagramModelUtils.findDiagramModelConnectionsForRelation(dmo2, relationship);
-        assertEquals(2, list.size());
-        
-        list = DiagramModelUtils.findDiagramModelConnectionsForRelation(dmo3, relationship);
-        assertEquals(1, list.size());
-        
-        // But not this one because we only search in the child objects
-        list = DiagramModelUtils.findDiagramModelConnectionsForRelation(dmo4, relationship);
-        assertEquals(0, list.size());
     }
-    
+
+    // =================================================================================================
+
     @Test
-    public void testfindDiagramModelReferences() {
+    public void findDiagramModelReferences() {
         IDiagramModel diagramModel1 = tm.addNewArchimateDiagramModel();
         IDiagramModel diagramModel2 = tm.addNewArchimateDiagramModel();
         IDiagramModel diagramModel3 = tm.addNewArchimateDiagramModel();
@@ -289,7 +244,7 @@ public class DiagramModelUtilsTests {
         assertTrue(list.isEmpty());
         
         // Create some child objects
-        createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel3);
+        createDataForDiagramModelArchimateObjects(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel3);
         
         // Create some refs
         IDiagramModelReference ref1 = IArchimateFactory.eINSTANCE.createDiagramModelReference();
@@ -307,16 +262,49 @@ public class DiagramModelUtilsTests {
     }
     
     @Test
-    public void testHasDiagramModelArchimateConnection() {
-        IRelationship relationship = IArchimateFactory.eINSTANCE.createAssociationRelationship();
-        IRelationship relationship2 = IArchimateFactory.eINSTANCE.createAssociationRelationship();
+    public void hasDiagramModelReference() {
+        IDiagramModel diagramModel1 = tm.addNewArchimateDiagramModel();
+        IDiagramModel diagramModel2 = tm.addNewArchimateDiagramModel();
+        IDiagramModel diagramModel3 = tm.addNewArchimateDiagramModel();
+        
+        // Should not be found
+        assertFalse(DiagramModelUtils.hasDiagramModelReference(diagramModel1));
+        assertFalse(DiagramModelUtils.hasDiagramModelReference(diagramModel2));
+        assertFalse(DiagramModelUtils.hasDiagramModelReference(diagramModel3));
+
+        // Create some refs
+        IDiagramModelReference ref1 = IArchimateFactory.eINSTANCE.createDiagramModelReference();
+        ref1.setReferencedModel(diagramModel1);
+        IDiagramModelReference ref2 = IArchimateFactory.eINSTANCE.createDiagramModelReference();
+        ref2.setReferencedModel(diagramModel2);
+        IDiagramModelReference ref3 = IArchimateFactory.eINSTANCE.createDiagramModelReference();
+        ref3.setReferencedModel(diagramModel3);
+        
+        diagramModel1.getChildren().add(ref3);
+        
+        // Add the ref into a container group
+        IDiagramModelGroup group = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        group.getChildren().add(ref1);
+        diagramModel2.getChildren().add(group);
+        
+        diagramModel3.getChildren().add(ref2);
+
+        assertTrue(DiagramModelUtils.hasDiagramModelReference(diagramModel1));
+        assertTrue(DiagramModelUtils.hasDiagramModelReference(diagramModel2));
+        assertTrue(DiagramModelUtils.hasDiagramModelReference(diagramModel3));
+    }
+    
+    @Test
+    public void hasDiagramModelArchimateConnection() {
+        IArchimateRelationship relationship = IArchimateFactory.eINSTANCE.createAssociationRelationship();
+        IArchimateRelationship relationship2 = IArchimateFactory.eINSTANCE.createAssociationRelationship();
         IDiagramModel diagramModel = tm.addNewArchimateDiagramModel();
         
         // Create various IDiagramModelArchimateObject objects
-        createTestDiagramModelArchimateObjectsForFindDiagramModelComponents(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel);
+        createDataForDiagramModelArchimateObjects(IArchimateFactory.eINSTANCE.createBusinessActor(), diagramModel);
         
         // And make some connections using the relationship
-        createTestDiagramModelConnectionsForFindDiagramModelComponents(relationship);
+        createDataForDiagramModelConnections(relationship);
 
         // Should not be found
         boolean result = DiagramModelUtils.hasDiagramModelArchimateConnection(dmo1, dmo2, relationship2);
@@ -346,7 +334,7 @@ public class DiagramModelUtilsTests {
     // =================================================================================================
 
     @Test
-    public void testGetAncestorContainer() {
+    public void getAncestorContainer() {
         IDiagramModel dm = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
         IDiagramModelGroup group1 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
         IDiagramModelGroup group2 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
@@ -361,7 +349,7 @@ public class DiagramModelUtilsTests {
     }
     
     @Test
-    public void testHasExistingConnectionType() {
+    public void hasExistingConnectionType() {
         IDiagramModelObject source = ArchimateTestModel.createDiagramModelArchimateObject(IArchimateFactory.eINSTANCE.createArtifact());
         IDiagramModelObject target = ArchimateTestModel.createDiagramModelArchimateObject(IArchimateFactory.eINSTANCE.createArtifact());
         IAssignmentRelationship relation = IArchimateFactory.eINSTANCE.createAssignmentRelationship();
@@ -373,7 +361,7 @@ public class DiagramModelUtilsTests {
     }
     
     @Test
-    public void testHasCycle() {
+    public void hasCycle() {
         IDiagramModelObject source = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
         IDiagramModelObject target = IArchimateFactory.eINSTANCE.createDiagramModelGroup();;
         IDiagramModelConnection conn = IArchimateFactory.eINSTANCE.createDiagramModelConnection();
@@ -388,4 +376,85 @@ public class DiagramModelUtilsTests {
         assertFalse(DiagramModelUtils.hasCycle(source, target));
     }
     
+    // =================================================================================================
+    
+    @Test
+    public void getAbsoluteBounds() {
+        IArchimateDiagramModel dm = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
+        
+        IDiagramModelGroup dmo1 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dmo1.setBounds(10, 15, 500, 500);
+        dm.getChildren().add(dmo1);
+        
+        IBounds bounds = DiagramModelUtils.getAbsoluteBounds(dmo1);
+        assertEquals(10, bounds.getX());
+        assertEquals(15, bounds.getY());
+        
+        IDiagramModelGroup dmo2 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dmo2.setBounds(10, 15, 400, 400);
+        dmo1.getChildren().add(dmo2);
+
+        bounds = DiagramModelUtils.getAbsoluteBounds(dmo2);
+        assertEquals(20, bounds.getX());
+        assertEquals(30, bounds.getY());
+        
+        IDiagramModelGroup dmo3 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dmo3.setBounds(10, 15, 300, 300);
+        dmo2.getChildren().add(dmo3);
+
+        bounds = DiagramModelUtils.getAbsoluteBounds(dmo3);
+        assertEquals(30, bounds.getX());
+        assertEquals(45, bounds.getY());
+    }
+    
+    
+    @Test
+    public void getRelativeBounds() {
+        IArchimateDiagramModel dm = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
+        
+        // Add main parent diagram model object
+        IDiagramModelGroup dmo1 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dmo1.setBounds(10, 10, 200, 200);
+        dm.getChildren().add(dmo1);
+        
+        // Add child
+        IDiagramModelGroup dmo2 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dmo1.getChildren().add(dmo2);
+
+        // Get relative bounds
+        IBounds absoluteBounds = IArchimateFactory.eINSTANCE.createBounds(50, 60, 100, 100);
+        IBounds relativebounds = DiagramModelUtils.getRelativeBounds(absoluteBounds, dmo1);
+        assertEquals(40, relativebounds.getX());
+        assertEquals(50, relativebounds.getY());
+        dmo2.setBounds(relativebounds);
+        
+        IDiagramModelGroup dmo3 = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        dmo2.getChildren().add(dmo3);
+
+        absoluteBounds = IArchimateFactory.eINSTANCE.createBounds(90, 75, 500, 500);
+        relativebounds = DiagramModelUtils.getRelativeBounds(absoluteBounds, dmo2);
+        assertEquals(40, relativebounds.getX());
+        assertEquals(15, relativebounds.getY());
+        dmo3.setBounds(relativebounds);
+    }
+ 
+    @Test
+    public void outerBoundsContainsInnerBounds() {
+        IBounds outer = IArchimateFactory.eINSTANCE.createBounds(0, 0, 100, 100);
+        
+        IBounds inner = IArchimateFactory.eINSTANCE.createBounds(0, 0, 100, 100);
+        assertTrue(DiagramModelUtils.outerBoundsContainsInnerBounds(outer, inner));
+        
+        inner = IArchimateFactory.eINSTANCE.createBounds(10, 10, 100, 100);
+        assertFalse(DiagramModelUtils.outerBoundsContainsInnerBounds(outer, inner));
+        
+        inner = IArchimateFactory.eINSTANCE.createBounds(10, 10, 90, 90);
+        assertTrue(DiagramModelUtils.outerBoundsContainsInnerBounds(outer, inner));
+        
+        inner = IArchimateFactory.eINSTANCE.createBounds(-10, -10, 90, 90);
+        assertFalse(DiagramModelUtils.outerBoundsContainsInnerBounds(outer, inner));
+
+        inner = IArchimateFactory.eINSTANCE.createBounds(-0, 0, 101, 100);
+        assertFalse(DiagramModelUtils.outerBoundsContainsInnerBounds(outer, inner));
+    }
 }

@@ -5,24 +5,22 @@
  */
 package com.archimatetool.editor.views.tree;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
-
-import junit.framework.JUnit4TestAdapter;
 
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Shell;
-import org.junit.AfterClass;
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.TestSupport;
 import com.archimatetool.editor.model.IEditorModelManager;
@@ -45,11 +43,7 @@ public class TreeModelViewerFindReplaceProviderTests extends AbstractFindReplace
     
     private TreeModelViewerFindReplaceProvider provider;
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(TreeModelViewerFindReplaceProviderTests.class);
-    }
-    
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() {
         // Load two models
         model1 = IEditorModelManager.INSTANCE.loadModel(new File(TestSupport.getTestDataFolder(), "models/testFindReplace.archimate"));
@@ -59,12 +53,12 @@ public class TreeModelViewerFindReplaceProviderTests extends AbstractFindReplace
         treeViewer.setInput(IEditorModelManager.INSTANCE);
     }
     
-    @AfterClass
+    @AfterAll
     public static void runOnceAfterAllTests() {
         treeViewer.getControl().getShell().dispose();
     }
     
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() {
         // Deselect all nodes in Tree
         treeViewer.setSelection(StructuredSelection.EMPTY);

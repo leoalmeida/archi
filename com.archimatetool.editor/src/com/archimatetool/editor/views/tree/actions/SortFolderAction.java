@@ -8,9 +8,8 @@ package com.archimatetool.editor.views.tree.actions;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.jface.viewers.ISelectionProvider;
-import org.eclipse.jface.viewers.IStructuredSelection;
 
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.editor.views.tree.commands.SortFolderCommand;
 import com.archimatetool.model.IFolder;
 
@@ -26,7 +25,7 @@ public class SortFolderAction extends ViewerAction {
     public SortFolderAction(ISelectionProvider selectionProvider) {
         super(selectionProvider);
         setText(Messages.SortFolderAction_0);
-        setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_SORT_16));
+        setImageDescriptor(IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_SORT));
     }
     
     @Override
@@ -42,8 +41,8 @@ public class SortFolderAction extends ViewerAction {
     }
 
     @Override
-    public void update(IStructuredSelection selection) {
-        Object selected = selection.getFirstElement();
+    public void update() {
+        Object selected = getSelection().getFirstElement();
         
         if(selected instanceof IFolder) {
             setEnabled(((IFolder)selected).getElements().size() > 1);

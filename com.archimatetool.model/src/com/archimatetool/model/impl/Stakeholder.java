@@ -15,12 +15,10 @@ import com.archimatetool.model.IStakeholder;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Stakeholder</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Stakeholder extends MotivationElement implements IStakeholder {
+public class Stakeholder extends ArchimateElement implements IStakeholder {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

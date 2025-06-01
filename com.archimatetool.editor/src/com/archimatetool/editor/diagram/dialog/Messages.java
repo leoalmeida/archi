@@ -19,6 +19,10 @@ public class Messages extends NLS {
 
     public static String NewNestedRelationDialog_3;
 
+    public static String NewNestedRelationDialog_4;
+
+    public static String NewNestedRelationDialog_5;
+
     public static String NewNestedRelationsDialog_0;
 
     public static String NewNestedRelationsDialog_1;
@@ -30,6 +34,12 @@ public class Messages extends NLS {
     public static String NewNestedRelationsDialog_4;
 
     public static String NewNestedRelationsDialog_5;
+
+    public static String NewNestedRelationsDialog_6;
+
+    public static String NewNestedRelationsDialog_7;
+
+    public static String NewNestedRelationsDialog_8;
     static {
         // initialize resource bundle
         NLS.initializeMessages(BUNDLE_NAME, Messages.class);

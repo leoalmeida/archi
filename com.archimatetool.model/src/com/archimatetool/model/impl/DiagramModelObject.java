@@ -5,26 +5,20 @@
  */
 package com.archimatetool.model.impl;
 
-import java.util.Collection;
-
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
-import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EClass;
 import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
-import org.eclipse.emf.ecore.util.EObjectContainmentEList;
-import org.eclipse.emf.ecore.util.EObjectEList;
-import org.eclipse.emf.ecore.util.InternalEList;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IBounds;
-import com.archimatetool.model.IDiagramModelConnection;
 import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IFontAttribute;
 import com.archimatetool.model.ILineObject;
+import com.archimatetool.model.ITextAlignment;
 
 
 /**
@@ -33,23 +27,21 @@ import com.archimatetool.model.ILineObject;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getFont <em>Font</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getFontColor <em>Font Color</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getTextAlignment <em>Text Alignment</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getTextPosition <em>Text Position</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getLineWidth <em>Line Width</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getLineColor <em>Line Color</em>}</li>
+ *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getTextAlignment <em>Text Alignment</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getBounds <em>Bounds</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getSourceConnections <em>Source Connections</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getTargetConnections <em>Target Connections</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getFillColor <em>Fill Color</em>}</li>
+ *   <li>{@link com.archimatetool.model.impl.DiagramModelObject#getAlpha <em>Alpha</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
-public abstract class DiagramModelObject extends DiagramModelComponent implements IDiagramModelObject {
+public abstract class DiagramModelObject extends Connectable implements IDiagramModelObject {
     /**
      * The default value of the '{@link #getFont() <em>Font</em>}' attribute.
      * <!-- begin-user-doc -->
@@ -89,46 +81,6 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * @ordered
      */
     protected String fontColor = FONT_COLOR_EDEFAULT;
-
-    /**
-     * The default value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextAlignment()
-     * @generated
-     * @ordered
-     */
-    protected static final int TEXT_ALIGNMENT_EDEFAULT = 0;
-
-    /**
-     * The cached value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextAlignment()
-     * @generated
-     * @ordered
-     */
-    protected int textAlignment = TEXT_ALIGNMENT_EDEFAULT;
-
-    /**
-     * The default value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextPosition()
-     * @generated
-     * @ordered
-     */
-    protected static final int TEXT_POSITION_EDEFAULT = 0;
-
-    /**
-     * The cached value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextPosition()
-     * @generated
-     * @ordered
-     */
-    protected int textPosition = TEXT_POSITION_EDEFAULT;
 
     /**
      * The default value of the '{@link #getLineWidth() <em>Line Width</em>}' attribute.
@@ -171,6 +123,26 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
     protected String lineColor = LINE_COLOR_EDEFAULT;
 
     /**
+     * The default value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextAlignment()
+     * @generated
+     * @ordered
+     */
+    protected static final int TEXT_ALIGNMENT_EDEFAULT = 2;
+
+    /**
+     * The cached value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextAlignment()
+     * @generated
+     * @ordered
+     */
+    protected int textAlignment = TEXT_ALIGNMENT_EDEFAULT;
+
+    /**
      * The cached value of the '{@link #getBounds() <em>Bounds</em>}' containment reference.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -179,26 +151,6 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * @ordered
      */
     protected IBounds bounds;
-
-    /**
-     * The cached value of the '{@link #getSourceConnections() <em>Source Connections</em>}' containment reference list.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getSourceConnections()
-     * @generated
-     * @ordered
-     */
-    protected EList<IDiagramModelConnection> sourceConnections;
-
-    /**
-     * The cached value of the '{@link #getTargetConnections() <em>Target Connections</em>}' reference list.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTargetConnections()
-     * @generated
-     * @ordered
-     */
-    protected EList<IDiagramModelConnection> targetConnections;
 
     /**
      * The default value of the '{@link #getFillColor() <em>Fill Color</em>}' attribute.
@@ -221,6 +173,26 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
     protected String fillColor = FILL_COLOR_EDEFAULT;
 
     /**
+     * The default value of the '{@link #getAlpha() <em>Alpha</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getAlpha()
+     * @generated
+     * @ordered
+     */
+    protected static final int ALPHA_EDEFAULT = 255;
+
+    /**
+     * The cached value of the '{@link #getAlpha() <em>Alpha</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getAlpha()
+     * @generated
+     * @ordered
+     */
+    protected int alpha = ALPHA_EDEFAULT;
+
+    /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
@@ -239,11 +211,72 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
         return IArchimatePackage.Literals.DIAGRAM_MODEL_OBJECT;
     }
 
+    @Override
+    public int getLineAlpha() {
+        return getFeatures().getInt(FEATURE_LINE_ALPHA, FEATURE_LINE_ALPHA_DEFAULT);
+    }
+    
+    @Override
+    public void setLineAlpha(int value) {
+        getFeatures().putInt(FEATURE_LINE_ALPHA, value, FEATURE_LINE_ALPHA_DEFAULT);
+    }
+
+    @Override
+    public int getGradient() {
+        return getFeatures().getInt(FEATURE_GRADIENT, FEATURE_GRADIENT_DEFAULT);
+    }
+    
+    @Override
+    public void setGradient(int type) {
+        getFeatures().putInt(FEATURE_GRADIENT, type, FEATURE_GRADIENT_DEFAULT);
+    }
+
+    @Override
+    public int getIconVisibleState() {
+        return getFeatures().getInt(FEATURE_ICON_VISIBLE, FEATURE_ICON_VISIBLE_DEFAULT);
+    }
+    
+    @Override
+    public void setIconVisibleState(int value) {
+        getFeatures().putInt(FEATURE_ICON_VISIBLE, value, FEATURE_ICON_VISIBLE_DEFAULT);
+    }
+    
+    @Override
+    public String getIconColor() {
+        return getFeatures().getString(FEATURE_ICON_COLOR, FEATURE_ICON_COLOR_DEFAULT);
+    }
+    
+    @Override
+    public void setIconColor(String iconColor) {
+        getFeatures().putString(FEATURE_ICON_COLOR, iconColor, FEATURE_ICON_COLOR_DEFAULT);
+    }
+    
+    @Override
+    public boolean getDeriveElementLineColor() {
+        return getFeatures().getBoolean(FEATURE_DERIVE_ELEMENT_LINE_COLOR, FEATURE_DERIVE_ELEMENT_LINE_COLOR_DEFAULT);
+    }
+    
+    @Override
+    public void setDeriveElementLineColor(boolean value) {
+        getFeatures().putBoolean(FEATURE_DERIVE_ELEMENT_LINE_COLOR, value, FEATURE_DERIVE_ELEMENT_LINE_COLOR_DEFAULT);
+    }
+    
+    @Override
+    public int getLineStyle() {
+        return getFeatures().getInt(FEATURE_LINE_STYLE, FEATURE_LINE_STYLE_DEFAULT);
+    }
+    
+    @Override
+    public void setLineStyle(int lineStyle) {
+        getFeatures().putInt(FEATURE_LINE_STYLE, lineStyle, FEATURE_LINE_STYLE_DEFAULT);
+    }
+    
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public IBounds getBounds() {
         return bounds;
     }
@@ -253,6 +286,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public void setBounds(int x, int y, int width, int height) {
         IBounds bounds = IArchimateFactory.eINSTANCE.createBounds(x, y, width, height);
         setBounds(bounds);
@@ -278,6 +312,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setBounds(IBounds newBounds) {
         if (newBounds != bounds) {
             NotificationChain msgs = null;
@@ -297,30 +332,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
-    public EList<IDiagramModelConnection> getSourceConnections() {
-        if (sourceConnections == null) {
-            sourceConnections = new EObjectContainmentEList<IDiagramModelConnection>(IDiagramModelConnection.class, this, IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS);
-        }
-        return sourceConnections;
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    public EList<IDiagramModelConnection> getTargetConnections() {
-        if (targetConnections == null) {
-            targetConnections = new EObjectEList<IDiagramModelConnection>(IDiagramModelConnection.class, this, IArchimatePackage.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS);
-        }
-        return targetConnections;
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
+    @Override
     public String getFillColor() {
         return fillColor;
     }
@@ -330,6 +342,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setFillColor(String newFillColor) {
         String oldFillColor = fillColor;
         fillColor = newFillColor;
@@ -342,6 +355,30 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
+    public int getAlpha() {
+        return alpha;
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
+    public void setAlpha(int newAlpha) {
+        int oldAlpha = alpha;
+        alpha = newAlpha;
+        if (eNotificationRequired())
+            eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_OBJECT__ALPHA, oldAlpha, alpha));
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
     public String getFont() {
         return font;
     }
@@ -351,6 +388,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setFont(String newFont) {
         String oldFont = font;
         font = newFont;
@@ -363,6 +401,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getFontColor() {
         return fontColor;
     }
@@ -372,6 +411,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setFontColor(String newFontColor) {
         String oldFontColor = fontColor;
         fontColor = newFontColor;
@@ -382,13 +422,10 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @generated NOT
+     * @generated
      */
+    @Override
     public int getTextAlignment() {
-        // Check for backward compatibility where default is 0 and not persisted
-        if(textAlignment == TEXT_ALIGNMENT_NONE) {
-            textAlignment = getDefaultTextAlignment();
-        }
         return textAlignment;
     }
 
@@ -397,6 +434,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setTextAlignment(int newTextAlignment) {
         int oldTextAlignment = textAlignment;
         textAlignment = newTextAlignment;
@@ -409,27 +447,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
-    public int getTextPosition() {
-        return textPosition;
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    public void setTextPosition(int newTextPosition) {
-        int oldTextPosition = textPosition;
-        textPosition = newTextPosition;
-        if (eNotificationRequired())
-            eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION, oldTextPosition, textPosition));
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
+    @Override
     public int getLineWidth() {
         return lineWidth;
     }
@@ -439,6 +457,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLineWidth(int newLineWidth) {
         int oldLineWidth = lineWidth;
         lineWidth = newLineWidth;
@@ -451,6 +470,7 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getLineColor() {
         return lineColor;
     }
@@ -460,59 +480,12 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLineColor(String newLineColor) {
         String oldLineColor = lineColor;
         lineColor = newLineColor;
         if (eNotificationRequired())
             eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR, oldLineColor, lineColor));
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public void addConnection(IDiagramModelConnection connection) {
-        if(connection == null) {
-            throw new IllegalArgumentException("Connection was null"); //$NON-NLS-1$
-        }
-        
-        // This used to be "if/else if". This way it is possible for source == target (recursive)
-        if(connection.getSource() == this) {
-            getSourceConnections().add(connection);
-        }
-        
-        if(connection.getTarget() == this) {
-            getTargetConnections().add(connection);
-        }
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public void removeConnection(IDiagramModelConnection connection) {
-        if(connection == null) {
-            throw new IllegalArgumentException();
-        }
-        
-        if(connection.getSource() == this) {
-            getSourceConnections().remove(connection);
-        } 
-        
-        if(connection.getTarget() == this) {
-            getTargetConnections().remove(connection);
-        }
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public int getDefaultTextAlignment() {
-        return TEXT_ALIGNMENT_CENTER;
     }
 
     @Override
@@ -535,8 +508,6 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
         switch (featureID) {
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__BOUNDS:
                 return basicSetBounds(null, msgs);
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS:
-                return ((InternalEList<?>)getSourceConnections()).basicRemove(otherEnd, msgs);
         }
         return super.eInverseRemove(otherEnd, featureID, msgs);
     }
@@ -553,22 +524,18 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
                 return getFont();
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR:
                 return getFontColor();
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
-                return getTextAlignment();
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION:
-                return getTextPosition();
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH:
                 return getLineWidth();
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR:
                 return getLineColor();
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
+                return getTextAlignment();
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__BOUNDS:
                 return getBounds();
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS:
-                return getSourceConnections();
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS:
-                return getTargetConnections();
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FILL_COLOR:
                 return getFillColor();
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__ALPHA:
+                return getAlpha();
         }
         return super.eGet(featureID, resolve, coreType);
     }
@@ -578,7 +545,6 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
      * <!-- end-user-doc -->
      * @generated
      */
-    @SuppressWarnings("unchecked")
     @Override
     public void eSet(int featureID, Object newValue) {
         switch (featureID) {
@@ -588,31 +554,23 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR:
                 setFontColor((String)newValue);
                 return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
-                setTextAlignment((Integer)newValue);
-                return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION:
-                setTextPosition((Integer)newValue);
-                return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH:
                 setLineWidth((Integer)newValue);
                 return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR:
                 setLineColor((String)newValue);
                 return;
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
+                setTextAlignment((Integer)newValue);
+                return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__BOUNDS:
                 setBounds((IBounds)newValue);
                 return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS:
-                getSourceConnections().clear();
-                getSourceConnections().addAll((Collection<? extends IDiagramModelConnection>)newValue);
-                return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS:
-                getTargetConnections().clear();
-                getTargetConnections().addAll((Collection<? extends IDiagramModelConnection>)newValue);
-                return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FILL_COLOR:
                 setFillColor((String)newValue);
+                return;
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__ALPHA:
+                setAlpha((Integer)newValue);
                 return;
         }
         super.eSet(featureID, newValue);
@@ -632,29 +590,23 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR:
                 setFontColor(FONT_COLOR_EDEFAULT);
                 return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
-                setTextAlignment(TEXT_ALIGNMENT_EDEFAULT);
-                return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION:
-                setTextPosition(TEXT_POSITION_EDEFAULT);
-                return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH:
                 setLineWidth(LINE_WIDTH_EDEFAULT);
                 return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR:
                 setLineColor(LINE_COLOR_EDEFAULT);
                 return;
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
+                setTextAlignment(TEXT_ALIGNMENT_EDEFAULT);
+                return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__BOUNDS:
                 setBounds((IBounds)null);
                 return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS:
-                getSourceConnections().clear();
-                return;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS:
-                getTargetConnections().clear();
-                return;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FILL_COLOR:
                 setFillColor(FILL_COLOR_EDEFAULT);
+                return;
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__ALPHA:
+                setAlpha(ALPHA_EDEFAULT);
                 return;
         }
         super.eUnset(featureID);
@@ -672,22 +624,18 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
                 return FONT_EDEFAULT == null ? font != null : !FONT_EDEFAULT.equals(font);
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR:
                 return FONT_COLOR_EDEFAULT == null ? fontColor != null : !FONT_COLOR_EDEFAULT.equals(fontColor);
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
-                return textAlignment != TEXT_ALIGNMENT_EDEFAULT;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION:
-                return textPosition != TEXT_POSITION_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH:
                 return lineWidth != LINE_WIDTH_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR:
                 return LINE_COLOR_EDEFAULT == null ? lineColor != null : !LINE_COLOR_EDEFAULT.equals(lineColor);
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT:
+                return textAlignment != TEXT_ALIGNMENT_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__BOUNDS:
                 return bounds != null;
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__SOURCE_CONNECTIONS:
-                return sourceConnections != null && !sourceConnections.isEmpty();
-            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TARGET_CONNECTIONS:
-                return targetConnections != null && !targetConnections.isEmpty();
             case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FILL_COLOR:
                 return FILL_COLOR_EDEFAULT == null ? fillColor != null : !FILL_COLOR_EDEFAULT.equals(fillColor);
+            case IArchimatePackage.DIAGRAM_MODEL_OBJECT__ALPHA:
+                return alpha != ALPHA_EDEFAULT;
         }
         return super.eIsSet(featureID);
     }
@@ -703,8 +651,6 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
             switch (derivedFeatureID) {
                 case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT: return IArchimatePackage.FONT_ATTRIBUTE__FONT;
                 case IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR: return IArchimatePackage.FONT_ATTRIBUTE__FONT_COLOR;
-                case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT: return IArchimatePackage.FONT_ATTRIBUTE__TEXT_ALIGNMENT;
-                case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION: return IArchimatePackage.FONT_ATTRIBUTE__TEXT_POSITION;
                 default: return -1;
             }
         }
@@ -712,6 +658,12 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
             switch (derivedFeatureID) {
                 case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH: return IArchimatePackage.LINE_OBJECT__LINE_WIDTH;
                 case IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR: return IArchimatePackage.LINE_OBJECT__LINE_COLOR;
+                default: return -1;
+            }
+        }
+        if (baseClass == ITextAlignment.class) {
+            switch (derivedFeatureID) {
+                case IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT: return IArchimatePackage.TEXT_ALIGNMENT__TEXT_ALIGNMENT;
                 default: return -1;
             }
         }
@@ -729,8 +681,6 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
             switch (baseFeatureID) {
                 case IArchimatePackage.FONT_ATTRIBUTE__FONT: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT;
                 case IArchimatePackage.FONT_ATTRIBUTE__FONT_COLOR: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__FONT_COLOR;
-                case IArchimatePackage.FONT_ATTRIBUTE__TEXT_ALIGNMENT: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT;
-                case IArchimatePackage.FONT_ATTRIBUTE__TEXT_POSITION: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_POSITION;
                 default: return -1;
             }
         }
@@ -738,6 +688,12 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
             switch (baseFeatureID) {
                 case IArchimatePackage.LINE_OBJECT__LINE_WIDTH: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_WIDTH;
                 case IArchimatePackage.LINE_OBJECT__LINE_COLOR: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__LINE_COLOR;
+                default: return -1;
+            }
+        }
+        if (baseClass == ITextAlignment.class) {
+            switch (baseFeatureID) {
+                case IArchimatePackage.TEXT_ALIGNMENT__TEXT_ALIGNMENT: return IArchimatePackage.DIAGRAM_MODEL_OBJECT__TEXT_ALIGNMENT;
                 default: return -1;
             }
         }
@@ -753,21 +709,21 @@ public abstract class DiagramModelObject extends DiagramModelComponent implement
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (font: "); //$NON-NLS-1$
         result.append(font);
         result.append(", fontColor: "); //$NON-NLS-1$
         result.append(fontColor);
-        result.append(", textAlignment: "); //$NON-NLS-1$
-        result.append(textAlignment);
-        result.append(", textPosition: "); //$NON-NLS-1$
-        result.append(textPosition);
         result.append(", lineWidth: "); //$NON-NLS-1$
         result.append(lineWidth);
         result.append(", lineColor: "); //$NON-NLS-1$
         result.append(lineColor);
+        result.append(", textAlignment: "); //$NON-NLS-1$
+        result.append(textAlignment);
         result.append(", fillColor: "); //$NON-NLS-1$
         result.append(fillColor);
+        result.append(", alpha: "); //$NON-NLS-1$
+        result.append(alpha);
         result.append(')');
         return result.toString();
     }

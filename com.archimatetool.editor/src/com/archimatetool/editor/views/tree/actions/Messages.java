@@ -13,6 +13,8 @@ public class Messages extends NLS {
 
     public static String CloseModelAction_0;
 
+    public static String CutAction_0;
+
     public static String DeleteAction_0;
 
     public static String DeleteAction_1;
@@ -23,6 +25,8 @@ public class Messages extends NLS {
 
     public static String DuplicateAction_0;
 
+    public static String GenerateViewAction_0;
+
     public static String LinkToEditorAction_0;
 
     public static String NewFolderAction_0;
@@ -30,6 +34,10 @@ public class Messages extends NLS {
     public static String NewFolderAction_1;
 
     public static String OpenDiagramAction_0;
+
+    public static String PasteAction_0;
+
+    public static String PasteAction_1;
 
     public static String PropertiesAction_0;
 

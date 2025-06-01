@@ -5,11 +5,7 @@
  */
 package com.archimatetool.templates.wizard;
 
-import java.util.Iterator;
-
 import org.eclipse.draw2d.geometry.Rectangle;
-import org.eclipse.emf.ecore.EObject;
-import org.eclipse.emf.ecore.util.EcoreUtil;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.GC;
@@ -19,7 +15,6 @@ import org.eclipse.swt.widgets.Shell;
 
 import com.archimatetool.editor.diagram.util.DiagramUtils;
 import com.archimatetool.model.IDiagramModel;
-import com.archimatetool.model.IIdentifier;
 import com.archimatetool.templates.model.TemplateManager;
 
 
@@ -37,10 +32,16 @@ public class TemplateUtils {
      * @param label
      */
     public static void createThumbnailPreviewImage(IDiagramModel diagramModel, Label label) {
+        // Dispose of old image
+        if(label.getImage() != null) { 
+            label.getImage().dispose();
+            label.setImage(null);
+        }
+
         Shell shell = new Shell();
         GraphicalViewer diagramViewer = DiagramUtils.createViewer(diagramModel, shell);
         
-        int margin = 5;
+        final int margin = 5;
         Rectangle bounds = DiagramUtils.getDiagramExtents(diagramViewer);
         bounds.expand(margin * 2, margin * 2);
         double ratio = Math.min(1, Math.min((double)label.getBounds().width / bounds.width,
@@ -71,28 +72,10 @@ public class TemplateUtils {
 
         // Draw a border
         GC gc = new GC(image);
-        Color c = new Color(null, 64, 64, 64);
-        gc.setForeground(c);
+        gc.setForeground(new Color(64, 64, 64));
         gc.drawRectangle(0, 0, image.getBounds().width - 1, image.getBounds().height - 1);
         gc.dispose();
-        c.dispose();
 
         return image;
-    }
-
-    /**
-     * Generate new UUIDs for object and all of its children
-     * @param object
-     */
-    public static void generateNewUUIDs(EObject object) {
-        if(object instanceof IIdentifier) {
-            ((IIdentifier)object).setId(EcoreUtil.generateUUID());
-        }
-        for(Iterator<EObject> iter = object.eAllContents(); iter.hasNext();) {
-            EObject eObject = iter.next();
-            if(eObject instanceof IIdentifier) {
-                ((IIdentifier)eObject).setId(EcoreUtil.generateUUID());
-            }
-        }
     }
 }

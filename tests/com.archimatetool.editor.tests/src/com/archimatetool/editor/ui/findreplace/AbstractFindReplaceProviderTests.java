@@ -5,13 +5,12 @@
  */
 package com.archimatetool.editor.ui.findreplace;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Before;
-import org.junit.Test;
-
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 @SuppressWarnings("nls")
 public abstract class AbstractFindReplaceProviderTests {
@@ -20,7 +19,7 @@ public abstract class AbstractFindReplaceProviderTests {
     
     protected AbstractFindReplaceProvider provider;
     
-    @Before
+    @BeforeEach
     public void runOnceBeforeAbstractEachTest() {
         provider = getProvider();
     }
@@ -82,34 +81,37 @@ public abstract class AbstractFindReplaceProviderTests {
     }
     
     @Test
-    public void testGetNewName() {
-        String oldName = "Hello World";
+    public void testGetReplacedString() {
+        String oldString = "Hello World";
 
-        assertEquals(oldName, provider.getNewName(oldName, "z", "zzz"));
-        assertEquals("Hellz Wzrld", provider.getNewName(oldName, "o", "z"));
-        assertEquals("Hellz Wzrld", provider.getNewName(oldName, "O", "z"));
+        assertEquals(oldString, provider.getReplacedString(oldString, "z", "zzz"));
+        assertEquals("Hellz Wzrld", provider.getReplacedString(oldString, "o", "z"));
+        assertEquals("Hellz Wzrld", provider.getReplacedString(oldString, "O", "z"));
         
         provider.setParameter(IFindReplaceProvider.PARAM_CASE_SENSITIVE, true);
-        assertEquals(oldName, provider.getNewName(oldName, "O", "z"));
+        assertEquals(oldString, provider.getReplacedString(oldString, "O", "z"));
         
         // Test regex characters don't mess things up
-        oldName = "Hello (World \b *. \\";
-        assertEquals(oldName, provider.getNewName(oldName, "O", "z"));
+        oldString = "Hello (World \b *. \\";
+        assertEquals(oldString, provider.getReplacedString(oldString, "O", "z"));
         provider.setParameter(IFindReplaceProvider.PARAM_CASE_SENSITIVE, false);
-        assertEquals("Hellz (Wzrld \b *. \\", provider.getNewName(oldName, "O", "z"));
+        assertEquals("Hellz (Wzrld \b *. \\", provider.getReplacedString(oldString, "O", "z"));
         
         // Test classic use case
-        assertEquals("Business Actor", provider.getNewName("Business Actor (copy)", " (copy)", ""));
+        assertEquals("Business Actor", provider.getReplacedString("Business Actor (copy)", " (copy)", ""));
+        
+        // Test CR
+        assertEquals("Some nice\ntext", provider.getReplacedString("Some vixe\ntext", "vixe", "nice"));
     }
     
     @Test
     public void testGetSearchStringPattern() {
         String searchString = "Hello ( C \\ *. World";
         
-        assertEquals("(?i:(?s).*\\Q" + searchString + "\\E.*)", provider.getSearchStringPattern(searchString));
+        assertEquals("(?iu:(?s).*\\Q" + searchString + "\\E.*)", provider.getSearchStringPattern(searchString));
         
         provider.setParameter(IFindReplaceProvider.PARAM_WHOLE_WORD, true);
-        assertEquals("(?i:(?s).*\\b\\Q" + searchString + "\\E\\b.*)", provider.getSearchStringPattern(searchString));
+        assertEquals("(?iu:(?s).*\\b\\Q" + searchString + "\\E\\b.*)", provider.getSearchStringPattern(searchString));
         
         provider.setParameter(IFindReplaceProvider.PARAM_CASE_SENSITIVE, true);
         assertEquals("(?s).*\\b\\Q" + searchString + "\\E\\b.*", provider.getSearchStringPattern(searchString));

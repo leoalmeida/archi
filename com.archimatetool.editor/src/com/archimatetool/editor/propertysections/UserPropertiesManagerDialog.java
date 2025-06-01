@@ -5,9 +5,14 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import java.util.Hashtable;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Objects;
 
 import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.emf.common.util.EList;
@@ -25,20 +30,24 @@ import org.eclipse.jface.layout.TableColumnLayout;
 import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.jface.viewers.CellEditor;
 import org.eclipse.jface.viewers.ColumnViewer;
+import org.eclipse.jface.viewers.ColumnViewerEditor;
+import org.eclipse.jface.viewers.ColumnViewerEditorActivationEvent;
+import org.eclipse.jface.viewers.ColumnViewerEditorActivationStrategy;
 import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.jface.viewers.EditingSupport;
+import org.eclipse.jface.viewers.IIndexableLazyContentProvider;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.ITableColorProvider;
 import org.eclipse.jface.viewers.ITableLabelProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
+import org.eclipse.jface.viewers.TableViewerEditor;
 import org.eclipse.jface.viewers.TextCellEditor;
 import org.eclipse.jface.viewers.Viewer;
-import org.eclipse.jface.viewers.ViewerSorter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.BusyIndicator;
 import org.eclipse.swt.events.SelectionAdapter;
@@ -56,7 +65,9 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.ISharedImages;
 import org.eclipse.ui.PlatformUI;
 
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.model.commands.NonNotifyingCompoundCommand;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.editor.ui.components.ExtendedTitleAreaDialog;
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IProperties;
@@ -86,14 +97,14 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
 
     private IArchimateModel fArchimateModel;
 
-    private Hashtable<String, KeyEntry> fKeysTable = new Hashtable<String, KeyEntry>();
+    private Map<String, KeyEntry> fKeysMap = new LinkedHashMap<>();
 
     private Button fButtonDelete, fButtonRename;
     private IAction fActionDelete, fActionRename;
 
     public UserPropertiesManagerDialog(Shell parentShell, IArchimateModel model) {
         super(parentShell, "UserPropertiesManagerDialog"); //$NON-NLS-1$
-        setTitleImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.ECLIPSE_IMAGE_IMPORT_PREF_WIZARD));
+        setTitleImage(IArchiImages.ImageFactory.getImage(IArchiImages.ECLIPSE_IMAGE_IMPORT_PREF_WIZARD));
         setShellStyle(getShellStyle() | SWT.RESIZE);
 
         fArchimateModel = model;
@@ -178,6 +189,7 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
         menuMgr.setRemoveAllWhenShown(true);
 
         menuMgr.addMenuListener(new IMenuListener() {
+            @Override
             public void menuAboutToShow(IMenuManager manager) {
                 fillContextMenu(manager);
             }
@@ -198,13 +210,25 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
         tableComp.setLayout(tableLayout);
         tableComp.setLayoutData(new GridData(GridData.FILL_BOTH));
 
-        fTableViewer = new TableViewer(tableComp, SWT.MULTI | SWT.FULL_SELECTION);
+        fTableViewer = new TableViewer(tableComp, SWT.MULTI | SWT.FULL_SELECTION | SWT.VIRTUAL);
         fTableViewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
+
+        // Edit cell on double-click and add Tab key traversal
+        TableViewerEditor.create(fTableViewer, new ColumnViewerEditorActivationStrategy(fTableViewer) {
+            @Override
+            protected boolean isEditorActivationEvent(ColumnViewerEditorActivationEvent event) {
+                return super.isEditorActivationEvent(event) ||
+                      (event.eventType == ColumnViewerEditorActivationEvent.MOUSE_DOUBLE_CLICK_SELECTION);
+            }
+            
+        }, ColumnViewerEditor.TABBING_HORIZONTAL | 
+                ColumnViewerEditor.TABBING_MOVE_TO_ROW_NEIGHBOR | 
+                ColumnViewerEditor.TABBING_VERTICAL |
+                ColumnViewerEditor.KEEP_EDITOR_ON_DOUBLE_CLICK |
+                ColumnViewerEditor.KEYBOARD_ACTIVATION);
 
         fTableViewer.getTable().setHeaderVisible(true);
         fTableViewer.getTable().setLinesVisible(true);
-
-        fTableViewer.setSorter(new ViewerSorter());
 
         // Columns
         TableViewerColumn columnOldKey = new TableViewerColumn(fTableViewer, SWT.NONE, 0);
@@ -221,15 +245,31 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
         tableLayout.setColumnData(columnUsedNumber.getColumn(), new ColumnWeightData(20, true));
 
         // Content Provider
-        fTableViewer.setContentProvider(new IStructuredContentProvider() {
+        // Use an IIndexableLazyContentProvider so we can find an element faster when calling TableViewer.update(key, null)
+        fTableViewer.setContentProvider(new IIndexableLazyContentProvider() {
+            List<String> keys;
+            
+            @Override
             public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
+                if(newInput != null) {
+                    keys = new ArrayList<>(fKeysMap.keySet());
+                    Collections.sort(keys, (s1, s2) -> s1.compareToIgnoreCase(s2)); // Don't use Collator.getInstance() as it's too slow
+                    fTableViewer.setItemCount(keys.size());
+                }
             }
 
+            @Override
             public void dispose() {
             }
 
-            public Object[] getElements(Object inputElement) {
-                return fKeysTable.entrySet().toArray();
+            @Override
+            public void updateElement(int index) {
+                fTableViewer.replace(keys.get(index), index);
+            }
+
+            @Override
+            public int findElement(Object element) {
+                return keys.indexOf(element);
             }
         });
 
@@ -247,7 +287,7 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
             }
         });
 
-        fTableViewer.setInput(""); // anything will do //$NON-NLS-1$
+        fTableViewer.setInput(fKeysMap);
     }
 
     private void createButtonPanel(Composite parent) {
@@ -287,10 +327,16 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
     }
 
     private void deleteSelectedPropertyKeys() {
+        // This needs to be done first in case we are editing.
+        // On Windows it's OK, but on Mac TableViewer#setInput is called before the editing completes
+        fTableViewer.applyEditorValue();
+        
         for(Object o : ((IStructuredSelection)fTableViewer.getSelection()).toList()) {
-            fKeysTable.entrySet().remove(o);
+            fKeysMap.remove(o);
         }
-        fTableViewer.refresh();
+        
+        fTableViewer.setInput(fKeysMap);
+        fTableViewer.setSelection(StructuredSelection.EMPTY);
         getButton(IDialogConstants.OK_ID).setEnabled(true);
     }
 
@@ -304,14 +350,14 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
     private void getAllUniquePropertyKeysForModel() {
         for(Iterator<EObject> iter = fArchimateModel.eAllContents(); iter.hasNext();) {
             EObject element = iter.next();
-            if(element instanceof IProperty) {
-                String key = ((IProperty)element).getKey();
+            if(element instanceof IProperty p) {
+                String key = p.getKey();
                 if(key != null) {
-                    if(fKeysTable.containsKey(key)) {
-                        fKeysTable.get(key).usedTimes++;
+                    if(fKeysMap.containsKey(key)) {
+                        fKeysMap.get(key).usedTimes++;
                     }
                     else {
-                        fKeysTable.put(key, new KeyEntry(key));
+                        fKeysMap.put(key, new KeyEntry(key));
                     }
                 }
             }
@@ -322,10 +368,11 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
     protected void okPressed() {
         super.okPressed();
 
-        CompoundCommand compoundCmd = new CompoundCommand(Messages.UserPropertiesManagerDialog_11) {
+        CompoundCommand compoundCmd = new NonNotifyingCompoundCommand(Messages.UserPropertiesManagerDialog_11) {
             @Override
             public void execute() {
                 BusyIndicator.showWhile(null, new Runnable() {
+                    @Override
                     public void run() {
                         doSuperExecute();
                     }
@@ -335,6 +382,7 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
             @Override
             public void undo() {
                 BusyIndicator.showWhile(null, new Runnable() {
+                    @Override
                     public void run() {
                         doSuperUndo();
                     }
@@ -344,6 +392,7 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
             @Override
             public void redo() {
                 BusyIndicator.showWhile(null, new Runnable() {
+                    @Override
                     public void run() {
                         doSuperRedo();
                     }
@@ -376,10 +425,9 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
     private void checkDeletions(CompoundCommand compoundCmd) {
         for(Iterator<EObject> iter = fArchimateModel.eAllContents(); iter.hasNext();) {
             EObject element = iter.next();
-            if(element instanceof IProperty) {
-                IProperty property = (IProperty)element;
+            if(element instanceof IProperty property) {
                 String key = property.getKey();
-                if(key != null && !fKeysTable.containsKey(key)) {
+                if(key != null && !fKeysMap.containsKey(key)) {
                     Command cmd = new DeletePropertyKeyCommand(((IProperties)property.eContainer()).getProperties(), property);
                     compoundCmd.add(cmd);
                 }
@@ -391,7 +439,7 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
      * Check for renames
      */
     private void checkRenames(CompoundCommand compoundCmd) {
-        for(Entry<String, KeyEntry> entry : fKeysTable.entrySet()) {
+        for(Entry<String, KeyEntry> entry : fKeysMap.entrySet()) {
             String oldName = entry.getKey();
             String newName = entry.getValue().newName;
             if(!oldName.equals(newName)) {
@@ -406,10 +454,10 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
     private void addKeyNameChangeCommands(CompoundCommand compoundCmd, String oldName, String newName) {
         for(Iterator<EObject> iter = fArchimateModel.eAllContents(); iter.hasNext();) {
             EObject element = iter.next();
-            if(element instanceof IProperty) {
-                String key = ((IProperty)element).getKey();
+            if(element instanceof IProperty property) {
+                String key = property.getKey();
                 if(key != null && key.equals(oldName)) {
-                    Command cmd = new RenamePropertyKeyCommand((IProperty)element, oldName, newName);
+                    Command cmd = new RenamePropertyKeyCommand(property, oldName, newName);
                     compoundCmd.add(cmd);
                 }
             }
@@ -424,25 +472,25 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
     /**
      * Label Provider
      */
-    private static class LabelCellProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider {
+    private class LabelCellProvider extends LabelProvider implements ITableLabelProvider, ITableColorProvider {
+        @Override
         public Image getColumnImage(Object element, int columnIndex) {
             return null;
         }
 
         @Override
         public String getColumnText(Object element, int columnIndex) {
-            @SuppressWarnings("unchecked")
-            Entry<String, KeyEntry> entry = (Entry<String, KeyEntry>)element;
+            String key = (String)element;
 
             switch(columnIndex) {
                 case 0:
-                    return entry.getKey();
+                    return key;
 
                 case 1:
-                    return entry.getValue().newName;
+                    return fKeysMap.get(key).newName;
 
                 case 2:
-                    return "" + entry.getValue().usedTimes; //$NON-NLS-1$
+                    return "" + fKeysMap.get(key).usedTimes; //$NON-NLS-1$
 
                 default:
                     return null;
@@ -451,14 +499,14 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
 
         @Override
         public Color getForeground(Object element, int columnIndex) {
-            @SuppressWarnings("unchecked")
-            Entry<String, KeyEntry> entry = (Entry<String, KeyEntry>)element;
-
             if(columnIndex == 1) {
-                if(!entry.getKey().equals(entry.getValue().newName)) {
+                String key = (String)element;
+                KeyEntry entry = fKeysMap.get(key);
+                if(!key.equals(entry.newName)) {
                     return ColorConstants.red;
                 }
             }
+
             return null;
         }
 
@@ -477,6 +525,10 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
         public KeyEditingSupport(ColumnViewer viewer) {
             super(viewer);
             cellEditor = new TextCellEditor((Composite)viewer.getControl());
+            
+            // Filter out illegal characters
+            UIUtils.applyNewlineFilter(cellEditor.getControl());
+            UIUtils.applyInvalidCharacterFilter(cellEditor.getControl());
         }
 
         @Override
@@ -491,18 +543,19 @@ public class UserPropertiesManagerDialog extends ExtendedTitleAreaDialog {
 
         @Override
         protected Object getValue(Object element) {
-            @SuppressWarnings("unchecked")
-            Entry<String, KeyEntry> entry = (Entry<String, KeyEntry>)element;
-            return entry.getValue().newName;
+            String key = (String)element;
+            return fKeysMap.get(key).newName;
         }
 
         @Override
         protected void setValue(Object element, Object value) {
-            @SuppressWarnings("unchecked")
-            Entry<String, KeyEntry> entry = (Entry<String, KeyEntry>)element;
-            if(!value.equals(entry.getValue().newName)) {
-                entry.getValue().newName = (String)value;
-                fTableViewer.update(entry, null);
+            String key = (String)element;
+            KeyEntry entry = fKeysMap.get(key);
+            String newValue = (String)value;
+            
+            if(entry != null && !Objects.equals(newValue, entry.newName)) {
+                entry.newName = newValue;
+                fTableViewer.update(key, null);
                 getButton(IDialogConstants.OK_ID).setEnabled(true);
             }
         }

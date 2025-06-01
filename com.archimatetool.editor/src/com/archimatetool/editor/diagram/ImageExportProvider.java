@@ -8,7 +8,6 @@ package com.archimatetool.editor.diagram;
 import java.io.File;
 
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.jface.preference.IPreferenceStore;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
@@ -19,8 +18,9 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Spinner;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.util.DiagramUtils;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ui.ImageFactory;
 
 
 
@@ -41,13 +41,17 @@ public class ImageExportProvider implements IImageExportProvider {
     
     protected Spinner fScaleSpinner;
     
+    private static final int SCALE_MIN = 25;
+    private static final int SCALE_MAX = 400;
+    
+    
     @Override
     public void export(String providerID, File file) throws Exception {
         Image image = null;
         
         try {
             image = DiagramUtils.createImage(fFigure, (double)fScaleSpinner.getSelection() / 100, 10);
-            ImageData imageData = image.getImageData();
+            ImageData imageData = image.getImageData(ImageFactory.getImageDeviceZoom());
             
             ImageLoader loader = new ImageLoader();
             loader.data = new ImageData[] { imageData };
@@ -85,11 +89,8 @@ public class ImageExportProvider implements IImageExportProvider {
         Label label = new Label(container, SWT.NONE);
         label.setText(Messages.ImageExportProvider_0);
         fScaleSpinner = new Spinner(container, SWT.BORDER);
-        GridData gd = new GridData();
-        gd.widthHint = 50;
-        fScaleSpinner.setLayoutData(gd);
-        fScaleSpinner.setMinimum(25);
-        fScaleSpinner.setMaximum(500);
+        fScaleSpinner.setMinimum(SCALE_MIN);
+        fScaleSpinner.setMaximum(SCALE_MAX);
         
         loadPreferences();
     }
@@ -98,21 +99,20 @@ public class ImageExportProvider implements IImageExportProvider {
      * Load any user prefs
      */
     protected void loadPreferences() {
-        IPreferenceStore store = Preferences.STORE;
-        
         // Value of scale
-        int scale = store.getInt(PREFS_IMAGE_SCALE);
-        fScaleSpinner.setSelection(scale == 0 ? 100 : scale);
+        int scale = ArchiPlugin.getInstance().getPreferenceStore().getInt(PREFS_IMAGE_SCALE);
+        if(scale < SCALE_MIN || scale > SCALE_MAX) {
+            scale = 100;
+        }
+        fScaleSpinner.setSelection(scale);
     }
     
     /**
      * Save any user prefs
      */
     protected void savePreferences() {
-        IPreferenceStore store = Preferences.STORE;
-        
         // Value of scale
         int scale = fScaleSpinner.getSelection();
-        store.setValue(PREFS_IMAGE_SCALE, scale);
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(PREFS_IMAGE_SCALE, scale);
     }
 }

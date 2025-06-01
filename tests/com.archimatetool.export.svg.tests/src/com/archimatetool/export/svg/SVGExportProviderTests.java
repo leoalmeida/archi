@@ -5,68 +5,61 @@
  */
 package com.archimatetool.export.svg;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.mock;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import junit.framework.JUnit4TestAdapter;
-
-import org.apache.batik.svggen.SVGGeneratorContext;
 import org.eclipse.draw2d.Figure;
-import org.eclipse.draw2d.FreeformLayer;
+import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.jface.preference.IPreferenceStore;
-import org.eclipse.swt.widgets.Shell;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
-import org.w3c.dom.Document;
+import org.eclipse.swt.graphics.Image;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-import com.archimatetool.editor.diagram.IImageExportProvider.IExportDialogAdapter;
+import com.archimatetool.editor.ui.IArchiImages;
 import com.archimatetool.tests.TestUtils;
 
 
 @SuppressWarnings("nls")
-public class SVGExportProviderTests {
+public class SVGExportProviderTests extends AbstractExportProviderTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(SVGExportProviderTests.class);
-    }
+    private SVGExportProvider svgProvider;
     
-    private SVGExportProvider provider;
-    private Shell shell;
-    
-    private IFigure rootFigure;
-    
-    @Before
+    @Override
+    @BeforeEach
     public void runOnceBeforeEachTest() {
-        provider = new SVGExportProvider();
-        shell = new Shell();
+        svgProvider = new SVGExportProvider();
+        provider = svgProvider;
         
         // Set prefs to defaults
-        IPreferenceStore store = ExportSVGPlugin.getDefault().getPreferenceStore();
-        store.setToDefault(IPreferenceConstants.SVG_EXPORT_PREFS_EMBED_FONTS);
+        IPreferenceStore store = ExportSVGPlugin.getInstance().getPreferenceStore();
         store.setToDefault(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX_ENABLED);
         store.setToDefault(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX);
         
-        rootFigure = new FreeformLayer();
-        rootFigure.setBounds(new Rectangle(0, 0, 500, 500));
+        super.runOnceBeforeEachTest();
     }
     
-    @After
-    public void runOnceAfterEachTest() {
-        shell.dispose();
-    }
-
     @Test
     public void testExport() throws Exception {
         File tmp = TestUtils.createTempFile(null);
-        provider.init(mock(IExportDialogAdapter.class), shell, rootFigure);
+        
+        // Add a child figure with an image to test image handling
+        IFigure childFigure = new Figure() {
+            @Override
+            public void paintFigure(Graphics graphics) {
+                super.paintFigure(graphics);
+                Image image = IArchiImages.ImageFactory.getImage(IArchiImages.ICON_LANDSCAPE);
+                graphics.drawImage(image, bounds.x, bounds.y);
+            }
+        };
+        childFigure.setBounds(new Rectangle(0, 0, 50, 50));
+        rootFigure.add(childFigure);
+        
+        provider.init(null, shell, rootFigure);
         provider.export(SVGExportProvider.SVG_IMAGE_EXPORT_PROVIDER, tmp);
         assertTrue(tmp.exists());
         assertTrue(tmp.length() > 100);
@@ -74,105 +67,59 @@ public class SVGExportProviderTests {
     }
 
     @Test
-    public void testGetViewportBounds() {
-        provider.init(mock(IExportDialogAdapter.class), shell, rootFigure);
-
-        // Default blank size
-        assertEquals(new Rectangle(0, 0, 100, 100), provider.getViewportBounds());
-        
-        // Add a child figure
-        IFigure childFigure = new Figure();
-        rootFigure.add(childFigure);
-
-        // Bounds is expanded by 10 pixesls each side
-        childFigure.setBounds(new Rectangle(0, 0, 100, 50));
-        assertEquals(new Rectangle(-10, -10, 120, 70), provider.getViewportBounds());
-        
-        // Bounds is small figure and expanded by 10 pixesls each side
-        childFigure.setBounds(new Rectangle(200, 200, 128, 52));
-        assertEquals(new Rectangle(190, 190, 148, 72), provider.getViewportBounds());
-    }
-
-    @Test
-    public void testCreateDocument() {
-        Document document = provider.createDocument();
-        assertNotNull(document);
-        assertNotNull(document.getDocumentElement());
-    }
-    
-    @Test
-    public void testCreateContext() {
-        provider.init(mock(IExportDialogAdapter.class), shell, rootFigure);
-        SVGGeneratorContext ctx = provider.createContext(mock(Document.class));
-        assertNotNull(ctx);
-        assertTrue(ctx.isEmbeddedFontsOn());
-        assertTrue(ctx.getComment().startsWith("Generated by Archi"));
-    }
-    
-    @Test
-    public void testSetViewBoxAttribute() {
-        Document document = provider.createDocument();
-        provider.setViewBoxAttribute(document.getDocumentElement(), 12, 13, 14, 15);
-        assertEquals("12 13 14 15", document.getDocumentElement().getAttribute("viewBox"));
-    }
-    
-    @Test
     public void testInit() {
         // Add a child figure
         IFigure childFigure = new Figure();
         childFigure.setBounds(new Rectangle(0, 0, 200, 100));
         rootFigure.add(childFigure);
         
-        provider.init(mock(IExportDialogAdapter.class), shell, rootFigure);
+        provider.init(null, shell, rootFigure);
         assertTrue(shell.getChildren().length > 0);
         
         // Check that two spinners are set to the image width and height
-        Rectangle rect = provider.getViewportBounds();
-        assertEquals(rect.width, provider.fSpinner3.getSelection());
-        assertEquals(rect.height, provider.fSpinner4.getSelection());
+        Rectangle rect = provider.getViewportBounds(rootFigure);
+        assertEquals(rect.width, svgProvider.fSpinner3.getSelection());
+        assertEquals(rect.height, svgProvider.fSpinner4.getSelection());
     }
 
     @Test
     public void testDefaultPreferences() {
-        IPreferenceStore store = ExportSVGPlugin.getDefault().getPreferenceStore();
-        assertTrue(store.getBoolean(IPreferenceConstants.SVG_EXPORT_PREFS_EMBED_FONTS));
+        IPreferenceStore store = ExportSVGPlugin.getInstance().getPreferenceStore();
         assertTrue(store.getBoolean(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX_ENABLED));
         assertEquals("", store.getString(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX));
     }
 
     @Test
     public void testSavePreferences() {
-        provider.init(mock(IExportDialogAdapter.class), shell, rootFigure);
+        provider.init(null, shell, rootFigure);
 
-        provider.fEmbedFontsButton.setSelection(false);
-        provider.fSetViewboxButton.setSelection(false);
+        svgProvider.fSetViewboxButton.setSelection(false);
+        svgProvider.fTextAsShapesButton.setSelection(false);
 
-        provider.fSpinner1.setSelection(1);
-        provider.fSpinner2.setSelection(2);
+        svgProvider.fSpinner1.setSelection(1);
+        svgProvider.fSpinner2.setSelection(2);
         
-        provider.savePreferences();
+        svgProvider.savePreferences();
 
-        IPreferenceStore store = ExportSVGPlugin.getDefault().getPreferenceStore();
+        IPreferenceStore store = ExportSVGPlugin.getInstance().getPreferenceStore();
         
-        assertFalse(store.getBoolean(IPreferenceConstants.SVG_EXPORT_PREFS_EMBED_FONTS));
         assertFalse(store.getBoolean(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX_ENABLED));
+        assertFalse(store.getBoolean(IPreferenceConstants.SVG_EXPORT_PREFS_TEXT_AS_SHAPES));
         assertEquals("1 2", store.getString(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX));
     }
     
     @Test
     public void testPreferencesWereLoaded() {
-        IPreferenceStore store = ExportSVGPlugin.getDefault().getPreferenceStore();
+        IPreferenceStore store = ExportSVGPlugin.getInstance().getPreferenceStore();
 
-        store.setValue(IPreferenceConstants.SVG_EXPORT_PREFS_EMBED_FONTS, false);
         store.setValue(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX_ENABLED, false);
         store.setValue(IPreferenceConstants.SVG_EXPORT_PREFS_VIEWBOX, "5 6");
         
-        provider.init(mock(IExportDialogAdapter.class), shell, rootFigure);
+        provider.init(null, shell, rootFigure);
         
-        assertFalse(provider.fEmbedFontsButton.getSelection());
-        assertFalse(provider.fSetViewboxButton.getSelection());
+        assertFalse(svgProvider.fSetViewboxButton.getSelection());
         
-        assertEquals(5, provider.fSpinner1.getSelection());
-        assertEquals(6, provider.fSpinner2.getSelection());
+        assertEquals(5, svgProvider.fSpinner1.getSelection());
+        assertEquals(6, svgProvider.fSpinner2.getSelection());
     }
 }

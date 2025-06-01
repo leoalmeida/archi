@@ -5,29 +5,26 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateFactory;
-import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.model.IDiagramModelComponent;
-import com.archimatetool.model.IDiagramModelObject;
 
 
 @SuppressWarnings("nls")
 public abstract class DiagramModelComponentTests {
     
     protected IDiagramModelComponent component;
-    private IArchimateDiagramModel dm;
+    protected IArchimateDiagramModel dm;
     
-    @Before
+    @BeforeEach
     public void runBeforeEachDiagramModelComponentTest() {
         component = getComponent();
         dm = IArchimateFactory.eINSTANCE.createArchimateDiagramModel();
@@ -37,28 +34,14 @@ public abstract class DiagramModelComponentTests {
     
     @Test
     public void testGetID() {
-        assertNull(component.getId());
-        
-        IArchimateModel model = IArchimateFactory.eINSTANCE.createArchimateModel();
-        model.getDefaultFolderForElement(dm).getElements().add(dm);
-        dm.getChildren().add((IDiagramModelObject)component);
-        
-        assertNotNull(component.getId());
+        CommonTests.testGetID(component);
     }
-        
+    
     @Test
     public void testGetName() {
         CommonTests.testGetName(component);
     }
  
-    @Test
-    public void testGetDiagramModel() {
-        assertNull(component.getDiagramModel());
-        
-        dm.getChildren().add((IDiagramModelObject)component);
-        assertSame(dm, component.getDiagramModel());
-    }
-    
     @Test
     public void testGetAdapter() {
         CommonTests.testGetAdapter(component);
@@ -67,10 +50,16 @@ public abstract class DiagramModelComponentTests {
     @Test
     public void testGetCopy() {
         component.setName("name");
+        component.getFeatures().add(IArchimateFactory.eINSTANCE.createFeature());
+        
         IDiagramModelComponent copy = (IDiagramModelComponent)component.getCopy();
+        
         assertNotSame(component, copy);
-        assertNull(copy.getId());
+        assertNotNull(copy.getId());
+        assertNotEquals(component.getId(), copy.getId());
         assertEquals(component.getName(), copy.getName());
+        
+        assertNotSame(component.getFeatures(), copy.getFeatures());
+        assertEquals(component.getFeatures().size(), copy.getFeatures().size());
     }
-
 }

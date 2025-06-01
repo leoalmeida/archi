@@ -16,12 +16,10 @@ import com.archimatetool.model.IContract;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Contract</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class Contract extends ArchimateElement implements IContract {
+public class Contract extends BusinessObject implements IContract {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

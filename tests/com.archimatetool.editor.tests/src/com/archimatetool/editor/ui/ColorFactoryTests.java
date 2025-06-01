@@ -5,17 +5,19 @@
  */
 package com.archimatetool.editor.ui;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.RGB;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
+import com.archimatetool.editor.ui.factory.ObjectUIFactory;
+import com.archimatetool.model.IArchimateElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IAssignmentRelationship;
 import com.archimatetool.model.IBusinessActor;
@@ -25,10 +27,6 @@ import com.archimatetool.model.IBusinessActor;
 @SuppressWarnings("nls")
 public class ColorFactoryTests {
 
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ColorFactoryTests.class);
-    }
-    
     @Test
     public void testGetInt_Int_Int() {
         Color color = ColorFactory.get(1, 2, 3);
@@ -66,24 +64,29 @@ public class ColorFactoryTests {
         Color color = ColorFactory.getUserDefaultFillColor(actor);
         assertNull(color);
         
-        Preferences.STORE.setValue(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX + actor.eClass().getName(), "#010203");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX + actor.eClass().getName(), "#010203");
         color = ColorFactory.getUserDefaultFillColor(actor);
         
         assertEquals(1, color.getRed());
         assertEquals(2, color.getGreen());
         assertEquals(3, color.getBlue());
+        
+        ArchiPlugin.getInstance().getPreferenceStore().setToDefault(IPreferenceConstants.DEFAULT_FILL_COLOR_PREFIX + actor.eClass().getName());
     }
 
     @Test
     public void testGetInbuiltDefaultFillColor() {
-        Color color = ColorFactory.getInbuiltDefaultFillColor(IArchimateFactory.eINSTANCE.createBusinessActor());
-        assertEquals(ColorFactory.COLOR_BUSINESS, color);
+        IArchimateElement element = IArchimateFactory.eINSTANCE.createBusinessActor();
+        Color color = ColorFactory.getInbuiltDefaultFillColor(element);
+        assertEquals(((IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(element)).getDefaultColor(), color);
         
-        color = ColorFactory.getInbuiltDefaultFillColor(IArchimateFactory.eINSTANCE.createApplicationComponent());
-        assertEquals(ColorFactory.COLOR_APPLICATION, color);
+        element = IArchimateFactory.eINSTANCE.createApplicationComponent();
+        color = ColorFactory.getInbuiltDefaultFillColor(element);
+        assertEquals(((IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(element)).getDefaultColor(), color);
         
-        color = ColorFactory.getInbuiltDefaultFillColor(IArchimateFactory.eINSTANCE.createNetwork());
-        assertEquals(ColorFactory.COLOR_TECHNOLOGY, color);
+        element = IArchimateFactory.eINSTANCE.createCommunicationNetwork();
+        color = ColorFactory.getInbuiltDefaultFillColor(element);
+        assertEquals(((IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(element)).getDefaultColor(), color);
     }
 
     @Test
@@ -92,12 +95,14 @@ public class ColorFactoryTests {
         Color color = ColorFactory.getUserDefaultLineColor(actor);
         assertNull(color);
         
-        Preferences.STORE.setValue(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR, "#020304");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR, "#020304");
         color = ColorFactory.getUserDefaultLineColor(actor);
         
         assertEquals(2, color.getRed());
         assertEquals(3, color.getGreen());
         assertEquals(4, color.getBlue());
+        
+        ArchiPlugin.getInstance().getPreferenceStore().setToDefault(IPreferenceConstants.DEFAULT_ELEMENT_LINE_COLOR);
     }
 
     @Test
@@ -106,12 +111,14 @@ public class ColorFactoryTests {
         Color color = ColorFactory.getUserDefaultLineColor(relation);
         assertNull(color);
         
-        Preferences.STORE.setValue(IPreferenceConstants.DEFAULT_CONNECTION_LINE_COLOR, "#010203");
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.DEFAULT_CONNECTION_LINE_COLOR, "#010203");
         color = ColorFactory.getUserDefaultLineColor(relation);
         
         assertEquals(1, color.getRed());
         assertEquals(2, color.getGreen());
         assertEquals(3, color.getBlue());
+        
+        ArchiPlugin.getInstance().getPreferenceStore().setToDefault(IPreferenceConstants.DEFAULT_CONNECTION_LINE_COLOR);
     }
 
     @Test

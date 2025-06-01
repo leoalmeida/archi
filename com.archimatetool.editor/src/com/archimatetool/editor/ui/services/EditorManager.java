@@ -37,19 +37,21 @@ import com.archimatetool.model.ISketchModel;
 public class EditorManager {
     
     /**
-     * Open an Editor
+     * Open an Editor and activate if required
      * 
      * @param input
      * @param editorID
+     * @param activate
+     * @return
      */
-    public static IEditorPart openEditor(IEditorInput input, String editorID) {
+    public static IEditorPart openEditor(IEditorInput input, String editorID, boolean activate) {
         if(!PlatformUI.isWorkbenchRunning()) {
             return null;
         }
         
         IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
         try {
-            return page.openEditor(input, editorID);
+            return page.openEditor(input, editorID, activate);
         }
         catch(PartInitException ex) {
             Logger.logError("Could not open Editor " + editorID); //$NON-NLS-1$
@@ -57,12 +59,31 @@ public class EditorManager {
             return null;
         }
     }
+    
+    /**
+     * Open an Editor and activate will be true
+     * @param input
+     * @param editorID
+     * @return
+     */
+    public static IEditorPart openEditor(IEditorInput input, String editorID) {
+        return openEditor(input, editorID, true);
+    }
 
+    /**
+     * Open the Diagram Editor for a given DiagramModel Model
+     * Activate is true
+     * @param name
+     */
+    public static IDiagramModelEditor openDiagramEditor(IDiagramModel model) {
+        return openDiagramEditor(model, true);
+    }   
+    
     /**
      * Open the Diagram Editor for a given DiagramModel Model
      * @param name
      */
-    public static IDiagramModelEditor openDiagramEditor(IDiagramModel model) {
+    public static IDiagramModelEditor openDiagramEditor(IDiagramModel model, boolean activate) {
         if(model == null || model.eContainer() == null || !PlatformUI.isWorkbenchRunning()) {
             return null;
         }
@@ -90,7 +111,7 @@ public class EditorManager {
             throw new RuntimeException("Unsupported model type"); //$NON-NLS-1$
         }
         
-        IEditorPart part = openEditor(editorInput, id);
+        IEditorPart part = openEditor(editorInput, id, activate);
         
         // Check it actually is IDiagramModelEditor, it could be an org.eclipse.ui.internal.ErrorEditorPart if an error occurs
         return part instanceof IDiagramModelEditor ? (IDiagramModelEditor)part : null;
@@ -106,17 +127,7 @@ public class EditorManager {
         }
         
         IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-        for(IEditorReference ref : page.getEditorReferences()) {
-            try {
-                IEditorInput input = ref.getEditorInput();
-                if(input instanceof DiagramEditorInput && ((DiagramEditorInput)input).getDiagramModel() == diagramModel) {
-                    page.closeEditors(new IEditorReference[] {ref}, false);
-                }
-            }
-            catch(PartInitException ex) {
-                ex.printStackTrace();
-            }
-        }
+        page.closeEditors(getDiagramEditorReferences(diagramModel), false);
     }
     
     /**
@@ -147,5 +158,52 @@ public class EditorManager {
             IEditorReference[] refs = list.toArray(new IEditorReference[list.size()]);
             page.closeEditors(refs, false);
         }
+    }
+    
+    /**
+     * Activate all Diagram Editor Parts for a model in order to update their memento save state
+     * Called by "Save As" so that inactive editor parts are not left with old file references when re-opening them.
+     */
+    public static void activateDiagramEditors(IArchimateModel model) {
+        if(model == null || !PlatformUI.isWorkbenchRunning()) {
+            return;
+        }
+        
+        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        for(IEditorReference ref : page.getEditorReferences()) {
+            try {
+                if(ref.getEditorInput() instanceof DiagramEditorInput input && input.getDiagramModel().getArchimateModel() == model) {
+                    ref.getEditor(true);
+                }
+            }
+            catch(PartInitException ex) {
+                ex.printStackTrace();
+            }
+        }
+    }
+    
+    /**
+     * @param diagramModel
+     * @return All editor references that have diagramModel in their editor input
+     */
+    public static IEditorReference[] getDiagramEditorReferences(IDiagramModel diagramModel) {
+        List<IEditorReference> list = new ArrayList<IEditorReference>();
+        
+        if(diagramModel != null && PlatformUI.isWorkbenchRunning()) {
+            IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+            for(IEditorReference ref : page.getEditorReferences()) {
+                try {
+                    IEditorInput input = ref.getEditorInput();
+                    if(input instanceof DiagramEditorInput && ((DiagramEditorInput)input).getDiagramModel() == diagramModel) {
+                        list.add(ref);
+                    }
+                }
+                catch(PartInitException ex) {
+                    ex.printStackTrace();
+                }
+            }
+        }
+        
+        return list.toArray(new IEditorReference[list.size()]);
     }
 }

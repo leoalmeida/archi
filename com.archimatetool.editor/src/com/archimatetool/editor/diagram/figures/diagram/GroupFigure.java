@@ -6,22 +6,21 @@
 package com.archimatetool.editor.diagram.figures.diagram;
 
 import org.eclipse.draw2d.ChopboxAnchor;
-import org.eclipse.draw2d.ColorConstants;
+import org.eclipse.draw2d.ConnectionAnchor;
+import org.eclipse.draw2d.FigureUtilities;
 import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.draw2d.Locator;
 import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.Rectangle;
-import org.eclipse.draw2d.geometry.Translatable;
-import org.eclipse.swt.SWT;
+import org.eclipse.swt.graphics.Path;
+import org.eclipse.swt.graphics.Pattern;
 
-import com.archimatetool.editor.diagram.figures.AbstractLabelContainerFigure;
+import com.archimatetool.editor.diagram.figures.AbstractTextControlContainerFigure;
 import com.archimatetool.editor.diagram.figures.ToolTipFigure;
-import com.archimatetool.editor.diagram.util.AnimationUtil;
-import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
 import com.archimatetool.editor.ui.ColorFactory;
+import com.archimatetool.model.IDiagramModelGroup;
 import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.ITextPosition;
 
 
 /**
@@ -29,65 +28,145 @@ import com.archimatetool.model.IDiagramModelObject;
  * 
  * @author Phillip Beauvoir
  */
-public class GroupFigure
-extends AbstractLabelContainerFigure {
+public class GroupFigure extends AbstractTextControlContainerFigure {
     
-    public static final int TOPBAR_HEIGHT = 18;
-    protected static final int SHADOW_OFFSET = 2;
+    private static final int TOPBAR_HEIGHT = 18;
+    private static final float INSET = 2f;
     
-    /**
-     * Connection Anchor adjusts for Group shape
-     */
-    public static class GroupFigureConnectionAnchor extends ChopboxAnchor {
-        public GroupFigureConnectionAnchor(IFigure owner) {
-            super(owner);
-        }
-        
-        @Override
-        public Point getLocation(Point reference) {
-            Point pt = super.getLocation(reference);
-            
-            Rectangle r = getBox().getCopy();
-            getOwner().translateToAbsolute(r);
-            
-            int shiftY = TOPBAR_HEIGHT - (pt.y - r.y) - 1;
-            
-            if(pt.x > r.x + (r.width / 2) && shiftY > 0) {
-                pt.y += shiftY;
-            }
-            
-            return pt;
-        };
-    }
-
+    private int tabHeight;
+    private int tabWidth;
+    
     public GroupFigure(IDiagramModelObject diagramModelObject) {
-        super(diagramModelObject);
+        super(diagramModelObject, TEXT_FLOW_CONTROL);
     }
     
     @Override
-    protected void setUI() {
-        super.setUI();
-        
-        Locator locator = new Locator() {
-            public void relocate(IFigure target) {
-                boolean drawShadows = Preferences.STORE.getBoolean(IPreferenceConstants.SHOW_SHADOWS);
-                int shadow_offset = drawShadows ? SHADOW_OFFSET : 0;
-                
-                Rectangle bounds = getBounds().getCopy();
-                bounds.x = 0;
-                bounds.y = TOPBAR_HEIGHT;
-                bounds.width -= shadow_offset;
-                bounds.height -= TOPBAR_HEIGHT + shadow_offset;
-                target.setBounds(bounds);
-            }
-        };
-        
-        add(getMainFigure(), locator);
-        
-        // Have to add this if we want Animation to work on figures!
-        AnimationUtil.addFigureForAnimation(getMainFigure());
+    public IDiagramModelGroup getDiagramModelObject() {
+        return (IDiagramModelGroup)super.getDiagramModelObject();
     }
     
+    @Override
+    protected void drawFigure(Graphics graphics) {
+        graphics.pushState();
+        
+        Rectangle bounds = getBounds().getCopy();
+        
+        bounds.width--;
+        bounds.height--;
+        
+        boolean drawOutline = getLineStyle() != IDiagramModelObject.LINE_STYLE_NONE;
+        
+        if(drawOutline) {
+            // Set line width here so that the whole figure is constrained, otherwise SVG graphics will have overspill
+            setLineWidth(graphics, bounds);
+            setLineStyle(graphics);
+        }
+        
+        graphics.setAlpha(getAlpha());
+        
+        if(getDiagramModelObject().getBorderType() == IDiagramModelGroup.BORDER_TABBED) {
+            tabWidth = (int)(bounds.width / INSET);
+            tabHeight = TOPBAR_HEIGHT;
+            
+            if(getDiagramModelObject().getTextPosition() == ITextPosition.TEXT_POSITION_TOP) {
+                int textWidth = FigureUtilities.getTextExtents(getText(), getFont()).width;
+                tabWidth = Math.min(Math.max(tabWidth, textWidth + 8), bounds.width);
+
+                // Tab height is calculated from font height
+                int textHeight = FigureUtilities.getFontMetrics(getFont()).getHeight();
+                
+                // Tab height is calculated from the text control height which includes all text
+                // int textHeight = getTextControl().getBounds().height;
+
+                tabHeight = Math.max(TOPBAR_HEIGHT, textHeight);
+            }
+            
+            // Top Rectangle
+            graphics.setBackgroundColor(ColorFactory.getDarkerColor(getFillColor()));
+            
+            Path path1 = new Path(null);
+            path1.moveTo(bounds.x, bounds.y);
+            path1.lineTo(bounds.x + tabWidth, bounds.y);
+            path1.lineTo(bounds.x + tabWidth, bounds.y + tabHeight);
+            path1.lineTo(bounds.x, bounds.y + tabHeight);
+            path1.lineTo(bounds.x, bounds.y);
+            graphics.fillPath(path1);
+            path1.dispose();
+            
+            // Main rectangle
+            graphics.setBackgroundColor(getFillColor());
+            Pattern gradient = applyGradientPattern(graphics, bounds);
+            
+            Path path2 = new Path(null);
+            path2.moveTo(bounds.x, bounds.y + tabHeight);
+            path2.lineTo(bounds.x + bounds.width, bounds.y + tabHeight);
+            path2.lineTo(bounds.x + bounds.width, bounds.y + bounds.height);
+            path2.lineTo(bounds.x, bounds.y + bounds.height);
+            graphics.fillPath(path2);
+            path2.dispose();
+            
+            disposeGradientPattern(graphics, gradient);
+            
+            // Icon
+            if(getIconicDelegate() != null) {
+                getIconicDelegate().setTopOffset(tabHeight);
+                drawIconImage(graphics, bounds);
+            }
+
+            // Line
+            if(drawOutline) {
+                graphics.setForegroundColor(getLineColor());
+                graphics.setAlpha(getLineAlpha());
+                
+                Path path = new Path(null);
+                path.moveTo(bounds.x, bounds.y + tabHeight);
+                path.lineTo(bounds.x, bounds.y);
+                path.lineTo(bounds.x + tabWidth, bounds.y);
+                path.lineTo(bounds.x + tabWidth, bounds.y + tabHeight);
+                graphics.drawPath(path);
+                path.dispose();
+                
+                graphics.drawRectangle(bounds.x, bounds.y + tabHeight, bounds.width, bounds.height - tabHeight);
+            }
+        }
+        else {
+            graphics.setBackgroundColor(getFillColor());
+            Pattern gradient = applyGradientPattern(graphics, bounds);
+            
+            graphics.fillRectangle(bounds);
+            
+            disposeGradientPattern(graphics, gradient);
+            
+            // Icon
+            if(getIconicDelegate() != null) {
+                getIconicDelegate().setTopOffset(0);
+                drawIconImage(graphics, bounds);
+            }
+
+            // Line
+            if(drawOutline) {
+                graphics.setForegroundColor(getLineColor());
+                graphics.setAlpha(getLineAlpha());
+                graphics.drawRectangle(bounds);
+            }
+        }
+
+        graphics.popState();
+    }
+    
+    @Override
+    protected Rectangle calculateTextControlBounds() {
+        Rectangle bounds = getBounds().getCopy();
+        
+        int textPosition = getDiagramModelObject().getTextPosition();
+        if(textPosition == ITextPosition.TEXT_POSITION_TOP) {
+            bounds.y += 5 - getTextControlMarginHeight();
+            bounds.y -= Math.max(3, FigureUtilities.getFontMetrics(getFont()).getLeading());
+        }
+        
+        return bounds;
+    }
+
     @Override
     public IFigure getToolTip() {
         ToolTipFigure tooltip = (ToolTipFigure)super.getToolTip();
@@ -96,92 +175,43 @@ extends AbstractLabelContainerFigure {
             return null;
         }
         
-        tooltip.setType(Messages.GroupFigure_0);
+        tooltip.setText(Messages.GroupFigure_0);
         
         return tooltip;
     }
     
-    @Override
-    public void translateMousePointToRelative(Translatable t) {
-        getContentPane().translateToRelative(t);
-        // compensate for content pane offset
-        t.performTranslate(-getContentPane().getBounds().x, -getContentPane().getBounds().y); 
-    }
-
-    @Override
-    protected Rectangle calculateTextControlBounds() {
-        Rectangle bounds = getBounds().getCopy();
-        
-        // This first
-        bounds.x += 5;
-        bounds.y += 2;
-
-        bounds.width = getLabel().getPreferredSize().width;
-        bounds.height = getLabel().getPreferredSize().height;
-        
-        return bounds;
-    }
-
-    @Override
-    protected void drawFigure(Graphics graphics) {
-        Rectangle bounds = getBounds().getCopy();
-        
-        graphics.setAntialias(SWT.ON);
-        
-        boolean drawShadows = Preferences.STORE.getBoolean(IPreferenceConstants.SHOW_SHADOWS);
-        int shadow_offset = drawShadows ? SHADOW_OFFSET : 0;
-        
-        // Shadow fill
-        if(drawShadows) {
-            int[] points1 = new int[] {
-                    bounds.x + shadow_offset, bounds.y + shadow_offset,
-                    bounds.x + shadow_offset + (bounds.width / 2), bounds.y + shadow_offset,
-                    bounds.x + shadow_offset + (bounds.width / 2), bounds.y + shadow_offset + TOPBAR_HEIGHT,
-                    bounds.x + bounds.width, bounds.y + shadow_offset + TOPBAR_HEIGHT,
-                    bounds.x + bounds.width, bounds.y + bounds.height,
-                    bounds.x + shadow_offset, bounds.y + bounds.height
-            };
-            graphics.setAlpha(100);
-            graphics.setBackgroundColor(ColorConstants.black);
-            graphics.fillPolygon(points1);
-            graphics.setAlpha(255);    
+    /**
+     * Connection Anchor adjusts for Group shape
+     */
+    private class GroupFigureConnectionAnchor extends ChopboxAnchor {
+        public GroupFigureConnectionAnchor(IFigure owner) {
+            super(owner);
         }
         
-        // Fill
-        int[] points2 = new int[] {
-                bounds.x, bounds.y,
-                bounds.x + (bounds.width / 2) - 1, bounds.y,
-                bounds.x + (bounds.width / 2) - 1, bounds.y + TOPBAR_HEIGHT,
-                bounds.x, bounds.y + TOPBAR_HEIGHT,
-        };
+        @Override
+        public Point getLocation(Point reference) {
+            Point pt = super.getLocation(reference);
+            
+            if(getDiagramModelObject().getBorderType() == IDiagramModelGroup.BORDER_RECTANGLE) {
+                return pt;
+            }
 
-        graphics.setBackgroundColor(ColorFactory.getDarkerColor(getFillColor()));
-        graphics.fillPolygon(points2);
-       
-        int[] points3 = new int[] {
-                bounds.x, bounds.y + TOPBAR_HEIGHT,
-                bounds.x + bounds.width - shadow_offset - 1, bounds.y + TOPBAR_HEIGHT,
-                bounds.x + bounds.width - shadow_offset - 1, bounds.y + bounds.height - shadow_offset - 1,
-                bounds.x, bounds.y + bounds.height - shadow_offset - 1
+            Rectangle r = getBox().getCopy();
+            getOwner().translateToAbsolute(r);
+            
+            int shiftY = tabHeight - (pt.y - r.y) - 1;
+            
+            if(pt.x > r.x + (r.width / INSET) && shiftY > 0) {
+                pt.y += shiftY;
+            }
+            
+            return pt;
         };
-        graphics.setBackgroundColor(getFillColor());
-        graphics.fillPolygon(points3);
-        
-        // Line
-        graphics.setForegroundColor(getLineColor());
-        graphics.drawPolygon(points2);
-        graphics.drawPolygon(points3);
     }
-    
+
     @Override
-    protected void drawTargetFeedback(Graphics graphics) {
-        Rectangle bounds = getMainFigure().getBounds().getCopy();
-        graphics.pushState();
-        graphics.setForegroundColor(ColorConstants.blue);
-        graphics.setLineWidth(2);
-        bounds.shrink(1, 1);
-        translateToParent(bounds);
-        graphics.drawRectangle(bounds);
-        graphics.popState();
+    public ConnectionAnchor getDefaultConnectionAnchor() {
+        return new GroupFigureConnectionAnchor(this);
     }
+
 }

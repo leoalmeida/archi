@@ -5,41 +5,58 @@
  */
 package com.archimatetool.editor.ui.factory;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.stream.Stream;
 
 import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.gef.EditPart;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.params.provider.Arguments;
 
+import com.archimatetool.editor.ParamsTest;
 import com.archimatetool.editor.diagram.sketch.editparts.StickyEditPart;
 import com.archimatetool.editor.ui.factory.sketch.SketchStickyUIProvider;
+import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.ISketchModelSticky;
+import com.archimatetool.model.ITextAlignment;
 
-public class SketchStickyUIProviderTests extends AbstractElementUIProviderTests {
+public class SketchStickyUIProviderTests extends AbstractGraphicalObjectUIProviderTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(SketchStickyUIProviderTests.class);
+    static Stream<Arguments> getParams() {
+        return Stream.of(
+                getParam(new SketchStickyUIProvider(), IArchimatePackage.eINSTANCE.getSketchModelSticky())
+        );
     }
-    
-    @Before
-    public void runOnceBeforeAllTests() {
-        provider = new SketchStickyUIProvider();
-        expectedClass = IArchimatePackage.eINSTANCE.getSketchModelSticky();
-    }
-    
+
     @Override
-    public void testCreateEditPart() {
+    @ParamsTest
+    public void testCreateEditPart(IObjectUIProvider provider) {
         EditPart editPart = provider.createEditPart();
         assertTrue(editPart instanceof StickyEditPart);
     }
     
     @Override
-    @Test
-    public void testGetDefaultSize() {
+    @ParamsTest
+    public void testGetDefaultSize(IGraphicalObjectUIProvider provider) {
         assertEquals(new Dimension(135, 70), provider.getDefaultSize());
     }
 
+    @Override
+    @ParamsTest
+    public void testGetDefaultTextAlignment(IGraphicalObjectUIProvider provider) {
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_LEFT, provider.getDefaultTextAlignment());
+    }
+    
+    @Override
+    @ParamsTest
+    public void testGetFeatureValue(IObjectUIProvider provider) {
+        super.testGetFeatureValue(provider);
+        ISketchModelSticky sticky = IArchimateFactory.eINSTANCE.createSketchModelSticky();
+        ((AbstractObjectUIProvider)provider).setInstance(sticky);
+        
+        assertEquals(IDiagramModelObject.LINE_STYLE_SOLID, provider.getFeatureValue(IDiagramModelObject.FEATURE_LINE_STYLE));
+    }
 }

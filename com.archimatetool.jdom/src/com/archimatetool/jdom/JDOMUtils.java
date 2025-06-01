@@ -91,6 +91,8 @@ public final class JDOMUtils {
 	public static Document readXMLFile(File xmlFile, File... schemaFiles) throws IOException, JDOMException {
 		XMLReaderJDOMFactory factory = new XMLReaderXSDFactory(schemaFiles);
 		SAXBuilder builder = new SAXBuilder(factory);
+        
+		setFeatures(builder);
 		
 		// This allows UNC mapped locations to load
 		return builder.build(new FileInputStream(xmlFile));
@@ -105,6 +107,9 @@ public final class JDOMUtils {
 	 */
 	public static Document readXMLFile(File file) throws IOException, JDOMException {
 		SAXBuilder builder = new SAXBuilder();
+		
+		setFeatures(builder);
+		
 		// This allows UNC mapped locations to load
 		return builder.build(new FileInputStream(file));
 	}
@@ -118,6 +123,16 @@ public final class JDOMUtils {
 	 */
 	public static Document readXMLString(String xmlString) throws JDOMException, IOException {
 	    SAXBuilder builder = new SAXBuilder();
+	    
+	    setFeatures(builder);
+        
 	    return builder.build(new StringReader(xmlString));
+	}
+	
+	private static void setFeatures(SAXBuilder builder) {
+        // Don't allow DTD loading in case of XSS exploits
+        builder.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true); //$NON-NLS-1$
+        builder.setFeature("http://xml.org/sax/features/external-general-entities", false); //$NON-NLS-1$
+        builder.setFeature("http://xml.org/sax/features/external-parameter-entities", false); //$NON-NLS-1$
 	}
 }

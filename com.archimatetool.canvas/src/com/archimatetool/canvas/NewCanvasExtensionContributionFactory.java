@@ -5,6 +5,7 @@
  */
 package com.archimatetool.canvas;
 
+import java.io.IOException;
 import java.util.List;
 
 import org.eclipse.core.expressions.EvaluationResult;
@@ -16,8 +17,11 @@ import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.ActionContributionItem;
 import org.eclipse.jface.action.IContributionItem;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.window.Window;
 import org.eclipse.jface.wizard.WizardDialog;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.menus.ExtensionContributionFactory;
 import org.eclipse.ui.menus.IContributionRoot;
@@ -50,11 +54,6 @@ public class NewCanvasExtensionContributionFactory extends ExtensionContribution
 
     @Override
     public void createContributionItems(IServiceLocator serviceLocator, IContributionRoot additions) {
-        boolean enabled = CanvasEditorPlugin.INSTANCE.getPreferenceStore().getBoolean(IPreferenceConstants.CANVAS_EDITOR_ENABLED);
-        if(!enabled) {
-            return;
-        }
-        
         // New Blank Canvas
         IContributionItem item = new ActionContributionItem(new NewCanvasAction());
         additions.addContributionItem(item, diagramFolderExpression);
@@ -114,12 +113,12 @@ public class NewCanvasExtensionContributionFactory extends ExtensionContribution
         
         @Override
         public ImageDescriptor getImageDescriptor() {
-            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_BLANK_16);
+            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_BLANK);
         }
     };
     
     /**
-     * Action to create Canvas based on Template
+     * Action to create new Canvas based on Template
      */
     private class NewCanvasFromTemplateAction extends Action {
         @Override
@@ -130,10 +129,26 @@ public class NewCanvasExtensionContributionFactory extends ExtensionContribution
         @Override
         public void run() {
             if(fCurrentFolder != null) {
+                NewCanvasFromTemplateWizard wizard = new NewCanvasFromTemplateWizard();
                 WizardDialog dialog = new ExtendedWizardDialog(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(),
-                                      new NewCanvasFromTemplateWizard(fCurrentFolder),
+                                      wizard,
                                       "NewCanvasFromTemplateWizard"); //$NON-NLS-1$
-                dialog.open();
+                
+                if(dialog.open() == Window.OK) {
+                    try {
+                        ICanvasModel canvasModel = wizard.getNewCanvasModel(fCurrentFolder.getArchimateModel());
+                        if(canvasModel != null) {
+                            Command cmd = new NewDiagramCommand(fCurrentFolder, canvasModel, Messages.NewCanvasExtensionContributionFactory_3);
+                            CommandStack commandStack = (CommandStack)fCurrentFolder.getAdapter(CommandStack.class);
+                            commandStack.execute(cmd);
+                        }
+                    }
+                    catch(IOException ex) {
+                        ex.printStackTrace();
+                        MessageDialog.openError(Display.getCurrent().getActiveShell(),
+                                Messages.NewCanvasExtensionContributionFactory_1, ex.getMessage());
+                    }
+                }
             }
             else {
                 System.err.println("Folder was null in " + getClass()); //$NON-NLS-1$
@@ -147,7 +162,7 @@ public class NewCanvasExtensionContributionFactory extends ExtensionContribution
         
         @Override
         public ImageDescriptor getImageDescriptor() {
-            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_MODEL_16);
+            return ICanvasImages.ImageFactory.getImageDescriptor(ICanvasImages.ICON_CANVAS_MODEL);
         }
     };
 
@@ -158,9 +173,17 @@ public class NewCanvasExtensionContributionFactory extends ExtensionContribution
         @Override
         public EvaluationResult evaluate(IEvaluationContext context) throws CoreException {
             fCurrentFolder = null;
+            
+            // Evaluate visibility here (otherwise we might see an empty "New" menu item if Canvas is not enabled)
+            if(!CanvasEditorPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.CANVAS_EDITOR_ENABLED)) {
+                return EvaluationResult.FALSE;
+            }
+            
             Object o = context.getDefaultVariable();
+            
             if(o instanceof List<?> && ((List<?>)o).size() > 0) {
                 o = ((List<?>)o).get(0);
+                
                 if(o instanceof IFolder && isDiagramFolder((IFolder)o)) {
                     fCurrentFolder = (IFolder)o;
                 }
@@ -168,6 +191,7 @@ public class NewCanvasExtensionContributionFactory extends ExtensionContribution
                     fCurrentFolder = (IFolder)((IDiagramModel)o).eContainer();
                 }
             }
+            
             return fCurrentFolder != null ? EvaluationResult.TRUE : EvaluationResult.FALSE;
         }
     };

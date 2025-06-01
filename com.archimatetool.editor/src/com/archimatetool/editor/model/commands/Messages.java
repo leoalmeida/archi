@@ -16,6 +16,14 @@ public class Messages extends NLS {
     public static String DeleteElementCommand_0;
 
     public static String DeleteFolderCommand_0;
+
+    public static String SetConceptTypeCommandFactory_0;
+
+    public static String SetConceptTypeCommandFactory_1;
+
+    public static String SetConceptTypeCommandFactory_2;
+
+    public static String SetProfileCommand_0;
     static {
         // initialize resource bundle
         NLS.initializeMessages(BUNDLE_NAME, Messages.class);

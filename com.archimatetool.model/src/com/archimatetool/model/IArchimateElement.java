@@ -5,6 +5,8 @@
  */
 package com.archimatetool.model;
 
+import java.util.List;
+
 
 /**
  * <!-- begin-user-doc -->
@@ -16,6 +18,11 @@ package com.archimatetool.model;
  * @model abstract="true"
  * @generated
  */
-public interface IArchimateElement extends IArchimateModelElement, IIdentifier, ICloneable, INameable, IDocumentable, IProperties {
+public interface IArchimateElement extends IArchimateConcept {
 
+    /**
+     * @return A list of diagram objects that reference this Archimate element
+     */
+    List<IDiagramModelArchimateObject> getReferencingDiagramObjects();
+    
 } // IArchimateElement

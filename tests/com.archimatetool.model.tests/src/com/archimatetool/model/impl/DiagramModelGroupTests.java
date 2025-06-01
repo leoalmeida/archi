@@ -5,38 +5,34 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelComponent;
 import com.archimatetool.model.IDiagramModelGroup;
-import com.archimatetool.model.IFontAttribute;
+import com.archimatetool.model.ITextAlignment;
 
 
 public class DiagramModelGroupTests extends DiagramModelObjectTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(DiagramModelGroupTests.class);
-    }
     
     private IDiagramModelGroup group;
     
     @Override
     protected IDiagramModelComponent getComponent() {
         group = IArchimateFactory.eINSTANCE.createDiagramModelGroup();
+        group.setTextAlignment(ITextAlignment.TEXT_ALIGNMENT_LEFT);
         return group;
     }
 
     @Override
     @Test
     public void testGetDefaultTextAlignment() {
-        assertEquals(IFontAttribute.TEXT_ALIGNMENT_LEFT, group.getDefaultTextAlignment());
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_LEFT, group.getTextAlignment());
     }
 
     @Override
@@ -73,5 +69,12 @@ public class DiagramModelGroupTests extends DiagramModelObjectTests {
     public void testGetProperties() {
         CommonTests.testProperties(group);
     }
-
+    
+    @Test
+    public void testGetBorderType() {
+        assertEquals(0, group.getBorderType());
+        group.setBorderType(1);
+        assertEquals(1, group.getBorderType());
+    }
+    
 }

@@ -7,18 +7,26 @@ package com.archimatetool.editor.views.tree;
 
 import java.beans.PropertyChangeEvent;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 import org.eclipse.emf.common.notify.Notification;
+import org.eclipse.emf.ecore.EObject;
 import org.eclipse.help.HelpSystem;
 import org.eclipse.help.IContext;
 import org.eclipse.jface.action.Action;
+import org.eclipse.jface.action.GroupMarker;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuListener;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.viewers.AbstractTreeViewer;
 import org.eclipse.jface.viewers.DoubleClickEvent;
 import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
@@ -26,10 +34,13 @@ import org.eclipse.jface.viewers.ISelectionProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.IActionBars;
 import org.eclipse.ui.IMemento;
@@ -39,42 +50,47 @@ import org.eclipse.ui.IWorkbenchWindow;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.actions.ActionFactory;
+import org.eclipse.ui.part.DrillDownAdapter;
 
-import com.archimatetool.editor.actions.ArchimateEditorActionFactory;
+import com.archimatetool.editor.ArchiPlugin;
+import com.archimatetool.editor.actions.ArchiActionFactory;
 import com.archimatetool.editor.actions.NewArchimateModelAction;
 import com.archimatetool.editor.actions.OpenModelAction;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.preferences.Preferences;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.ThemeUtils;
 import com.archimatetool.editor.ui.findreplace.IFindReplaceProvider;
 import com.archimatetool.editor.ui.services.EditorManager;
 import com.archimatetool.editor.ui.services.IUIRequestListener;
 import com.archimatetool.editor.ui.services.UIRequest;
 import com.archimatetool.editor.ui.services.UIRequestManager;
 import com.archimatetool.editor.ui.services.ViewManager;
+import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.editor.views.AbstractModelView;
 import com.archimatetool.editor.views.tree.actions.CloseModelAction;
+import com.archimatetool.editor.views.tree.actions.CutAction;
 import com.archimatetool.editor.views.tree.actions.DeleteAction;
 import com.archimatetool.editor.views.tree.actions.DuplicateAction;
 import com.archimatetool.editor.views.tree.actions.FindReplaceAction;
+import com.archimatetool.editor.views.tree.actions.GenerateViewAction;
 import com.archimatetool.editor.views.tree.actions.IViewerAction;
 import com.archimatetool.editor.views.tree.actions.LinkToEditorAction;
-import com.archimatetool.editor.views.tree.actions.NewFolderAction;
 import com.archimatetool.editor.views.tree.actions.OpenDiagramAction;
+import com.archimatetool.editor.views.tree.actions.PasteAction;
 import com.archimatetool.editor.views.tree.actions.PropertiesAction;
 import com.archimatetool.editor.views.tree.actions.RenameAction;
 import com.archimatetool.editor.views.tree.actions.SaveModelAction;
-import com.archimatetool.editor.views.tree.actions.TreeModelViewActionFactory;
 import com.archimatetool.editor.views.tree.commands.DuplicateCommandHandler;
-import com.archimatetool.editor.views.tree.search.SearchFilter;
 import com.archimatetool.editor.views.tree.search.SearchWidget;
-import com.archimatetool.model.IArchimateElement;
+import com.archimatetool.model.FolderType;
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModel;
 import com.archimatetool.model.IFolder;
+import com.archimatetool.model.IFolderContainer;
 
 
 
@@ -89,9 +105,7 @@ implements ITreeModelView, IUIRequestListener {
     
     private TreeModelViewer fTreeViewer;
     
-    private Composite fParentComposite;
     private SearchWidget fSearchWidget;
-    private SearchFilter fSearchFilter; // Keep track of Search Filter so we can restore expanded nodes state
     
     private IAction fActionToggleSearchField;
     
@@ -99,6 +113,8 @@ implements ITreeModelView, IUIRequestListener {
     private IAction fActionOpenModel;
     private IAction fActionLinkToEditor;
     private IAction fActionFindReplace;
+    private IAction fActionCollapseSelected;
+    private IAction fActionExpandSelected;
     
     private IViewerAction fActionProperties;
     private IViewerAction fActionSaveModel;
@@ -106,18 +122,27 @@ implements ITreeModelView, IUIRequestListener {
     private IViewerAction fActionDelete;
     private IViewerAction fActionRename;
     private IViewerAction fActionOpenDiagram;
-    private IViewerAction fActionNewFolder;
     private IViewerAction fActionDuplicate;
     
+    private IViewerAction fActionCut;
+    private IViewerAction fActionPaste;
+    
+    private IViewerAction fActionGenerateView;
+    
     private TreeModelViewerFindReplaceProvider fFindReplaceProvider;
+    
+    private TreeSelectionSynchroniser fSynchroniser;
+    
+    private DrillDownAdapter fDrillDownAdapter;
     
     public TreeModelView() {
     }
     
     @Override
     public void doCreatePartControl(Composite parent) {
-        fParentComposite = parent;
-        
+        // Help
+        PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
+
         GridLayout layout = new GridLayout();
         layout.marginHeight = 0;
         layout.marginWidth = 0;
@@ -127,12 +152,12 @@ implements ITreeModelView, IUIRequestListener {
         fTreeViewer = new TreeModelViewer(parent, SWT.NULL);
         fTreeViewer.getControl().setLayoutData(new GridData(GridData.FILL_BOTH));
         
-        fTreeViewer.setInput(IEditorModelManager.INSTANCE);
+        // Drill down
+        fDrillDownAdapter = new DrillDownAdapter(fTreeViewer);
         
-        /*
-         * Listen to Double-click and press Return Action
-         */
+        // Listen to Double-click and press Return Action
         fTreeViewer.addDoubleClickListener(new IDoubleClickListener() {
+            @Override
             public void doubleClick(DoubleClickEvent event) {
                 handleOpenAction();
             }
@@ -140,6 +165,7 @@ implements ITreeModelView, IUIRequestListener {
         
         // Tree selection listener
         fTreeViewer.addSelectionChangedListener(new ISelectionChangedListener() {
+            @Override
             public void selectionChanged(SelectionChangedEvent event) {
                 // Update actions
                 updateActions();
@@ -150,43 +176,47 @@ implements ITreeModelView, IUIRequestListener {
         getSite().setSelectionProvider(getViewer());
         
         // Add Selection Sync
-        TreeSelectionSynchroniser.INSTANCE.setTreeModelView(this);
+        fSynchroniser = new TreeSelectionSynchroniser(getViewer());
         
         // Register us as a UIRequest Listener
         UIRequestManager.INSTANCE.addListener(this);
         
-        // Search Filter
-        fSearchFilter = new SearchFilter(fTreeViewer);
-
         makeActions();
         hookContextMenu();
         registerGlobalActions();
         makeLocalToolBar();
+        makeLocalMenuActions();
         
         // Drag support
         new TreeModelViewerDragDropHandler(fTreeViewer);
         
-        // Expand tree elements
-        TreeStateHelper.INSTANCE.restoreExpandedTreeElements(fTreeViewer);
+        // Set model input now
+        fTreeViewer.setInput(IEditorModelManager.INSTANCE);
         
+        // Expand tree elements after model input
+        TreeStateHelper.INSTANCE.restoreExpandedTreeElements(fTreeViewer);
+
         // This will update previous Undo/Redo text if Tree was closed before
         updateActions();
-        
-        // Help
-        PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
     }
     
     @Override
     public void init(IViewSite site, IMemento memento) throws PartInitException {
         super.init(site, memento);
-        // Restore expanded tree state
+        // Set memento with expanded tree state when creating the Tree
         TreeStateHelper.INSTANCE.setMemento(memento);
     }
     
+    /**
+     * This is called:
+     * 1. Every 5 minutes by the workbench autosaving the workbench state (this can be set in org.eclipse.ui.internal.IPreferenceConstants#WORKBENCH_SAVE_INTERVAL)
+     * 2. When this ViewPart is closed
+     * 3. When the app quits (which is really 2)
+     */
     @Override
     public void saveState(IMemento memento) {
         // Save expanded tree state
-        TreeStateHelper.INSTANCE.saveStateOnApplicationClose(memento);
+        TreeStateHelper.INSTANCE.saveStateToMemento(fTreeViewer, memento);
     }
     
     /**
@@ -194,8 +224,8 @@ implements ITreeModelView, IUIRequestListener {
      */
     private void handleOpenAction() {
         for(Object selected : ((IStructuredSelection)getViewer().getSelection()).toArray()) {
-            // Element or Folder - open Properties view
-            if(selected instanceof IArchimateElement) {
+            // Element or Relation - open Properties view
+            if(selected instanceof IArchimateConcept) {
                 ViewManager.showViewPart(ViewManager.PROPERTIES_VIEW, false);
             }
             // Folder - open Properties view
@@ -217,25 +247,20 @@ implements ITreeModelView, IUIRequestListener {
      * Show the Search Widget
      */
     private void showSearchWidget() {
-        fSearchWidget = new SearchWidget(fParentComposite, fSearchFilter);
+        fSearchWidget = new SearchWidget(fTreeViewer);
         fSearchWidget.moveAbove(fTreeViewer.getControl());
-        fTreeViewer.addFilter(fSearchFilter);
-        fParentComposite.layout();
+        fTreeViewer.getControl().getParent().layout();
         fSearchWidget.setFocus();
     }
     
     /**
-     * Hide the Search Widget
+     * Remove the Search Widget
      */
-    private void hideSearchWidget() {
+    private void removeSearchWidget() {
         if(fSearchWidget != null && !fSearchWidget.isDisposed()) {
             fSearchWidget.dispose();
             fSearchWidget = null;
-            fParentComposite.layout();
-            fTreeViewer.getTree().setRedraw(false);
-            fTreeViewer.removeFilter(fSearchFilter);
-            fSearchFilter.clear();
-            fTreeViewer.getTree().setRedraw(true);
+            fTreeViewer.getControl().getParent().layout();
         }
     }
     
@@ -246,16 +271,20 @@ implements ITreeModelView, IUIRequestListener {
     
     @Override
     protected void selectAll() {
-        fTreeViewer.getTree().selectAll();
+        if(fTreeViewer != null) {
+            fTreeViewer.getTree().selectAll();
+        }
     }
     
     /**
      * @return The Selection Provider
      */
+    @Override
     public ISelectionProvider getSelectionProvider() {
         return fTreeViewer;
     }
     
+    @Override
     public TreeModelViewer getViewer() {
         return fTreeViewer;
     }
@@ -284,9 +313,12 @@ implements ITreeModelView, IUIRequestListener {
         
         fActionLinkToEditor = new LinkToEditorAction();
         
-        fActionNewFolder = new NewFolderAction(getSelectionProvider());
-        
         fActionDuplicate = new DuplicateAction(getViewer());
+        
+        fActionCut = new CutAction(getViewer());
+        fActionPaste = new PasteAction(getViewer());
+        
+        fActionGenerateView = new GenerateViewAction(getSelectionProvider());
         
         fActionToggleSearchField = new Action("", IAction.AS_CHECK_BOX) { //$NON-NLS-1$
             @Override
@@ -295,12 +327,55 @@ implements ITreeModelView, IUIRequestListener {
                     showSearchWidget();
                 }
                 else {
-                    hideSearchWidget();
+                    removeSearchWidget();
                 }
             };
+            
+            @Override
+            public String getToolTipText() {
+                return Messages.TreeModelView_0;
+            }
+            
+            @Override
+            public ImageDescriptor getImageDescriptor() {
+                return ThemeUtils.isDarkTheme() ? IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_SEARCH_LIGHT) :
+                                                  IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_SEARCH);
+            }
         };
-        fActionToggleSearchField.setToolTipText(Messages.TreeModelView_0);
-        fActionToggleSearchField.setImageDescriptor(IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_SEARCH_16));
+        
+        fActionCollapseSelected = new Action(Messages.TreeModelView_3) {
+            @Override
+            public void run() {
+                IStructuredSelection selection = ((IStructuredSelection)getViewer().getSelection());
+                for(Object o : selection.toArray()) {
+                    if(fTreeViewer.isExpandable(o) && fTreeViewer.getExpandedState(o)) {
+                        fTreeViewer.collapseToLevel(o, AbstractTreeViewer.ALL_LEVELS);
+                    }
+                }
+            }
+            
+            @Override
+            public ImageDescriptor getImageDescriptor() {
+                return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_COLLAPSEALL);
+            }
+        };
+        
+        fActionExpandSelected = new Action(Messages.TreeModelView_4) {
+            @Override
+            public void run() {
+                IStructuredSelection selection = ((IStructuredSelection)getViewer().getSelection());
+                for(Object o : selection.toArray()) {
+                    if(hasExpandableNodes(o)) {
+                        fTreeViewer.expandToLevel(o, AbstractTreeViewer.ALL_LEVELS);
+                    }
+                }
+            }
+            
+            @Override
+            public ImageDescriptor getImageDescriptor() {
+                return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_EXPANDALL);
+            }
+        };
     }
     
     /**
@@ -310,13 +385,29 @@ implements ITreeModelView, IUIRequestListener {
         IActionBars actionBars = getViewSite().getActionBars();
         
         // Register our interest in the global menu actions
-        actionBars.setGlobalActionHandler(ArchimateEditorActionFactory.CLOSE_MODEL.getId(), fActionCloseModel);
-        actionBars.setGlobalActionHandler(ArchimateEditorActionFactory.OPEN_DIAGRAM.getId(), fActionOpenDiagram);
+        actionBars.setGlobalActionHandler(ArchiActionFactory.CLOSE_MODEL.getId(), fActionCloseModel);
+        actionBars.setGlobalActionHandler(ArchiActionFactory.OPEN_DIAGRAM.getId(), fActionOpenDiagram);
         actionBars.setGlobalActionHandler(ActionFactory.DELETE.getId(), fActionDelete);
         actionBars.setGlobalActionHandler(ActionFactory.PROPERTIES.getId(), fActionProperties);
         actionBars.setGlobalActionHandler(ActionFactory.RENAME.getId(), fActionRename);
-        actionBars.setGlobalActionHandler(ArchimateEditorActionFactory.DUPLICATE.getId(), fActionDuplicate);
+        actionBars.setGlobalActionHandler(ArchiActionFactory.DUPLICATE.getId(), fActionDuplicate);
+        actionBars.setGlobalActionHandler(ActionFactory.CUT.getId(), fActionCut);
+        actionBars.setGlobalActionHandler(ActionFactory.PASTE.getId(), fActionPaste);
         actionBars.setGlobalActionHandler(ActionFactory.FIND.getId(), fActionFindReplace);
+        actionBars.setGlobalActionHandler(ArchiActionFactory.GENERATE_VIEW.getId(), fActionGenerateView);
+    }
+    
+    /**
+     * Disable Global Actions
+     * We need to do this when closing the View
+     */
+    private void disableGlobalActions() {
+        // These two have to be manually done
+        fActionFindReplace.setEnabled(false);
+        fActionSelectAll.setEnabled(false);
+        
+        // This should setEnabled = false
+        updateActions();
     }
     
     /**
@@ -327,6 +418,7 @@ implements ITreeModelView, IUIRequestListener {
         menuMgr.setRemoveAllWhenShown(true);
         
         menuMgr.addMenuListener(new IMenuListener() {
+            @Override
             public void menuAboutToShow(IMenuManager manager) {
                 fillContextMenu(manager);
             }
@@ -347,57 +439,79 @@ implements ITreeModelView, IUIRequestListener {
         Object selected = selection.getFirstElement();
         boolean isEmpty = selected == null;
         
-        if(isEmpty) {
+        if(isEmpty && fTreeViewer.getInput() instanceof IEditorModelManager) {
             manager.add(fActionNewModel);
             manager.add(fActionOpenModel);
             return;
         }
         
-        MenuManager newMenu = new MenuManager(Messages.TreeModelView_1, "new"); //$NON-NLS-1$
-        manager.add(newMenu);
+        manager.add(new Separator("new")); //$NON-NLS-1$
         
-        getSite().registerContextMenu(ID + ".new_menu", newMenu, getViewer()); //$NON-NLS-1$
-
         manager.add(new Separator());
         
-        // Selected model
+        // Selected a Model
         if(selected instanceof IArchimateModel) {
             manager.add(fActionCloseModel);
             manager.add(fActionSaveModel);
             manager.add(new Separator());
         }
         
-        // Selected Diagram
+        // Selected a Diagram
         if(selected instanceof IDiagramModel) {
             manager.add(fActionOpenDiagram);
             manager.add(new Separator("open")); //$NON-NLS-1$
         }
         
-        if(selected instanceof IFolder) {
-            newMenu.add(fActionNewFolder);
-            newMenu.add(new Separator());
-        }
-        
-        // Create "New" Actions
-        List<IAction> actions = TreeModelViewActionFactory.INSTANCE.getNewObjectActions(selected);
-        if(!actions.isEmpty()) {
-            for(IAction action : actions) {
-                newMenu.add(action);
-            }
-        }
-        
-        newMenu.add(new Separator("new_additions")); //$NON-NLS-1$
-       
         if(!isEmpty) {
             manager.add(new Separator());
+
+            manager.add(fActionCut);
+            manager.add(fActionPaste);
             manager.add(fActionDelete);
-            manager.add(fActionRename);
-            manager.add(new Separator());
+            
+            manager.add(new Separator("start_collapse")); //$NON-NLS-1$
+            
+            // Expand selected
+            for(Object o : selection.toArray()) {
+                if(hasExpandableNodes(o)) {
+                    manager.add(fActionExpandSelected);
+                    break;
+                }
+            }
+
+            // Collapse selected
+            for(Object o : selection.toArray()) {
+                if(fTreeViewer.isExpandable(o) && fTreeViewer.getExpandedState(o)) {
+                    manager.add(fActionCollapseSelected);
+                    break;
+                }
+            }
+
+            manager.add(new Separator("end_collapse")); //$NON-NLS-1$
+        }
+        
+        // Drill-down adapter
+        if(fDrillDownAdapter.canGoInto() || fDrillDownAdapter.canGoBack() || fDrillDownAdapter.canGoHome()) {
+            fDrillDownAdapter.addNavigationActions(manager);
+            manager.add(new Separator("drill")); //$NON-NLS-1$
+        }
+        
+        if(!isEmpty) {
             if(DuplicateCommandHandler.canDuplicate(selection)) {
                 manager.add(fActionDuplicate);
-                manager.add(new Separator());
             }
+            
+            manager.add(fActionRename);
+
+            manager.add(new Separator("start_extensions")); //$NON-NLS-1$
+            manager.add(fActionGenerateView);
+            manager.add(new GroupMarker("append_extensions")); //$NON-NLS-1$
+            manager.add(new Separator("end_extensions")); //$NON-NLS-1$
+            
+            manager.add(new Separator("start_properties")); //$NON-NLS-1$
             manager.add(fActionProperties);
+            manager.add(new GroupMarker("append_properties")); //$NON-NLS-1$
+            manager.add(new Separator("end_properties")); //$NON-NLS-1$
         }
         
         // Other plug-ins can contribute their actions here
@@ -408,15 +522,17 @@ implements ITreeModelView, IUIRequestListener {
      * Update the Local Actions depending on the selection 
      */
     private void updateActions() {
-        IStructuredSelection selection = (IStructuredSelection)getViewer().getSelection();
-        fActionSaveModel.update(selection);
-        fActionOpenDiagram.update(selection);
-        fActionCloseModel.update(selection);
-        fActionDelete.update(selection);
-        fActionDuplicate.update(selection);
-        fActionRename.update(selection);
-        fActionProperties.update(selection);
-        fActionNewFolder.update(selection);
+        fActionSaveModel.update();
+        fActionOpenDiagram.update();
+        fActionCloseModel.update();
+        fActionDelete.update();
+        fActionDuplicate.update();
+        fActionCut.update();
+        fActionPaste.update();
+        fActionRename.update();
+        fActionProperties.update();
+        fActionGenerateView.update();
+        
         updateUndoActions();
     }
     
@@ -426,27 +542,192 @@ implements ITreeModelView, IUIRequestListener {
     private void makeLocalToolBar() {
         IActionBars bars = getViewSite().getActionBars();
         IToolBarManager manager = bars.getToolBarManager();
+
+        fDrillDownAdapter.addNavigationActions(manager);
+        manager.add(new Separator());
+        
         manager.add(fActionToggleSearchField);
         manager.add(fActionLinkToEditor);
     }
     
+    /**
+     * Make local toolbar actions
+     */
+    private void makeLocalMenuActions() {
+        IActionBars actionBars = getViewSite().getActionBars();
+        
+        // Local menu items go here
+        IMenuManager manager = actionBars.getMenuManager();
+        
+        // Filter folder action
+        class FolderFilterAction extends Action {
+            FolderType folderType;
+            String prefsKey;
+            
+            ViewerFilter filter = new ViewerFilter() {
+                @Override
+                public boolean select(Viewer viewer, Object parentElement, Object element) {
+                    return element instanceof IFolder folder ? folder.getType() != folderType : true;
+                }
+            };
+            
+            FolderFilterAction(FolderType folderType) {
+                this.folderType = folderType;
+                prefsKey = "modelTreeFolderHidden_" + folderType.getName(); //$NON-NLS-1$
+                setText(StringUtils.escapeAmpersandsInText(folderType.getLabel()));
+                
+                boolean hidden = ArchiPlugin.getInstance().getPreferenceStore().getBoolean(prefsKey);
+                setChecked(!hidden);
+                if(hidden) {
+                    getViewer().addFilter(filter);
+                }
+            }
+            
+            @Override
+            public void run() {
+                if(isChecked()) {
+                    getViewer().removeFilter(filter);
+                }
+                else {
+                    getViewer().addFilter(filter);
+                }
+                
+                ArchiPlugin.getInstance().getPreferenceStore().setValue(prefsKey, !isChecked());
+            }
+        }
+        
+        MenuManager filterMenu = new MenuManager(Messages.TreeModelView_5);
+        manager.add(filterMenu);
+        
+        List<FolderFilterAction> filterActions = new ArrayList<>();
+        
+        filterActions.add(new FolderFilterAction(FolderType.STRATEGY));
+        filterActions.add(new FolderFilterAction(FolderType.BUSINESS));
+        filterActions.add(new FolderFilterAction(FolderType.APPLICATION));
+        filterActions.add(new FolderFilterAction(FolderType.TECHNOLOGY));
+        filterActions.add(new FolderFilterAction(FolderType.MOTIVATION));
+        filterActions.add(new FolderFilterAction(FolderType.IMPLEMENTATION_MIGRATION));
+        filterActions.add(new FolderFilterAction(FolderType.OTHER));
+        filterActions.add(new FolderFilterAction(FolderType.RELATIONS));
+        filterActions.add(new FolderFilterAction(FolderType.DIAGRAMS));
+        
+        for(Action action : filterActions) {
+            filterMenu.add(action);
+        }
+        
+        filterMenu.add(new Separator());
+        
+        // Show All
+        filterMenu.add(new Action(Messages.TreeModelView_6) {
+            @Override
+            public void run() {
+                List<ViewerFilter> filtersToRemove = new ArrayList<>();
+                
+                for(FolderFilterAction action : filterActions) {
+                    if(!action.isChecked()) {
+                        action.setChecked(true);
+                        ArchiPlugin.getInstance().getPreferenceStore().setValue(action.prefsKey, false);
+                        filtersToRemove.add(action.filter);
+                    }
+                }
+                
+                if(filtersToRemove.isEmpty()) {
+                    return;
+                }
+                
+                // Remove the filters in one operation by calling Viewer#setFilters.
+                // This ensures that the tree is refreshed only once.
+                ViewerFilter[] filters = Arrays.stream(getViewer().getFilters())
+                                               .filter(e -> !filtersToRemove.contains(e))
+                                               .toArray(ViewerFilter[]::new);
+                
+                getViewer().setFilters(filters);
+            }
+        });
+    }
+    
+    /**
+     * @return true if the node containing object, or any of its child nodes, can be expanded
+     */
+    private boolean hasExpandableNodes(Object object) {
+        if(fTreeViewer.isExpandable(object) && !fTreeViewer.getExpandedState(object)) {
+            return true;
+        }
+        if(object instanceof IFolderContainer) {
+            for(IFolder folder : ((IFolderContainer)object).getFolders()) {
+                if(hasExpandableNodes(folder)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+    
+    /**
+     * Check the tree's input is not a deleted object. If it is, set drilldown to home
+     */
+    private void checkDrillDownHasValidInput() {
+        if(fTreeViewer.getInput() instanceof IArchimateModelObject modelObject && modelObject.getArchimateModel() == null) {
+            setDrillDownHome();
+        }
+    }
+    
+    /**
+     * Set the drill down to home
+     */
+    private void setDrillDownHome() {
+        if(fDrillDownAdapter.canGoHome()) { // Important check!
+            try {
+                getViewer().getControl().setRedraw(false);
+                fDrillDownAdapter.goHome();
+            }
+            finally {
+                getViewer().getControl().setRedraw(true);
+            }
+        }
+    }
+    
+    @Override
+    protected void applicationPreferencesChanged(org.eclipse.jface.util.PropertyChangeEvent event) {
+        switch(event.getProperty()) {
+            case IPreferenceConstants.HIGHLIGHT_UNUSED_ELEMENTS_IN_MODEL_TREE:
+            case IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE:
+                getViewer().update();
+                break;
+        }
+
+        if(event.getProperty().startsWith(IPreferenceConstants.FOLDER_COLOUR_PREFIX)) {
+            getViewer().update();
+        }
+    }
+
     @Override
     protected IArchimateModel getActiveArchimateModel() {
-        Object selected = ((IStructuredSelection)getViewer().getSelection()).getFirstElement();
-        if(selected instanceof IArchimateModelElement) {
-            return ((IArchimateModelElement)selected).getArchimateModel();
+        // viewer can be null if model dirty, focus is on tree, a diagram is open, you close the app
+        // and Eclipse tries to refresh some toolbar items
+        if(getViewer() != null) { 
+            Object selected = getViewer().getStructuredSelection().getFirstElement();
+            
+            if(selected instanceof IArchimateModelObject) {
+                return ((IArchimateModelObject)selected).getArchimateModel();
+            }
+            
+            if(getViewer().getInput() instanceof IArchimateModelObject) {
+                return ((IArchimateModelObject)getViewer().getInput()).getArchimateModel();
+            }
         }
+        
         return null;
     }
     
     @Override
-    public Object getAdapter(@SuppressWarnings("rawtypes") Class adapter) {
+    public <T> T getAdapter(Class<T> adapter) {
         // Find/Replace Provider
         if(adapter == IFindReplaceProvider.class) {
             if(fFindReplaceProvider == null) {
                 fFindReplaceProvider = new TreeModelViewerFindReplaceProvider(getViewer());
             }
-            return fFindReplaceProvider;
+            return adapter.cast(fFindReplaceProvider);
         }
         
         return super.getAdapter(adapter);
@@ -456,9 +737,6 @@ implements ITreeModelView, IUIRequestListener {
     public void dispose() {
         super.dispose();
 
-        // Remove Selection Sync
-        TreeSelectionSynchroniser.INSTANCE.removeTreeModelView();
-        
         // Remove UI Request Listener
         UIRequestManager.INSTANCE.removeListener(this);
         
@@ -469,6 +747,34 @@ implements ITreeModelView, IUIRequestListener {
         catch(IOException ex) {
             ex.printStackTrace();
         }
+        
+        // Disable Global actions
+        disableGlobalActions();
+        
+        // Garbage collection
+        fTreeViewer = null;
+        fFindReplaceProvider = null;
+        fSynchroniser = null;
+        fDrillDownAdapter = null;
+        fSearchWidget = null;
+        
+        fActionFindReplace = null;
+        fActionProperties = null;
+        fActionDuplicate = null;
+        fActionCut = null;
+        fActionPaste = null;
+        fActionGenerateView = null;
+        fActionToggleSearchField = null;
+        fActionCollapseSelected = null;
+        fActionExpandSelected = null;
+        fActionLinkToEditor = null;
+        fActionOpenDiagram = null;
+        fActionCloseModel = null;
+        fActionSaveModel = null;
+        fActionDelete = null;
+        
+        // Clear Cut/Paste clipboard
+        TreeModelCutAndPaste.INSTANCE.clear();
     }
     
     // ======================================================================
@@ -482,20 +788,39 @@ implements ITreeModelView, IUIRequestListener {
         //Object newValue = evt.getNewValue();
         
         // New Model created or opened
-        if(propertyName == IEditorModelManager.PROPERTY_MODEL_CREATED ||
-                propertyName == IEditorModelManager.PROPERTY_MODEL_OPENED) {
-            getViewer().refresh();
+        if(propertyName == IEditorModelManager.PROPERTY_MODEL_CREATED || propertyName == IEditorModelManager.PROPERTY_MODEL_OPENED) {
+            // Go Home
+            setDrillDownHome();
             
+            getViewer().refreshTreePreservingExpandedNodes();
+
             IArchimateModel model = (IArchimateModel)evt.getNewValue();
             
             // Expand and Select new node
-            getViewer().expandToLevel(model.getDefaultDiagramModel(), -1);
+            getViewer().expandToLevel(model.getFolder(FolderType.DIAGRAMS), 1);
             getViewer().setSelection(new StructuredSelection(model), true);
-        }
+            
+            // Search Filter soft reset on open model
+            if(propertyName == IEditorModelManager.PROPERTY_MODEL_OPENED && 
+                    fSearchWidget != null && !fSearchWidget.isDisposed()) {
+                fSearchWidget.softReset();
+            }
+       }
         
         // Model removed
         else if(propertyName == IEditorModelManager.PROPERTY_MODEL_REMOVED) {
-            getViewer().refresh();
+            // Clear Cut/Paste clipboard
+            TreeModelCutAndPaste.INSTANCE.clear();
+            
+            // Check Drilldown state
+            checkDrillDownHasValidInput();
+
+            // Search Filter soft reset
+            if(fSearchWidget != null && !fSearchWidget.isDisposed()) {
+                fSearchWidget.softReset();
+            }
+
+            getViewer().refreshTreePreservingExpandedNodes();
         }
         
         // Model dirty state, so update Actions and modified state of source (asterisk on model node)
@@ -507,15 +832,15 @@ implements ITreeModelView, IUIRequestListener {
         // Ecore Events will come so turn tree refresh off
         else if(propertyName == IEditorModelManager.PROPERTY_ECORE_EVENTS_START) {
             super.propertyChange(evt);
-            // Remove Syncing
-            TreeSelectionSynchroniser.INSTANCE.setSynchronise(false);
+            // Suspend Syncing
+            fSynchroniser.setSynchronise(false);
         }
         
         // Ecore Events have finished so turn tree refresh on
         else if(propertyName == IEditorModelManager.PROPERTY_ECORE_EVENTS_END) {
             super.propertyChange(evt);
-            // Add Syncing
-            TreeSelectionSynchroniser.INSTANCE.setSynchronise(true);
+            // Reactivate Syncing
+            fSynchroniser.setSynchronise(true);
         }
         
         else {
@@ -555,35 +880,96 @@ implements ITreeModelView, IUIRequestListener {
         // Attribute set
         if(type == Notification.SET) {
             // Viewpoint changed
-            if(feature == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT) {
-                if(Preferences.STORE.getBoolean(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE)) {
-                    if(notifier instanceof IDiagramModel) {
-                        IArchimateModel model = ((IDiagramModel)notifier).getArchimateModel();
-                        getViewer().refresh(model);
-                    }
-                }
+            if(feature == IArchimatePackage.Literals.ARCHIMATE_DIAGRAM_MODEL__VIEWPOINT
+                        && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEWPOINTS_FILTER_MODEL_TREE)
+                        && notifier instanceof IDiagramModel dm) {
+                getViewer().updateInBackground(dm.getArchimateModel());
             }
+            // Model renamed
+            // This is too expensive in refreshing the whole tree
+            //else if(feature == IArchimatePackage.Literals.NAMEABLE__NAME && notifier instanceof IArchimateModel) {
+            //    getViewer().refreshTreePreservingExpandedNodes();
+            //    getViewer().setSelection(new StructuredSelection(notifier), true);
+            //}
             else {
                 super.eCoreChanged(msg);
             }
         }
         else {
             super.eCoreChanged(msg);
+            checkDrillDownHasValidInput();
         }
+    }
+    
+    @Override
+    protected void doRefreshFromNotifications(final List<Notification> notifications) {
+        Display.getCurrent().asyncExec(new Runnable() {
+            @Override
+            public void run() {
+                if(!getViewer().getControl().isDisposed() && notifications != null) { // check inside run loop
+                    refreshFromNotifications(notifications);
+                }
+            }
+        });
+    }
+    
+    private void refreshFromNotifications(List<Notification> notifications) {
+        Set<EObject> refreshElements = new HashSet<>();
+        Set<EObject> updateElements = new HashSet<>();
+        
+        for(Notification msg : notifications) {
+            // Get parent nodes to refresh
+            EObject parent = getParentToRefreshFromNotification(msg);
+            if(parent != null) {
+                refreshElements.add(parent);
+            }
+            
+            // Get elements to update
+            updateElements.addAll(getElementsToUpdateFromNotification(msg));
+        }
+        
+        // Optimise refresh by refreshing only ancestors
+        for(EObject object : new HashSet<>(refreshElements)) {
+            for(EObject parent = object.eContainer(); parent != null; parent = parent.eContainer()) {
+                if(refreshElements.contains(parent)) {
+                    refreshElements.remove(object);
+                }
+            }
+        }
+        
+        try {
+            getViewer().getControl().setRedraw(false);
+
+            for(EObject object : refreshElements) {
+                getViewer().refresh(object);
+            }
+
+            for(EObject object : updateElements) {
+                getViewer().update(object, null);
+            }
+        }
+        finally {
+            getViewer().getControl().setRedraw(true);
+        }
+        
+        checkDrillDownHasValidInput();
     }
 
     // =================================================================================
     //                       Contextual Help support
     // =================================================================================
 
+    @Override
     public int getContextChangeMask() {
         return NONE;
     }
 
+    @Override
     public IContext getContext(Object target) {
         return HelpSystem.getContext(HELP_ID);
     }
 
+    @Override
     public String getSearchExpression(Object target) {
         return Messages.TreeModelView_2;
     }

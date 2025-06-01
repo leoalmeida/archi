@@ -5,11 +5,9 @@
  */
 package com.archimatetool.editor.diagram.util;
 
-import org.eclipse.draw2d.FreeformLayer;
-import org.eclipse.draw2d.Graphics;
+import org.eclipse.draw2d.FreeformFigure;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.SWTGraphics;
-import org.eclipse.draw2d.ScaledGraphics;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.EditPartFactory;
 import org.eclipse.gef.GraphicalViewer;
@@ -92,11 +90,23 @@ public final class DiagramUtils {
      *         If model has no children a blank image of 100x100 is returned
      */
     public static Image createImage(IDiagramModel model, double scale, int margin) {
+        return createModelReferencedImage(model, scale, margin).getImage();
+    }
+    
+    /**
+     * @param model The model to create the image from
+     * @param scale The scale to use. 1 is full size.
+     * @param margin amount of white space margin to apply around the image
+     * @return ModelReferencedImage wrapper class containing a Scaled Image from the given Diagram Model and offset bounds
+     *         Clients must dispose of the Image when done.
+     *         If model has no children a blank image of 100x100 is returned
+     */
+    public static ModelReferencedImage createModelReferencedImage(IDiagramModel model, double scale, int margin) {
         Shell shell = new Shell();
         shell.setLayout(new FillLayout());
         
         GraphicalViewer viewer = createViewer(model, shell);
-        Image image = createImage(viewer, scale, margin);
+        ModelReferencedImage image = createModelReferencedImage(viewer, scale, margin);
         shell.dispose();
         
         return image;
@@ -111,9 +121,13 @@ public final class DiagramUtils {
      *         If graphicalViewer has no children a blank image of 100x100 is returned
      */
     public static Image createImage(GraphicalViewer graphicalViewer, double scale, int margin) {
+        return createModelReferencedImage(graphicalViewer, scale, margin).getImage();
+    }
+    
+    private static ModelReferencedImage createModelReferencedImage(GraphicalViewer graphicalViewer, double scale, int margin) {
         LayerManager layerManager = (LayerManager)graphicalViewer.getEditPartRegistry().get(LayerManager.ID);
         IFigure rootFigure = layerManager.getLayer(LayerConstants.PRINTABLE_LAYERS);
-        return createImage(rootFigure, scale, margin);
+        return createModelReferencedImage(rootFigure, scale, margin);
     }
     
     /**
@@ -125,6 +139,10 @@ public final class DiagramUtils {
      *         If figure has no children a blank image of 100x100 is returned
      */
     public static Image createImage(IFigure figure, double scale, int margin) {
+        return createModelReferencedImage(figure, scale, margin).getImage();
+    }
+
+    private static ModelReferencedImage createModelReferencedImage(IFigure figure, double scale, int margin) {
         if(scale <= 0) {
             scale = 1;
         }
@@ -132,27 +150,26 @@ public final class DiagramUtils {
             scale = 5;
         }
         
-        Rectangle rectangle = getMinimumBounds(figure);
-        if(rectangle == null) {
-            rectangle = new Rectangle(0, 0, 100, 100); // At least a minimum
+        Rectangle bounds = getMinimumBounds(figure);
+        if(bounds == null) {
+            bounds = new Rectangle(0, 0, 100, 100); // At least a minimum
         }
         else {
-            rectangle.expand(margin / scale, margin / scale);
+            bounds.expand(margin / scale, margin / scale);
         }
         
-        Image image = new Image(Display.getDefault(), (int)(rectangle.width * scale), (int)(rectangle.height * scale) );
+        Image image = new Image(Display.getDefault(), (int)(bounds.width * scale), (int)(bounds.height * scale) );
         GC gc = new GC(image);
-        SWTGraphics swtGraphics = new SWTGraphics(gc);
-        Graphics graphics = swtGraphics;
+        SWTGraphics graphics = new SWTGraphics(gc);
         
         // If scaled, then scale now
+        // Issue #621: SWTGraphics supports scale() so no need to use ScaledGraphics
         if(scale != 1) {
-            graphics = new ScaledGraphics(swtGraphics);
             graphics.scale(scale);
         }
         
         // Compensate for negative co-ordinates
-        graphics.translate(rectangle.x * -1, rectangle.y * -1);
+        graphics.translate(bounds.x * -1, bounds.y * -1);
 
         // Paint onto graphics
         figure.paint(graphics);
@@ -160,11 +177,8 @@ public final class DiagramUtils {
         // Dispose
         gc.dispose();
         graphics.dispose();
-        if(swtGraphics != graphics) {
-            swtGraphics.dispose();
-        }
         
-        return image;
+        return new ModelReferencedImage(image, bounds);
     }
     
     /**
@@ -183,11 +197,16 @@ public final class DiagramUtils {
      * @return The minimum bounds for a figure or null if there are no children
      */
     public static Rectangle getMinimumBounds(IFigure figure) {
+        // Simple Figure
+        if(!(figure instanceof FreeformFigure)) {
+            return figure.getBounds();
+        }
+        
         Rectangle minimumBounds = null;
         
         for(Object child : figure.getChildren()) {
             Rectangle bounds;
-            if(child instanceof FreeformLayer) {
+            if(child instanceof FreeformFigure) {
                 bounds = getMinimumBounds((IFigure)child);
             }
             else {

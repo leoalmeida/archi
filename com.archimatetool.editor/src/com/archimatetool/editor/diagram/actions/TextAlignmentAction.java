@@ -13,16 +13,15 @@ import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.gef.ui.actions.SelectionAction;
 import org.eclipse.jface.action.IAction;
-import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.IWorkbenchPart;
 import org.eclipse.ui.actions.RetargetAction;
 
 import com.archimatetool.editor.diagram.commands.TextAlignmentCommand;
-import com.archimatetool.editor.diagram.editparts.ITextAlignedEditPart;
-import com.archimatetool.editor.ui.IArchimateImages;
-import com.archimatetool.model.IDiagramModelObject;
-import com.archimatetool.model.IFontAttribute;
+import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
+import com.archimatetool.editor.ui.factory.ObjectUIFactory;
+import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.ILockable;
+import com.archimatetool.model.ITextAlignment;
 
 
 
@@ -33,120 +32,98 @@ import com.archimatetool.model.ILockable;
  */
 public class TextAlignmentAction extends SelectionAction {
     
-    public static final String ACTION_LEFT_ID = "TextAlignmentActionLeft"; //$NON-NLS-1$
-    public static final String ACTION_CENTER_ID = "TextAlignmentActionCenter"; //$NON-NLS-1$
-    public static final String ACTION_RIGHT_ID = "TextAlignmentActionRight"; //$NON-NLS-1$
+    public static final String ACTION_LEFT_ID = "com.archimatetool.editor.textAlignmentLeft"; //$NON-NLS-1$
+    public static final String ACTION_CENTRE_ID = "com.archimatetool.editor.textAlignmentCentre"; //$NON-NLS-1$
+    public static final String ACTION_RIGHT_ID = "com.archimatetool.editor.textAlignmentRight"; //$NON-NLS-1$
     
-    public static final String ACTION_LEFT_TEXT = Messages.TextAlignmentAction_0;
-    public static final String ACTION_CENTER_TEXT = Messages.TextAlignmentAction_1;
-    public static final String ACTION_RIGHT_TEXT = Messages.TextAlignmentAction_2;
+    public static final record TextAlignmentActionDefinition(String id, int alignment, String label) {}
     
-    public static final String ACTION_IDS[] = {
-        ACTION_LEFT_ID,
-        ACTION_CENTER_ID,
-        ACTION_RIGHT_ID
-    };
+    public static final TextAlignmentActionDefinition[] getActionDefinitions() {
+        return new TextAlignmentActionDefinition[] {
+                new TextAlignmentActionDefinition(ACTION_LEFT_ID, ITextAlignment.TEXT_ALIGNMENT_LEFT, Messages.TextAlignmentAction_0),
+                new TextAlignmentActionDefinition(ACTION_CENTRE_ID, ITextAlignment.TEXT_ALIGNMENT_CENTER, Messages.TextAlignmentAction_1),
+                new TextAlignmentActionDefinition(ACTION_RIGHT_ID, ITextAlignment.TEXT_ALIGNMENT_RIGHT, Messages.TextAlignmentAction_2)
+        };
+    }
     
-    public static final String ACTION_TEXTS[] = {
-        ACTION_LEFT_TEXT,
-        ACTION_CENTER_TEXT,
-        ACTION_RIGHT_TEXT
-    };
-
     public static List<RetargetAction> createRetargetActions() {
-        List<RetargetAction> list = new ArrayList<RetargetAction>();
+        List<RetargetAction> list = new ArrayList<>();
         
-        for(int i = 0; i < ACTION_IDS.length; i++) {
-            list.add(new RetargetAction(ACTION_IDS[i], ACTION_TEXTS[i], IAction.AS_RADIO_BUTTON));
+        for(TextAlignmentActionDefinition a : getActionDefinitions()) {
+            RetargetAction action = new RetargetAction(a.id(), a.label(), IAction.AS_RADIO_BUTTON);
+            action.setActionDefinitionId(a.id()); // Command key binding support
+            list.add(action);
         }
-     
+        
         return list;
     }
     
     public static List<TextAlignmentAction> createActions(IWorkbenchPart part) {
-        List<TextAlignmentAction> list = new ArrayList<TextAlignmentAction>();
+        List<TextAlignmentAction> list = new ArrayList<>();
         
-        list.add(new TextAlignmentAction(part, IFontAttribute.TEXT_ALIGNMENT_LEFT, ACTION_LEFT_ID, ACTION_LEFT_TEXT,
-                IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_ALIGN_TEXT_LEFT)));
-        list.add(new TextAlignmentAction(part, IFontAttribute.TEXT_ALIGNMENT_CENTER, ACTION_CENTER_ID, ACTION_CENTER_TEXT,
-                IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_ALIGN_TEXT_CENTER)));
-        list.add(new TextAlignmentAction(part, IFontAttribute.TEXT_ALIGNMENT_RIGHT, ACTION_RIGHT_ID, ACTION_RIGHT_TEXT,
-                IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_ALIGN_TEXT_RIGHT)));
-     
+        for(TextAlignmentActionDefinition a : getActionDefinitions()) {
+            list.add(new TextAlignmentAction(part, a.alignment(), a.id(), a.label()));
+        }
+        
         return list;
     }
     
     private int fAlignment;
     
-    public TextAlignmentAction(IWorkbenchPart part, int alignment, String id, String text, ImageDescriptor desc) {
+    public TextAlignmentAction(IWorkbenchPart part, int alignment, String id, String text) {
         super(part, AS_RADIO_BUTTON);
         fAlignment = alignment;
         setId(id);
+        setActionDefinitionId(id); // Command key binding support
         setText(text);
     }
 
     @Override
-    protected boolean calculateEnabled() {
-        setChecked(false);
-        
-        List<?> selected = getSelectedObjects();
-        ITextAlignedEditPart editPart = getFirstSelectedValidEditPart(selected);
-
-        if(editPart != null && selected.size() == 1) {
-            Object model = editPart.getModel();
-            if(model instanceof IFontAttribute) {
-                setChecked(((IFontAttribute)model).getTextAlignment() == fAlignment);
-            }
-        }
-        
-        return editPart != null;
-    }
-
-    private ITextAlignedEditPart getFirstSelectedValidEditPart(List<?> selection) {
-        for(Object object : getSelectedObjects()) {
-            if(object instanceof ITextAlignedEditPart) {
-                Object model = ((EditPart)object).getModel();
-                if(model instanceof ILockable && ((ILockable)model).isLocked()) {
-                    continue;
-                }
-                return (ITextAlignedEditPart)object;
-            }
-        }
-        
-        return null;
+    public void run() {
+        execute(createCommand());
     }
     
     @Override
-    public void run() {
-        List<?> selection = getSelectedObjects();
+    protected boolean calculateEnabled() {
+        List<ITextAlignment> selected = getValidSelectedObjects();
         
-        ITextAlignedEditPart firstPart = getFirstSelectedValidEditPart(selection);
-        if(firstPart != null) {
-            Object model = firstPart.getModel();
-            if(model instanceof IDiagramModelObject) {
-                execute(createCommand(selection));
+        boolean checked = !selected.isEmpty();
+        for(ITextAlignment ta : selected) {
+            if(ta.getTextAlignment() != fAlignment) {
+                checked = false;
             }
         }
+        setChecked(checked);
+        
+        return !selected.isEmpty();
     }
-    
-    private Command createCommand(List<?> selection) {
+
+    private Command createCommand() {
         CompoundCommand result = new CompoundCommand(Messages.TextAlignmentAction_3);
         
-        for(Object object : selection) {
-            if(object instanceof ITextAlignedEditPart) {
-                ITextAlignedEditPart editPart = (ITextAlignedEditPart)object;
-                Object model = editPart.getModel();
-                if(model instanceof IDiagramModelObject) {
-                    IDiagramModelObject diagramObject = (IDiagramModelObject)model;
-                    Command cmd = new TextAlignmentCommand(diagramObject, fAlignment);
-                    if(cmd.canExecute()) {
-                        result.add(cmd);
-                    }
-                }
+        for(ITextAlignment object : getValidSelectedObjects()) {
+            Command cmd = new TextAlignmentCommand(object, fAlignment);
+            if(cmd.canExecute()) {
+                result.add(cmd);
             }
         }
 
         return result.unwrap();
     }
     
+    private List<ITextAlignment> getValidSelectedObjects() {
+        List<ITextAlignment> list = new ArrayList<>();
+        
+        for(Object object : getSelectedObjects()) {
+            if(object instanceof EditPart editPart && editPart.getModel() instanceof ITextAlignment textAlignmentObject
+                    && !(textAlignmentObject instanceof ILockable lockable && lockable.isLocked())
+                    && ObjectUIFactory.INSTANCE.getProvider(textAlignmentObject) instanceof IGraphicalObjectUIProvider provider
+                    && provider.shouldExposeFeature(IArchimatePackage.Literals.TEXT_ALIGNMENT__TEXT_ALIGNMENT.getName())) {
+                list.add(textAlignmentObject);
+            }
+        }
+        
+        return list;
+    }
+
 }

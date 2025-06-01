@@ -6,8 +6,13 @@
 package com.archimatetool.editor.diagram.figures.connections;
 
 import org.eclipse.draw2d.Connection;
-import org.eclipse.draw2d.Label;
+import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.geometry.Point;
+
+import com.archimatetool.editor.diagram.figures.ISelectableFigure;
+import com.archimatetool.editor.diagram.figures.ITargetFeedbackFigure;
+import com.archimatetool.editor.diagram.figures.ITextFigure;
+import com.archimatetool.model.IDiagramModelConnection;
 
 
 /**
@@ -15,7 +20,23 @@ import org.eclipse.draw2d.geometry.Point;
  * 
  * @author Phillip Beauvoir
  */
-public interface IDiagramConnectionFigure extends Connection {
+public interface IDiagramConnectionFigure extends Connection, ITargetFeedbackFigure, ISelectableFigure, ITextFigure {
+    
+    // Strategies for drawing the connection label
+    int CONNECTION_LABEL_TRANSPARENT = 0;
+    int CONNECTION_LABEL_OPAQUE = 1;
+    int CONNECTION_LABEL_CLIPPED = 2;
+
+    /**
+     * Set the Model Connection
+     * @param connection
+     */
+    void setModelConnection(IDiagramModelConnection connection);
+    
+    /**
+     * @return the Model Connection
+     */
+    IDiagramModelConnection getModelConnection();
 
     /**
      * Refresh the visuals for the model
@@ -29,13 +50,7 @@ public interface IDiagramConnectionFigure extends Connection {
     boolean didClickConnectionLabel(Point requestLoc);
     
     /**
-     * @return
+     * @return The label figure
      */
-    Label getConnectionLabel();
-    
-    /**
-     * Highlight the connection
-     * @param set if true highlight
-     */
-    void highlight(boolean set);
+    Figure getConnectionLabel();
 }

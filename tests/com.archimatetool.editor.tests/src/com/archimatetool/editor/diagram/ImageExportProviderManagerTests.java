@@ -5,15 +5,13 @@
  */
 package com.archimatetool.editor.diagram;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
 
-import junit.framework.JUnit4TestAdapter;
-
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.diagram.ImageExportProviderManager.ImageExportProviderInfo;
 
@@ -24,10 +22,6 @@ import com.archimatetool.editor.diagram.ImageExportProviderManager.ImageExportPr
  */
 @SuppressWarnings("nls")
 public class ImageExportProviderManagerTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ImageExportProviderManagerTests.class);
-    }
     
     @Test
     public void testImageExportProviderInfo() {

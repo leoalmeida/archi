@@ -6,8 +6,7 @@
 package com.archimatetool.editor.diagram.figures.connections;
 
 import org.eclipse.draw2d.PolygonDecoration;
-
-import com.archimatetool.model.IDiagramModelArchimateConnection;
+import org.eclipse.draw2d.RotatableDecoration;
 
 
 /**
@@ -20,18 +19,20 @@ public class TriggeringConnectionFigure extends AbstractArchimateConnectionFigur
     /**
      * @return Decoration to use on Target Node
      */
-    public static PolygonDecoration createFigureTargetDecoration() {
+    public static RotatableDecoration createFigureTargetDecoration() {
         return new PolygonDecoration();
     }
-
-    public TriggeringConnectionFigure(IDiagramModelArchimateConnection connection) {
-        super(connection);
-    }
-	
-    @Override
-    protected void setFigureProperties() {
-        setTargetDecoration(createFigureTargetDecoration()); 
-    }
     
+    private RotatableDecoration fDecoratorTarget = createFigureTargetDecoration();
 
+    public TriggeringConnectionFigure() {
+    }
+
+    @Override
+    public void refreshVisuals() {
+        setTargetDecoration(usePlainJunctionTargetDecoration() ? null : fDecoratorTarget);
+        
+        // This last
+        super.refreshVisuals();
+    }
 }

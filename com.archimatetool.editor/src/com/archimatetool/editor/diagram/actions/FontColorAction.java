@@ -12,11 +12,14 @@ import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.gef.ui.actions.SelectionAction;
 import org.eclipse.swt.graphics.RGB;
-import org.eclipse.swt.widgets.ColorDialog;
 import org.eclipse.ui.IWorkbenchPart;
 
 import com.archimatetool.editor.diagram.commands.FontColorCommand;
 import com.archimatetool.editor.ui.ColorFactory;
+import com.archimatetool.editor.ui.components.CustomColorDialog;
+import com.archimatetool.editor.ui.factory.IObjectUIProvider;
+import com.archimatetool.editor.ui.factory.ObjectUIFactory;
+import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IFontAttribute;
 import com.archimatetool.model.ILockable;
 
@@ -40,46 +43,39 @@ public class FontColorAction extends SelectionAction {
 
     @Override
     protected boolean calculateEnabled() {
-        return getFirstSelectedFontEditPart(getSelectedObjects()) != null;
+        return getFirstValidSelectedModelObject(getSelectedObjects()) != null;
     }
-
-    private EditPart getFirstSelectedFontEditPart(List<?> selection) {
+    
+    private Object getFirstValidSelectedModelObject(List<?> selection) {
         for(Object object : getSelectedObjects()) {
-            if(isValidEditPart(object)) {
-                return (EditPart)object;
+            if(object instanceof EditPart) {
+                Object model = ((EditPart)object).getModel();
+                if(shouldEnable(model)) {
+                    return model;
+                }
             }
         }
         
         return null;
     }
-    
-    private boolean isValidEditPart(Object object) {
-        if(object instanceof EditPart && ((EditPart)object).getModel() instanceof IFontAttribute) {
-            Object model = ((EditPart)object).getModel();
-            if(model instanceof ILockable) {
-                return !((ILockable)model).isLocked();
-            }
-            return true;
-        }
-        
-        return false;
-    }
-    
+
     @Override
     public void run() {
         List<?> selection = getSelectedObjects();
         
-        ColorDialog colorDialog = new ColorDialog(getWorkbenchPart().getSite().getShell());
+        IFontAttribute model = (IFontAttribute)getFirstValidSelectedModelObject(selection);
+        if(model == null) {
+            return;
+        }
+
+        CustomColorDialog colorDialog = new CustomColorDialog(getWorkbenchPart().getSite().getShell());
         
         // Set default RGB on first selected object
         RGB defaultRGB = null;
-        EditPart firstPart = getFirstSelectedFontEditPart(selection);
-        if(firstPart != null) {
-            IFontAttribute model = (IFontAttribute)firstPart.getModel();
-            String s = model.getFontColor();
-            if(s != null) {
-                defaultRGB = ColorFactory.convertStringToRGB(s);
-            }
+        
+        String s = model.getFontColor();
+        if(s != null) {
+            defaultRGB = ColorFactory.convertStringToRGB(s);
         }
         
         if(defaultRGB != null) {
@@ -99,11 +95,13 @@ public class FontColorAction extends SelectionAction {
         CompoundCommand result = new CompoundCommand(Messages.FontColorAction_1);
         
         for(Object object : selection) {
-            if(isValidEditPart(object)) {
-                EditPart editPart = (EditPart)object;
-                Command cmd = new FontColorCommand((IFontAttribute)editPart.getModel(), ColorFactory.convertRGBToString(newColor));
-                if(cmd.canExecute()) {
-                    result.add(cmd);
+            if(object instanceof EditPart) {
+                Object model = ((EditPart)object).getModel();
+                if(shouldEnable(model)) {
+                    Command cmd = new FontColorCommand((IFontAttribute)model, ColorFactory.convertRGBToString(newColor));
+                    if(cmd.canExecute()) {
+                        result.add(cmd);
+                    }
                 }
             }
         }
@@ -111,4 +109,17 @@ public class FontColorAction extends SelectionAction {
         return result.unwrap();
     }
     
+    private boolean shouldEnable(Object model) {
+        if(model instanceof ILockable && ((ILockable)model).isLocked()) {
+            return false;
+        }
+        
+        if(model instanceof IFontAttribute) {
+            IObjectUIProvider provider = ObjectUIFactory.INSTANCE.getProvider(((IFontAttribute)model));
+            return provider != null && provider.shouldExposeFeature(IArchimatePackage.Literals.FONT_ATTRIBUTE__FONT_COLOR.getName());
+        }
+        
+        return false;
+    }
+
 }

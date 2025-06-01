@@ -5,32 +5,28 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModelComponent;
-import com.archimatetool.model.IFontAttribute;
 import com.archimatetool.model.ISketchModelSticky;
+import com.archimatetool.model.ITextAlignment;
 
 
 @SuppressWarnings("nls")
 public class SketchModelStickyTests extends DiagramModelObjectTests {
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(SketchModelStickyTests.class);
-    }
     
     private ISketchModelSticky sticky;
     
     @Override
     protected IDiagramModelComponent getComponent() {
         sticky = IArchimateFactory.eINSTANCE.createSketchModelSticky();
+        sticky.setTextAlignment(ITextAlignment.TEXT_ALIGNMENT_LEFT);
         return sticky;
     }
 
@@ -38,7 +34,7 @@ public class SketchModelStickyTests extends DiagramModelObjectTests {
     @Override
     @Test
     public void testGetDefaultTextAlignment() {
-        assertEquals(IFontAttribute.TEXT_ALIGNMENT_LEFT, sticky.getDefaultTextAlignment());
+        assertEquals(ITextAlignment.TEXT_ALIGNMENT_LEFT, sticky.getTextAlignment());
     }
 
     @Override

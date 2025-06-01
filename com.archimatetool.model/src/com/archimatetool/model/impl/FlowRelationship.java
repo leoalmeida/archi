@@ -15,12 +15,10 @@ import com.archimatetool.model.IFlowRelationship;
  * <!-- begin-user-doc -->
  * An implementation of the model object '<em><b>Flow Relationship</b></em>'.
  * <!-- end-user-doc -->
- * <p>
- * </p>
  *
  * @generated
  */
-public class FlowRelationship extends Relationship implements IFlowRelationship {
+public class FlowRelationship extends ArchimateRelationship implements IFlowRelationship {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->

@@ -8,7 +8,9 @@ package com.archimatetool.model.impl;
 import java.io.File;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
@@ -19,30 +21,40 @@ import org.eclipse.emf.ecore.EObject;
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.impl.EObjectImpl;
+import org.eclipse.emf.ecore.util.EContentAdapter;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IAdapter;
-import com.archimatetool.model.IApplicationLayerElement;
+import com.archimatetool.model.IApplicationElement;
 import com.archimatetool.model.IArchimateFactory;
 import com.archimatetool.model.IArchimateModel;
-import com.archimatetool.model.IArchimateModelElement;
+import com.archimatetool.model.IArchimateModelObject;
 import com.archimatetool.model.IArchimatePackage;
-import com.archimatetool.model.IBusinessLayerElement;
+import com.archimatetool.model.IArchimateRelationship;
+import com.archimatetool.model.IBusinessElement;
 import com.archimatetool.model.IDiagramModel;
+import com.archimatetool.model.IFeature;
+import com.archimatetool.model.IFeatures;
+import com.archimatetool.model.IFeaturesEList;
 import com.archimatetool.model.IFolder;
+import com.archimatetool.model.IGrouping;
 import com.archimatetool.model.IIdentifier;
-import com.archimatetool.model.IMetadata;
 import com.archimatetool.model.IImplementationMigrationElement;
-import com.archimatetool.model.IJunctionElement;
+import com.archimatetool.model.IJunction;
+import com.archimatetool.model.ILocation;
+import com.archimatetool.model.IMetadata;
 import com.archimatetool.model.IMotivationElement;
 import com.archimatetool.model.INameable;
+import com.archimatetool.model.IPhysicalElement;
+import com.archimatetool.model.IProfile;
 import com.archimatetool.model.IProperties;
 import com.archimatetool.model.IProperty;
-import com.archimatetool.model.IRelationship;
-import com.archimatetool.model.ITechnologyLayerElement;
-import com.archimatetool.model.util.IDAdapter;
+import com.archimatetool.model.IStrategyElement;
+import com.archimatetool.model.ITechnologyElement;
+import com.archimatetool.model.util.IModelContentListener;
+import com.archimatetool.model.util.UUIDFactory;
 
 
 /**
@@ -51,18 +63,19 @@ import com.archimatetool.model.util.IDAdapter;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getFolders <em>Folders</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getName <em>Name</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getId <em>Id</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getArchimateModel <em>Archimate Model</em>}</li>
+ *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getFeatures <em>Features</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getProperties <em>Properties</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getPurpose <em>Purpose</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getFile <em>File</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getVersion <em>Version</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getMetadata <em>Metadata</em>}</li>
+ *   <li>{@link com.archimatetool.model.impl.ArchimateModel#getProfiles <em>Profiles</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -113,6 +126,15 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      */
     protected String id = ID_EDEFAULT;
     /**
+     * The cached value of the '{@link #getFeatures() <em>Features</em>}' containment reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getFeatures()
+     * @generated
+     * @ordered
+     */
+    protected EList<IFeature> features;
+    /**
      * The cached value of the '{@link #getProperties() <em>Properties</em>}' containment reference list.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -129,7 +151,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * @generated
      * @ordered
      */
-    protected static final String PURPOSE_EDEFAULT = null;
+    protected static final String PURPOSE_EDEFAULT = ""; //$NON-NLS-1$
     /**
      * The cached value of the '{@link #getPurpose() <em>Purpose</em>}' attribute.
      * <!-- begin-user-doc -->
@@ -186,16 +208,48 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * @ordered
      */
     protected IMetadata metadata;
+
+    /**
+     * The cached value of the '{@link #getProfiles() <em>Profiles</em>}' containment reference list.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getProfiles()
+     * @generated
+     * @ordered
+     */
+    protected EList<IProfile> profiles;
+    
     /**
      * Adapter Map for arbitrary objects
      */
     private Map<Object, Object> fAdapterMap = new HashMap<Object, Object>();
     
     /**
-     * ID Adapter
+     * Model Content Ecore listeners
      */
-    private IDAdapter fIDAdapter = new IDAdapter();
-
+    private CopyOnWriteArrayList<IModelContentListener> fContentListeners = new CopyOnWriteArrayList<>();
+    
+    /**
+     * One central EContentAdapter to listen to all model changes and forward on to listeners
+     */
+    private EContentAdapter eContentAdapter = new EContentAdapter() {
+        @Override
+        public void notifyChanged(Notification notification) {
+            super.notifyChanged(notification);
+            
+            // Not interested in this type
+            if(notification.getEventType() == Notification.REMOVING_ADAPTER) {
+                return;
+            }
+            
+            // Notify model listeners
+            if(fContentListeners != null) {
+                for(IModelContentListener listener : fContentListeners) {
+                    listener.notifyChanged(notification);
+                }
+            }
+        }
+    };
 
     /**
      * <!-- begin-user-doc -->
@@ -204,131 +258,102 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      */
     protected ArchimateModel() {
         super();
-        eAdapters().add(fIDAdapter);
+        id = UUIDFactory.createID(this);
+    }
+    
+    
+    @Override
+    public boolean addModelContentListener(IModelContentListener listener) {
+        if(listener == null || fContentListeners == null) { // we might be disposed
+            return false;
+        }
+        
+        if(!eAdapters().contains(eContentAdapter)) {
+            eAdapters().add(eContentAdapter);
+        }
+        
+        return fContentListeners.addIfAbsent(listener);
+    }
+    
+    @Override
+    public boolean removeModelContentListener(IModelContentListener listener) {
+        if(listener == null || fContentListeners == null) { // we might be disposed
+            return false;
+        }
+        
+        return fContentListeners.remove(listener);
+    }
+    
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated NOT
+     */
+    @Override
+    public void setDefaults() {
+        addDefaultFolders();
     }
     
     /**
      * Add any default folders
      */
     protected void addDefaultFolders() {
-        if(getFolder(FolderType.BUSINESS) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_0);
-            folder.setType(FolderType.BUSINESS);
-            getFolders().add(0, folder);
-        }
-
-        if(getFolder(FolderType.APPLICATION) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_1);
-            folder.setType(FolderType.APPLICATION);
-            getFolders().add(1, folder);
-        }
-
-        if(getFolder(FolderType.TECHNOLOGY) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_2);
-            folder.setType(FolderType.TECHNOLOGY);
-            getFolders().add(2, folder);
-        }
-
-        if(getFolder(FolderType.MOTIVATION) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_3);
-            folder.setType(FolderType.MOTIVATION);
-            getFolders().add(3, folder);
-        }
-
-        if(getFolder(FolderType.IMPLEMENTATION_MIGRATION) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_4);
-            folder.setType(FolderType.IMPLEMENTATION_MIGRATION);
-            getFolders().add(4, folder);
-        }
+        int index = 0;
         
-        if(getFolder(FolderType.CONNECTORS) == null) {
+        createDefaultFolder(FolderType.STRATEGY, index++);
+        createDefaultFolder(FolderType.BUSINESS, index++);
+        createDefaultFolder(FolderType.APPLICATION, index++);
+        createDefaultFolder(FolderType.TECHNOLOGY, index++);
+        createDefaultFolder(FolderType.MOTIVATION, index++);
+        createDefaultFolder(FolderType.IMPLEMENTATION_MIGRATION, index++);
+        createDefaultFolder(FolderType.OTHER, index++);
+        createDefaultFolder(FolderType.RELATIONS, index++);
+        createDefaultFolder(FolderType.DIAGRAMS, index++);
+    }
+    
+    private void createDefaultFolder(FolderType folderType, int index) {
+        if(getFolder(folderType) == null) {
             IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_5);
-            folder.setType(FolderType.CONNECTORS);
-            getFolders().add(5, folder);
-        }
-
-        if(getFolder(FolderType.RELATIONS) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_6);
-            folder.setType(FolderType.RELATIONS);
-            getFolders().add(6, folder);
-        }
-
-        if(getFolder(FolderType.DIAGRAMS) == null) {
-            IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-            folder.setName(Messages.ArchimateModel_7);
-            folder.setType(FolderType.DIAGRAMS);
-            getFolders().add(getFolders().size(), folder); // Make sure this is last
+            folder.setType(folderType);
+            folder.setName(folderType.getLabel());
+            getFolders().add(index, folder);
         }
     }
     
     /**
      * <!-- begin-user-doc -->
-     * This folder is optional so we add it as needed
      * <!-- end-user-doc -->
      * @generated NOT
      */
-    public IFolder addDerivedRelationsFolder() {
+    @Override
+    public IFolder getDefaultFolderForObject(EObject object) {
         addDefaultFolders(); // Check they haven't been deleted
         
-        IFolder folder = IArchimateFactory.eINSTANCE.createFolder();
-        folder.setName(Messages.ArchimateModel_8);
-        folder.setType(FolderType.DERIVED);
-        int index = getFolders().indexOf(getFolder(FolderType.RELATIONS)) + 1;
-        getFolders().add(index, folder);
-        
-        return folder;
-    }
-    
-    /**
-     * <!-- begin-user-doc -->
-     * This folder is optional so we add it as needed
-     * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public void removeDerivedRelationsFolder() {
-        IFolder folder = getFolder(FolderType.DERIVED);
-        if(folder != null) {
-            getFolders().remove(folder);
+        if(object instanceof IStrategyElement) {
+            return getFolder(FolderType.STRATEGY);
         }
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public IFolder getDefaultFolderForElement(EObject element) {
-        addDefaultFolders(); // Check they haven't been deleted
-        
-        if(element instanceof IBusinessLayerElement) {
+        if(object instanceof IBusinessElement) {
             return getFolder(FolderType.BUSINESS);
         }
-        if(element instanceof IApplicationLayerElement) {
+        if(object instanceof IApplicationElement) {
             return getFolder(FolderType.APPLICATION);
         }
-        if(element instanceof ITechnologyLayerElement) {
+        if(object instanceof ITechnologyElement || object instanceof IPhysicalElement) {
             return getFolder(FolderType.TECHNOLOGY);
         }
-        if(element instanceof IMotivationElement) {
+        if(object instanceof IMotivationElement) {
             return getFolder(FolderType.MOTIVATION);
         }
-        if(element instanceof IImplementationMigrationElement) {
+        if(object instanceof IImplementationMigrationElement) {
             return getFolder(FolderType.IMPLEMENTATION_MIGRATION);
         }
-        if(element instanceof IJunctionElement) {
-            return getFolder(FolderType.CONNECTORS);
+        if(object instanceof IJunction || object instanceof ILocation || object instanceof IGrouping) {
+            return getFolder(FolderType.OTHER);
         }
-        if(element instanceof IRelationship) {
+        if(object instanceof IArchimateRelationship) {
             return getFolder(FolderType.RELATIONS);
         }
-        if(element instanceof IDiagramModel) {
+        if(object instanceof IDiagramModel) {
             return getFolder(FolderType.DIAGRAMS);
         }
         
@@ -340,6 +365,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public IFolder getFolder(FolderType type) {
         for(IFolder folder : getFolders()) {
             if(folder.getType().equals(type)) {
@@ -355,6 +381,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public Object getAdapter(Object adapter) {
         if(!fAdapterMap.containsKey(adapter) && eContainer() instanceof IAdapter) {
             return ((IAdapter)eContainer()).getAdapter(adapter);
@@ -368,6 +395,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public void setAdapter(Object adapter, Object object) {
         fAdapterMap.put(adapter, object);
     }
@@ -378,6 +406,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public IDiagramModel getDefaultDiagramModel() {
         EList<IDiagramModel> list = getDiagramModels();
         return list.size() > 0 ? list.get(0) : null;
@@ -389,28 +418,24 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public EList<IDiagramModel> getDiagramModels() {
         EList<IDiagramModel> list = new BasicEList<IDiagramModel>();
         
         IFolder folder = getFolder(FolderType.DIAGRAMS);
         if(folder != null) {
-            _getDiagramModels(folder, list);
+            for(Iterator<EObject> iter = folder.eAllContents(); iter.hasNext();) {
+                EObject eObject = iter.next();
+                if(eObject instanceof IDiagramModel) {
+                    list.add((IDiagramModel)eObject);
+                }
+            }
+
         }
         
         return list;
     }
     
-    private void _getDiagramModels(IFolder folder, EList<IDiagramModel> list) {
-        for(EObject object : folder.getElements()) {
-            if(object instanceof IDiagramModel) {
-                list.add((IDiagramModel)object);
-            }
-        }
-        for(IFolder f : folder.getFolders()) {
-            _getDiagramModels(f, list);
-        }
-    }
-
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -426,6 +451,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getName() {
         return name;
     }
@@ -435,6 +461,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setName(String newName) {
         String oldName = name;
         name = newName;
@@ -447,6 +474,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getId() {
         return id;
     }
@@ -456,6 +484,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setId(String newId) {
         String oldId = id;
         id = newId;
@@ -468,6 +497,20 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
+    public IFeaturesEList getFeatures() {
+        if (features == null) {
+            features = new FeaturesEList(IFeature.class, this, IArchimatePackage.ARCHIMATE_MODEL__FEATURES);
+        }
+        return (IFeaturesEList)features;
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated NOT
+     */
+    @Override
     public IArchimateModel getArchimateModel() {
         return this;
     }
@@ -477,6 +520,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EList<IProperty> getProperties() {
         if (properties == null) {
             properties = new EObjectContainmentEList<IProperty>(IProperty.class, this, IArchimatePackage.ARCHIMATE_MODEL__PROPERTIES);
@@ -487,12 +531,10 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @generated NOT
+     * @generated
      */
+    @Override
     public IMetadata getMetadata() {
-        if(metadata == null) {
-            metadata = IArchimateFactory.eINSTANCE.createMetadata();
-        }
         return metadata;
     }
 
@@ -516,6 +558,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setMetadata(IMetadata newMetadata) {
         if (newMetadata != metadata) {
             NotificationChain msgs = null;
@@ -535,6 +578,21 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
+    public EList<IProfile> getProfiles() {
+        if (profiles == null) {
+            profiles = new EObjectContainmentEList<IProfile>(IProfile.class, this, IArchimatePackage.ARCHIMATE_MODEL__PROFILES);
+        }
+        return profiles;
+    }
+
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
     public String getPurpose() {
         return purpose;
     }
@@ -544,6 +602,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setPurpose(String newPurpose) {
         String oldPurpose = purpose;
         purpose = newPurpose;
@@ -556,6 +615,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EList<IFolder> getFolders() {
         if (folders == null) {
             folders = new EObjectContainmentEList<IFolder>(IFolder.class, this, IArchimatePackage.ARCHIMATE_MODEL__FOLDERS);
@@ -568,6 +628,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public File getFile() {
         return file;
     }
@@ -577,6 +638,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setFile(File newFile) {
         File oldFile = file;
         file = newFile;
@@ -589,6 +651,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getVersion() {
         return version;
     }
@@ -598,6 +661,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setVersion(String newVersion) {
         String oldVersion = version;
         version = newVersion;
@@ -608,23 +672,6 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public void setDefaults() {
-        // Element has no ID so allocate one
-        if(getId() == null) {
-            setId(fIDAdapter.getNewID());
-        }
-        else {
-            fIDAdapter.registerID(getId());
-        }
-
-        addDefaultFolders();
-    }
-    
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
      * @generated
      */
     @Override
@@ -632,10 +679,14 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
         switch (featureID) {
             case IArchimatePackage.ARCHIMATE_MODEL__FOLDERS:
                 return ((InternalEList<?>)getFolders()).basicRemove(otherEnd, msgs);
+            case IArchimatePackage.ARCHIMATE_MODEL__FEATURES:
+                return ((InternalEList<?>)getFeatures()).basicRemove(otherEnd, msgs);
             case IArchimatePackage.ARCHIMATE_MODEL__PROPERTIES:
                 return ((InternalEList<?>)getProperties()).basicRemove(otherEnd, msgs);
             case IArchimatePackage.ARCHIMATE_MODEL__METADATA:
                 return basicSetMetadata(null, msgs);
+            case IArchimatePackage.ARCHIMATE_MODEL__PROFILES:
+                return ((InternalEList<?>)getProfiles()).basicRemove(otherEnd, msgs);
         }
         return super.eInverseRemove(otherEnd, featureID, msgs);
     }
@@ -654,8 +705,8 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 return getName();
             case IArchimatePackage.ARCHIMATE_MODEL__ID:
                 return getId();
-            case IArchimatePackage.ARCHIMATE_MODEL__ARCHIMATE_MODEL:
-                return getArchimateModel();
+            case IArchimatePackage.ARCHIMATE_MODEL__FEATURES:
+                return getFeatures();
             case IArchimatePackage.ARCHIMATE_MODEL__PROPERTIES:
                 return getProperties();
             case IArchimatePackage.ARCHIMATE_MODEL__PURPOSE:
@@ -666,6 +717,8 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 return getVersion();
             case IArchimatePackage.ARCHIMATE_MODEL__METADATA:
                 return getMetadata();
+            case IArchimatePackage.ARCHIMATE_MODEL__PROFILES:
+                return getProfiles();
         }
         return super.eGet(featureID, resolve, coreType);
     }
@@ -689,6 +742,10 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
             case IArchimatePackage.ARCHIMATE_MODEL__ID:
                 setId((String)newValue);
                 return;
+            case IArchimatePackage.ARCHIMATE_MODEL__FEATURES:
+                getFeatures().clear();
+                getFeatures().addAll((Collection<? extends IFeature>)newValue);
+                return;
             case IArchimatePackage.ARCHIMATE_MODEL__PROPERTIES:
                 getProperties().clear();
                 getProperties().addAll((Collection<? extends IProperty>)newValue);
@@ -704,6 +761,10 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 return;
             case IArchimatePackage.ARCHIMATE_MODEL__METADATA:
                 setMetadata((IMetadata)newValue);
+                return;
+            case IArchimatePackage.ARCHIMATE_MODEL__PROFILES:
+                getProfiles().clear();
+                getProfiles().addAll((Collection<? extends IProfile>)newValue);
                 return;
         }
         super.eSet(featureID, newValue);
@@ -726,6 +787,9 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
             case IArchimatePackage.ARCHIMATE_MODEL__ID:
                 setId(ID_EDEFAULT);
                 return;
+            case IArchimatePackage.ARCHIMATE_MODEL__FEATURES:
+                getFeatures().clear();
+                return;
             case IArchimatePackage.ARCHIMATE_MODEL__PROPERTIES:
                 getProperties().clear();
                 return;
@@ -740,6 +804,9 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 return;
             case IArchimatePackage.ARCHIMATE_MODEL__METADATA:
                 setMetadata((IMetadata)null);
+                return;
+            case IArchimatePackage.ARCHIMATE_MODEL__PROFILES:
+                getProfiles().clear();
                 return;
         }
         super.eUnset(featureID);
@@ -759,8 +826,8 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 return NAME_EDEFAULT == null ? name != null : !NAME_EDEFAULT.equals(name);
             case IArchimatePackage.ARCHIMATE_MODEL__ID:
                 return ID_EDEFAULT == null ? id != null : !ID_EDEFAULT.equals(id);
-            case IArchimatePackage.ARCHIMATE_MODEL__ARCHIMATE_MODEL:
-                return getArchimateModel() != null;
+            case IArchimatePackage.ARCHIMATE_MODEL__FEATURES:
+                return features != null && !features.isEmpty();
             case IArchimatePackage.ARCHIMATE_MODEL__PROPERTIES:
                 return properties != null && !properties.isEmpty();
             case IArchimatePackage.ARCHIMATE_MODEL__PURPOSE:
@@ -771,6 +838,8 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 return VERSION_EDEFAULT == null ? version != null : !VERSION_EDEFAULT.equals(version);
             case IArchimatePackage.ARCHIMATE_MODEL__METADATA:
                 return metadata != null;
+            case IArchimatePackage.ARCHIMATE_MODEL__PROFILES:
+                return profiles != null && !profiles.isEmpty();
         }
         return super.eIsSet(featureID);
     }
@@ -782,6 +851,11 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      */
     @Override
     public int eBaseStructuralFeatureID(int derivedFeatureID, Class<?> baseClass) {
+        if (baseClass == IAdapter.class) {
+            switch (derivedFeatureID) {
+                default: return -1;
+            }
+        }
         if (baseClass == INameable.class) {
             switch (derivedFeatureID) {
                 case IArchimatePackage.ARCHIMATE_MODEL__NAME: return IArchimatePackage.NAMEABLE__NAME;
@@ -794,14 +868,14 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 default: return -1;
             }
         }
-        if (baseClass == IAdapter.class) {
+        if (baseClass == IFeatures.class) {
             switch (derivedFeatureID) {
+                case IArchimatePackage.ARCHIMATE_MODEL__FEATURES: return IArchimatePackage.FEATURES__FEATURES;
                 default: return -1;
             }
         }
-        if (baseClass == IArchimateModelElement.class) {
+        if (baseClass == IArchimateModelObject.class) {
             switch (derivedFeatureID) {
-                case IArchimatePackage.ARCHIMATE_MODEL__ARCHIMATE_MODEL: return IArchimatePackage.ARCHIMATE_MODEL_ELEMENT__ARCHIMATE_MODEL;
                 default: return -1;
             }
         }
@@ -821,6 +895,11 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
      */
     @Override
     public int eDerivedStructuralFeatureID(int baseFeatureID, Class<?> baseClass) {
+        if (baseClass == IAdapter.class) {
+            switch (baseFeatureID) {
+                default: return -1;
+            }
+        }
         if (baseClass == INameable.class) {
             switch (baseFeatureID) {
                 case IArchimatePackage.NAMEABLE__NAME: return IArchimatePackage.ARCHIMATE_MODEL__NAME;
@@ -833,14 +912,14 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
                 default: return -1;
             }
         }
-        if (baseClass == IAdapter.class) {
+        if (baseClass == IFeatures.class) {
             switch (baseFeatureID) {
+                case IArchimatePackage.FEATURES__FEATURES: return IArchimatePackage.ARCHIMATE_MODEL__FEATURES;
                 default: return -1;
             }
         }
-        if (baseClass == IArchimateModelElement.class) {
+        if (baseClass == IArchimateModelObject.class) {
             switch (baseFeatureID) {
-                case IArchimatePackage.ARCHIMATE_MODEL_ELEMENT__ARCHIMATE_MODEL: return IArchimatePackage.ARCHIMATE_MODEL__ARCHIMATE_MODEL;
                 default: return -1;
             }
         }
@@ -862,7 +941,7 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (name: "); //$NON-NLS-1$
         result.append(name);
         result.append(", id: "); //$NON-NLS-1$
@@ -875,6 +954,46 @@ public class ArchimateModel extends EObjectImpl implements IArchimateModel {
         result.append(version);
         result.append(')');
         return result.toString();
+    }
+
+    @Override
+    public void dispose() {
+        id = null;
+        name = null;
+        purpose = null;
+        file = null;
+        
+        if(eAdapters != null) {
+            //eAdapters.clear(); // This can be slow
+            eAdapters = null;
+        }
+        
+        fAdapterMap.clear();
+        fAdapterMap = null;
+        
+        fContentListeners.clear();
+        fContentListeners = null;
+        
+        // Dispose of these in case they are referenced in an editor or similar
+        for(IDiagramModel dm : getDiagramModels()) {
+            dm.getProperties().clear();
+            dm.getChildren().clear();
+        }
+        
+        if(folders != null) {
+            folders.clear();
+            folders = null;
+        }
+        
+        if(properties != null) {
+            properties.clear();
+            properties = null;
+        }
+        
+        if(metadata != null) {
+            metadata.getEntries().clear();
+            metadata = null;
+        }
     }
 
 } //ArchimateModel

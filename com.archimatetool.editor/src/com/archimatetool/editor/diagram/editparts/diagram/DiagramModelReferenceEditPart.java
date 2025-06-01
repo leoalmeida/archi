@@ -12,12 +12,8 @@ import org.eclipse.gef.RequestConstants;
 import org.eclipse.gef.requests.LocationRequest;
 import org.eclipse.gef.tools.DirectEditManager;
 
-import com.archimatetool.editor.diagram.directedit.LabelDirectEditManager;
+import com.archimatetool.editor.diagram.directedit.MultiLineTextDirectEditManager;
 import com.archimatetool.editor.diagram.editparts.AbstractConnectedEditPart;
-import com.archimatetool.editor.diagram.editparts.IColoredEditPart;
-import com.archimatetool.editor.diagram.editparts.ILinedEditPart;
-import com.archimatetool.editor.diagram.editparts.ITextAlignedEditPart;
-import com.archimatetool.editor.diagram.figures.IDiagramModelObjectFigure;
 import com.archimatetool.editor.diagram.figures.diagram.DiagramModelReferenceFigure;
 import com.archimatetool.editor.diagram.policies.ArchimateDiagramConnectionPolicy;
 import com.archimatetool.editor.diagram.policies.PartComponentEditPolicy;
@@ -33,15 +29,14 @@ import com.archimatetool.model.IDiagramModelReference;
  * 
  * @author Phillip Beauvoir
  */
-public class DiagramModelReferenceEditPart extends AbstractConnectedEditPart
-implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart {
+public class DiagramModelReferenceEditPart extends AbstractConnectedEditPart {
 
     @Override
     protected void addECoreAdapter() {
         super.addECoreAdapter();
         
         // Listen to referenced model
-        IDiagramModel ref = ((IDiagramModelReference)getModel()).getReferencedModel();
+        IDiagramModel ref = getModel().getReferencedModel();
         if(ref != null) {
             ref.eAdapters().add(getECoreAdapter());
         }
@@ -52,7 +47,7 @@ implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart {
         super.removeECoreAdapter();
         
         // Unlisten to referenced model
-        IDiagramModel ref = ((IDiagramModelReference)getModel()).getReferencedModel();
+        IDiagramModel ref = getModel().getReferencedModel();
         if(ref != null) {
             ref.eAdapters().remove(getECoreAdapter());
         }
@@ -77,13 +72,13 @@ implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart {
     }
 
     @Override
-    public IDiagramModelObjectFigure getFigure() {
-        return (IDiagramModelObjectFigure)super.getFigure();
-    }
-
-    @Override
     protected void refreshFigure() {
-        ((IDiagramModelObjectFigure)figure).refreshVisuals();
+        getFigure().refreshVisuals();
+    }
+    
+    @Override
+    public IDiagramModelReference getModel() {
+        return (IDiagramModelReference)super.getModel();
     }
 
     @Override
@@ -91,11 +86,9 @@ implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart {
         // REQ_DIRECT_EDIT is Single-click when already selected or a Rename action
         // REQ_OPEN is Double-click
         
-        // Open Diagram if not in Full Screen Mode
+        // Open Diagram
         if(request.getType() == RequestConstants.REQ_OPEN) {
-            if(!isInFullScreenMode()) {
-                EditorManager.openDiagramEditor(((IDiagramModelReference)getModel()).getReferencedModel());
-            }
+            EditorManager.openDiagramEditor(getModel().getReferencedModel());
         }
         else if(request.getType() == RequestConstants.REQ_DIRECT_EDIT) {
             // Edit the text control if we clicked on it
@@ -112,6 +105,19 @@ implements IColoredEditPart, ITextAlignedEditPart, ILinedEditPart {
     }
 
     protected DirectEditManager createDirectEditManager() {
-        return new LabelDirectEditManager(this, getFigure().getTextControl());
+        //return new LabelDirectEditManager(this, getFigure().getTextControl(), getModel().getName());
+        return new MultiLineTextDirectEditManager(this, true);
+    }
+    
+    @Override
+    public <T> T getAdapter(Class<T> adapter) {
+        // Referenced Diagram Model - show Name, Documentation, Properties
+        if(getModel() != null && getModel().getReferencedModel() != null
+                && adapter.isInstance(getModel().getReferencedModel())      // adapter is instance of IDiagramModel
+                && !adapter.isInstance(getModel())) {                       // adapter is not instance of IDiagramModelReference
+            return adapter.cast(getModel().getReferencedModel());
+        }
+        
+        return super.getAdapter(adapter);
     }
 }

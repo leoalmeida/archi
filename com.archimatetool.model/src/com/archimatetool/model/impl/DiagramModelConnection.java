@@ -18,14 +18,15 @@ import org.eclipse.emf.ecore.util.EObjectContainmentEList;
 import org.eclipse.emf.ecore.util.InternalEList;
 
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IConnectable;
 import com.archimatetool.model.IDiagramModelBendpoint;
 import com.archimatetool.model.IDiagramModelConnection;
-import com.archimatetool.model.IDiagramModelObject;
 import com.archimatetool.model.IDocumentable;
 import com.archimatetool.model.IFontAttribute;
 import com.archimatetool.model.ILineObject;
 import com.archimatetool.model.IProperties;
 import com.archimatetool.model.IProperty;
+import com.archimatetool.model.ITextAlignment;
 
 
 /**
@@ -34,26 +35,26 @@ import com.archimatetool.model.IProperty;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getFont <em>Font</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getFontColor <em>Font Color</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getTextAlignment <em>Text Alignment</em>}</li>
- *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getTextPosition <em>Text Position</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getProperties <em>Properties</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getDocumentation <em>Documentation</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getLineWidth <em>Line Width</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getLineColor <em>Line Color</em>}</li>
+ *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getTextAlignment <em>Text Alignment</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getText <em>Text</em>}</li>
+ *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getTextPosition <em>Text Position</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getSource <em>Source</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getTarget <em>Target</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getBendpoints <em>Bendpoints</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.DiagramModelConnection#getType <em>Type</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
-public class DiagramModelConnection extends DiagramModelComponent implements IDiagramModelConnection {
+public class DiagramModelConnection extends Connectable implements IDiagramModelConnection {
     /**
      * The default value of the '{@link #getFont() <em>Font</em>}' attribute.
      * <!-- begin-user-doc -->
@@ -93,46 +94,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * @ordered
      */
     protected String fontColor = FONT_COLOR_EDEFAULT;
-
-    /**
-     * The default value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextAlignment()
-     * @generated
-     * @ordered
-     */
-    protected static final int TEXT_ALIGNMENT_EDEFAULT = 0;
-
-    /**
-     * The cached value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextAlignment()
-     * @generated
-     * @ordered
-     */
-    protected int textAlignment = TEXT_ALIGNMENT_EDEFAULT;
-
-    /**
-     * The default value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextPosition()
-     * @generated NOT
-     * @ordered
-     */
-    protected static final int TEXT_POSITION_EDEFAULT = CONNECTION_TEXT_POSITION_MIDDLE;
-
-    /**
-     * The cached value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @see #getTextPosition()
-     * @generated
-     * @ordered
-     */
-    protected int textPosition = TEXT_POSITION_EDEFAULT;
 
     /**
      * The cached value of the '{@link #getProperties() <em>Properties</em>}' containment reference list.
@@ -205,6 +166,26 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
     protected String lineColor = LINE_COLOR_EDEFAULT;
 
     /**
+     * The default value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextAlignment()
+     * @generated
+     * @ordered
+     */
+    protected static final int TEXT_ALIGNMENT_EDEFAULT = 2;
+
+    /**
+     * The cached value of the '{@link #getTextAlignment() <em>Text Alignment</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextAlignment()
+     * @generated
+     * @ordered
+     */
+    protected int textAlignment = TEXT_ALIGNMENT_EDEFAULT;
+
+    /**
      * The default value of the '{@link #getText() <em>Text</em>}' attribute.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -225,6 +206,26 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
     protected String text = TEXT_EDEFAULT;
 
     /**
+     * The default value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextPosition()
+     * @generated NOT
+     * @ordered
+     */
+    protected static final int TEXT_POSITION_EDEFAULT = CONNECTION_TEXT_POSITION_MIDDLE;
+
+    /**
+     * The cached value of the '{@link #getTextPosition() <em>Text Position</em>}' attribute.
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @see #getTextPosition()
+     * @generated
+     * @ordered
+     */
+    protected int textPosition = TEXT_POSITION_EDEFAULT;
+
+    /**
      * The cached value of the '{@link #getSource() <em>Source</em>}' reference.
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -232,7 +233,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * @generated
      * @ordered
      */
-    protected IDiagramModelObject source;
+    protected IConnectable source;
 
     /**
      * The cached value of the '{@link #getTarget() <em>Target</em>}' reference.
@@ -242,7 +243,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * @generated
      * @ordered
      */
-    protected IDiagramModelObject target;
+    protected IConnectable target;
 
     /**
      * The cached value of the '{@link #getBendpoints() <em>Bendpoints</em>}' containment reference list.
@@ -283,6 +284,16 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
         super();
     }
 
+    @Override
+    public boolean isNameVisible() {
+        return getFeatures().getBoolean(FEATURE_NAME_VISIBLE, FEATURE_NAME_VISIBLE_DEFAULT);
+    }
+    
+    @Override
+    public void setNameVisible(boolean value) {
+        getFeatures().putBoolean(FEATURE_NAME_VISIBLE, value, FEATURE_NAME_VISIBLE_DEFAULT);
+    }
+
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -298,6 +309,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getFont() {
         return font;
     }
@@ -307,6 +319,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setFont(String newFont) {
         String oldFont = font;
         font = newFont;
@@ -319,6 +332,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getFontColor() {
         return fontColor;
     }
@@ -328,6 +342,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setFontColor(String newFontColor) {
         String oldFontColor = fontColor;
         fontColor = newFontColor;
@@ -340,27 +355,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
-    public int getTextAlignment() {
-        return textAlignment;
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    public void setTextAlignment(int newTextAlignment) {
-        int oldTextAlignment = textAlignment;
-        textAlignment = newTextAlignment;
-        if (eNotificationRequired())
-            eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT, oldTextAlignment, textAlignment));
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
+    @Override
     public EList<IProperty> getProperties() {
         if (properties == null) {
             properties = new EObjectContainmentEList<IProperty>(IProperty.class, this, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__PROPERTIES);
@@ -373,6 +368,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getDocumentation() {
         return documentation;
     }
@@ -382,6 +378,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setDocumentation(String newDocumentation) {
         String oldDocumentation = documentation;
         documentation = newDocumentation;
@@ -395,6 +392,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getText() {
         return text;
     }
@@ -405,6 +403,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setText(String newText) {
         String oldText = text;
         text = newText;
@@ -417,28 +416,8 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
-    public int getTextPosition() {
-        return textPosition;
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    public void setTextPosition(int newTextPosition) {
-        int oldTextPosition = textPosition;
-        textPosition = newTextPosition;
-        if (eNotificationRequired())
-            eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION, oldTextPosition, textPosition));
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    public IDiagramModelObject getSource() {
+    @Override
+    public IConnectable getSource() {
         return source;
     }
 
@@ -447,8 +426,9 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
-    public void setSource(IDiagramModelObject newSource) {
-        IDiagramModelObject oldSource = source;
+    @Override
+    public void setSource(IConnectable newSource) {
+        IConnectable oldSource = source;
         source = newSource;
         if (eNotificationRequired())
             eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__SOURCE, oldSource, source));
@@ -459,7 +439,8 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
-    public IDiagramModelObject getTarget() {
+    @Override
+    public IConnectable getTarget() {
         return target;
     }
 
@@ -468,8 +449,9 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
-    public void setTarget(IDiagramModelObject newTarget) {
-        IDiagramModelObject oldTarget = target;
+    @Override
+    public void setTarget(IConnectable newTarget) {
+        IConnectable oldTarget = target;
         target = newTarget;
         if (eNotificationRequired())
             eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TARGET, oldTarget, target));
@@ -480,6 +462,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EList<IDiagramModelBendpoint> getBendpoints() {
         if (bendpoints == null) {
             bendpoints = new EObjectContainmentEList<IDiagramModelBendpoint>(IDiagramModelBendpoint.class, this, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__BENDPOINTS);
@@ -492,6 +475,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getLineWidth() {
         return lineWidth;
     }
@@ -501,6 +485,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLineWidth(int newLineWidth) {
         int oldLineWidth = lineWidth;
         lineWidth = newLineWidth;
@@ -513,6 +498,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getLineColor() {
         return lineColor;
     }
@@ -522,6 +508,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setLineColor(String newLineColor) {
         String oldLineColor = lineColor;
         lineColor = newLineColor;
@@ -534,6 +521,53 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
+    public int getTextAlignment() {
+        return textAlignment;
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
+    public void setTextAlignment(int newTextAlignment) {
+        int oldTextAlignment = textAlignment;
+        textAlignment = newTextAlignment;
+        if (eNotificationRequired())
+            eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT, oldTextAlignment, textAlignment));
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
+    public int getTextPosition() {
+        return textPosition;
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
+    public void setTextPosition(int newTextPosition) {
+        int oldTextPosition = textPosition;
+        textPosition = newTextPosition;
+        if (eNotificationRequired())
+            eNotify(new ENotificationImpl(this, Notification.SET, IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION, oldTextPosition, textPosition));
+    }
+
+    /**
+     * <!-- begin-user-doc -->
+     * <!-- end-user-doc -->
+     * @generated
+     */
+    @Override
     public int getType() {
         return type;
     }
@@ -543,6 +577,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setType(int newType) {
         int oldType = type;
         type = newType;
@@ -555,7 +590,8 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated NOT
      */
-    public void connect(IDiagramModelObject source, IDiagramModelObject target) {
+    @Override
+    public void connect(IConnectable source, IConnectable target) {
         if(source == null || target == null) {
             throw new IllegalArgumentException("Source or Target cannot be null"); //$NON-NLS-1$
         }
@@ -566,8 +602,11 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
         }
         
         disconnect();
+        
+        // TODO: Why isn't this setSource() and setTarget()? Surely that would fire the correct eNotification?
         this.source = source;
-        this.target = target;        
+        this.target = target;  
+        
         reconnect();
     }
 
@@ -576,6 +615,7 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public void disconnect() {
         if(source != null && target != null) {
             source.removeConnection(this);
@@ -588,20 +628,12 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
      * <!-- end-user-doc -->
      * @generated NOT
      */
+    @Override
     public void reconnect() {
         if(source != null && target != null) {
             source.addConnection(this);
             target.addConnection(this);
         }
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated NOT
-     */
-    public int getDefaultTextAlignment() {
-        return TEXT_ALIGNMENT_CENTER;
     }
 
     /**
@@ -623,8 +655,13 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
     @Override
     public EObject getCopy() {
         IDiagramModelConnection newConnection = (IDiagramModelConnection)super.getCopy();
+
         newConnection.setSource(null);
         newConnection.setTarget(null);
+        
+        newConnection.getSourceConnections().clear();
+        newConnection.getTargetConnections().clear();
+
         return newConnection;
     }
 
@@ -640,10 +677,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
                 return getFont();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR:
                 return getFontColor();
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
-                return getTextAlignment();
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
-                return getTextPosition();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__PROPERTIES:
                 return getProperties();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__DOCUMENTATION:
@@ -652,8 +685,12 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
                 return getLineWidth();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__LINE_COLOR:
                 return getLineColor();
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
+                return getTextAlignment();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT:
                 return getText();
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
+                return getTextPosition();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__SOURCE:
                 return getSource();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TARGET:
@@ -681,12 +718,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR:
                 setFontColor((String)newValue);
                 return;
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
-                setTextAlignment((Integer)newValue);
-                return;
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
-                setTextPosition((Integer)newValue);
-                return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__PROPERTIES:
                 getProperties().clear();
                 getProperties().addAll((Collection<? extends IProperty>)newValue);
@@ -700,14 +731,20 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__LINE_COLOR:
                 setLineColor((String)newValue);
                 return;
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
+                setTextAlignment((Integer)newValue);
+                return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT:
                 setText((String)newValue);
                 return;
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
+                setTextPosition((Integer)newValue);
+                return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__SOURCE:
-                setSource((IDiagramModelObject)newValue);
+                setSource((IConnectable)newValue);
                 return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TARGET:
-                setTarget((IDiagramModelObject)newValue);
+                setTarget((IConnectable)newValue);
                 return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__BENDPOINTS:
                 getBendpoints().clear();
@@ -734,12 +771,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR:
                 setFontColor(FONT_COLOR_EDEFAULT);
                 return;
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
-                setTextAlignment(TEXT_ALIGNMENT_EDEFAULT);
-                return;
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
-                setTextPosition(TEXT_POSITION_EDEFAULT);
-                return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__PROPERTIES:
                 getProperties().clear();
                 return;
@@ -752,14 +783,20 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__LINE_COLOR:
                 setLineColor(LINE_COLOR_EDEFAULT);
                 return;
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
+                setTextAlignment(TEXT_ALIGNMENT_EDEFAULT);
+                return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT:
                 setText(TEXT_EDEFAULT);
                 return;
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
+                setTextPosition(TEXT_POSITION_EDEFAULT);
+                return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__SOURCE:
-                setSource((IDiagramModelObject)null);
+                setSource((IConnectable)null);
                 return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TARGET:
-                setTarget((IDiagramModelObject)null);
+                setTarget((IConnectable)null);
                 return;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__BENDPOINTS:
                 getBendpoints().clear();
@@ -783,10 +820,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
                 return FONT_EDEFAULT == null ? font != null : !FONT_EDEFAULT.equals(font);
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR:
                 return FONT_COLOR_EDEFAULT == null ? fontColor != null : !FONT_COLOR_EDEFAULT.equals(fontColor);
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
-                return textAlignment != TEXT_ALIGNMENT_EDEFAULT;
-            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
-                return textPosition != TEXT_POSITION_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__PROPERTIES:
                 return properties != null && !properties.isEmpty();
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__DOCUMENTATION:
@@ -795,8 +828,12 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
                 return lineWidth != LINE_WIDTH_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__LINE_COLOR:
                 return LINE_COLOR_EDEFAULT == null ? lineColor != null : !LINE_COLOR_EDEFAULT.equals(lineColor);
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT:
+                return textAlignment != TEXT_ALIGNMENT_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT:
                 return TEXT_EDEFAULT == null ? text != null : !TEXT_EDEFAULT.equals(text);
+            case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION:
+                return textPosition != TEXT_POSITION_EDEFAULT;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__SOURCE:
                 return source != null;
             case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TARGET:
@@ -820,8 +857,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
             switch (derivedFeatureID) {
                 case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT: return IArchimatePackage.FONT_ATTRIBUTE__FONT;
                 case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR: return IArchimatePackage.FONT_ATTRIBUTE__FONT_COLOR;
-                case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT: return IArchimatePackage.FONT_ATTRIBUTE__TEXT_ALIGNMENT;
-                case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION: return IArchimatePackage.FONT_ATTRIBUTE__TEXT_POSITION;
                 default: return -1;
             }
         }
@@ -844,6 +879,12 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
                 default: return -1;
             }
         }
+        if (baseClass == ITextAlignment.class) {
+            switch (derivedFeatureID) {
+                case IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT: return IArchimatePackage.TEXT_ALIGNMENT__TEXT_ALIGNMENT;
+                default: return -1;
+            }
+        }
         return super.eBaseStructuralFeatureID(derivedFeatureID, baseClass);
     }
 
@@ -858,8 +899,6 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
             switch (baseFeatureID) {
                 case IArchimatePackage.FONT_ATTRIBUTE__FONT: return IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT;
                 case IArchimatePackage.FONT_ATTRIBUTE__FONT_COLOR: return IArchimatePackage.DIAGRAM_MODEL_CONNECTION__FONT_COLOR;
-                case IArchimatePackage.FONT_ATTRIBUTE__TEXT_ALIGNMENT: return IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT;
-                case IArchimatePackage.FONT_ATTRIBUTE__TEXT_POSITION: return IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_POSITION;
                 default: return -1;
             }
         }
@@ -882,6 +921,12 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
                 default: return -1;
             }
         }
+        if (baseClass == ITextAlignment.class) {
+            switch (baseFeatureID) {
+                case IArchimatePackage.TEXT_ALIGNMENT__TEXT_ALIGNMENT: return IArchimatePackage.DIAGRAM_MODEL_CONNECTION__TEXT_ALIGNMENT;
+                default: return -1;
+            }
+        }
         return super.eDerivedStructuralFeatureID(baseFeatureID, baseClass);
     }
 
@@ -894,23 +939,23 @@ public class DiagramModelConnection extends DiagramModelComponent implements IDi
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (font: "); //$NON-NLS-1$
         result.append(font);
         result.append(", fontColor: "); //$NON-NLS-1$
         result.append(fontColor);
-        result.append(", textAlignment: "); //$NON-NLS-1$
-        result.append(textAlignment);
-        result.append(", textPosition: "); //$NON-NLS-1$
-        result.append(textPosition);
         result.append(", documentation: "); //$NON-NLS-1$
         result.append(documentation);
         result.append(", lineWidth: "); //$NON-NLS-1$
         result.append(lineWidth);
         result.append(", lineColor: "); //$NON-NLS-1$
         result.append(lineColor);
+        result.append(", textAlignment: "); //$NON-NLS-1$
+        result.append(textAlignment);
         result.append(", text: "); //$NON-NLS-1$
         result.append(text);
+        result.append(", textPosition: "); //$NON-NLS-1$
+        result.append(textPosition);
         result.append(", type: "); //$NON-NLS-1$
         result.append(type);
         result.append(')');

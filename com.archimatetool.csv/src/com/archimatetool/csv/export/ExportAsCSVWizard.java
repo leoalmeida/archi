@@ -10,7 +10,6 @@ import java.io.IOException;
 
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.wizard.Wizard;
-import org.eclipse.swt.widgets.Display;
 
 import com.archimatetool.csv.CSVConstants;
 
@@ -58,8 +57,11 @@ public class ExportAsCSVWizard extends Wizard implements CSVConstants {
         // Strip newlines
         fExporter.setStripNewLines(fPage.getStripNewlines());
         
-        // Leading chars hack
-        fExporter.setUseLeadingCharsHack(fPage.getUseLeadingCharsHack());
+        // Excel compatible
+        fExporter.setExcelCompatible(fPage.getExcelCompatible());
+        
+        // Encoding
+        fExporter.setEncoding(fPage.getEncoding());
         
         File folder = new File(folderPath);
         
@@ -69,7 +71,7 @@ public class ExportAsCSVWizard extends Wizard implements CSVConstants {
         // Make sure the elements file does not already exist
         File elementsFile = new File(folder, fExporter.createElementsFileName());
         if(elementsFile.exists()) {
-            boolean result = MessageDialog.openQuestion(Display.getCurrent().getActiveShell(),
+            boolean result = MessageDialog.openQuestion(getShell(),
                     Messages.ExportAsCSVWizard_1,
                     Messages.ExportAsCSVWizard_2);
             if(!result) {
@@ -86,7 +88,7 @@ public class ExportAsCSVWizard extends Wizard implements CSVConstants {
         }
         catch(IOException ex) {
             ex.printStackTrace();
-            MessageDialog.openError(Display.getCurrent().getActiveShell(),
+            MessageDialog.openError(getShell(),
                     Messages.ExportAsCSVWizard_3,
                     Messages.ExportAsCSVWizard_4 + " " + ex.getMessage()); //$NON-NLS-1$
             return false;

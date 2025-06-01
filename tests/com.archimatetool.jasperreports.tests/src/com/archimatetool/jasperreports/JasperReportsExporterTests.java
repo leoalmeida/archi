@@ -5,20 +5,16 @@
  */
 package com.archimatetool.jasperreports;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
 
-import junit.framework.JUnit4TestAdapter;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JasperPrint;
-
-import org.junit.AfterClass;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.editor.utils.FileUtils;
 import com.archimatetool.model.IArchimateModel;
@@ -26,26 +22,25 @@ import com.archimatetool.testingtools.ArchimateTestModel;
 import com.archimatetool.tests.TestData;
 import com.archimatetool.tests.TestUtils;
 
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JasperPrint;
+
 
 @SuppressWarnings("nls")
 public class JasperReportsExporterTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(JasperReportsExporterTests.class);
-    }
-
     private static IArchimateModel model;
     private static JasperPrint jasperPrint;
     
     private static File exportFolder;
     private static File tmpFolder;
     private static String exportFileName = "archi";
-    private static File mainTemplateFile = TestSupport.STANDARD_REPORT_MAIN_FILE;
+    private static File mainTemplateFile = TestSupport.CUSTOM_REPORT_MAIN_FILE;
     private static String reportTitle = "Title";
     
     private static JasperReportsExporter exporter;
     
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() throws JRException, IOException {
         // Load ArchiMate model
         ArchimateTestModel tm = new ArchimateTestModel(TestData.TEST_MODEL_FILE_ARCHISURANCE);
@@ -57,14 +52,14 @@ public class JasperReportsExporterTests {
         tmpFolder.mkdirs();
         
         // Create exporter
-        exporter = new JasperReportsExporter(model, exportFolder, exportFileName, mainTemplateFile, reportTitle, 0);
+        exporter = new JasperReportsExporter(model, exportFolder, exportFileName, mainTemplateFile, reportTitle, null, 0);
         
         // Set up diagrams and Jasper Print once (expensive operation)
         exporter.writeDiagrams(tmpFolder);
-        jasperPrint = exporter.createJasperPrint(null, tmpFolder);
+        jasperPrint = exporter.createJasperPrint(tmpFolder);
     }
     
-    @AfterClass
+    @AfterAll
     public static void runOnceAfterAllTests() throws IOException {
         // Clean up
         FileUtils.deleteFolder(TestUtils.TMP_FOLDER);
@@ -81,7 +76,7 @@ public class JasperReportsExporterTests {
         File htmlFolder = new File(exportFolder, exportFileName + ".html_files");
         assertTrue(htmlFolder.exists());
         assertTrue(htmlFolder.isDirectory());
-        assertEquals(17, htmlFolder.listFiles().length);
+        assertEquals(18, htmlFolder.listFiles().length);
     }
     
     @Test

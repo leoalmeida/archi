@@ -18,9 +18,8 @@ import com.archimatetool.canvas.model.ICanvasModelImage;
 import com.archimatetool.canvas.model.ICanvasModelSticky;
 import com.archimatetool.canvas.model.ICanvasPackage;
 import com.archimatetool.canvas.model.IHintProvider;
-import com.archimatetool.canvas.model.IIconic;
 import com.archimatetool.canvas.model.INotesContent;
-import com.archimatetool.help.hints.IHelpHintProvider;
+import com.archimatetool.editor.ui.IHelpHintProvider;
 import com.archimatetool.model.IArchimatePackage;
 
 
@@ -31,13 +30,6 @@ import com.archimatetool.model.IArchimatePackage;
  * @generated
  */
 public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    private EClass iconicEClass = null;
-
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -122,7 +114,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
 
     /**
      * Creates, registers, and initializes the <b>Package</b> for this model, and for any others upon which it depends.
-     * 
+     *
      * <p>This method is used to initialize {@link ICanvasPackage#eINSTANCE} when that field is accessed.
      * Clients should not invoke it directly. Instead, they should simply access that field to obtain the package.
      * <!-- begin-user-doc -->
@@ -136,7 +128,8 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
         if (isInited) return (ICanvasPackage)EPackage.Registry.INSTANCE.getEPackage(ICanvasPackage.eNS_URI);
 
         // Obtain or create and register package
-        CanvasPackage theCanvasPackage = (CanvasPackage)(EPackage.Registry.INSTANCE.get(eNS_URI) instanceof CanvasPackage ? EPackage.Registry.INSTANCE.get(eNS_URI) : new CanvasPackage());
+        Object registeredCanvasPackage = EPackage.Registry.INSTANCE.get(eNS_URI);
+        CanvasPackage theCanvasPackage = registeredCanvasPackage instanceof CanvasPackage ? (CanvasPackage)registeredCanvasPackage : new CanvasPackage();
 
         isInited = true;
 
@@ -152,7 +145,6 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
         // Mark meta-data to indicate it can't be changed
         theCanvasPackage.freeze();
 
-  
         // Update the registry and return the package
         EPackage.Registry.INSTANCE.put(ICanvasPackage.eNS_URI, theCanvasPackage);
         return theCanvasPackage;
@@ -163,24 +155,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
-    public EClass getIconic() {
-        return iconicEClass;
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
-    public EAttribute getIconic_ImagePosition() {
-        return (EAttribute)iconicEClass.getEStructuralFeatures().get(0);
-    }
-
-    /**
-     * <!-- begin-user-doc -->
-     * <!-- end-user-doc -->
-     * @generated
-     */
+    @Override
     public EClass getCanvasModel() {
         return canvasModelEClass;
     }
@@ -190,6 +165,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getCanvasModelSticky() {
         return canvasModelStickyEClass;
     }
@@ -199,6 +175,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getCanvasModelBlock() {
         return canvasModelBlockEClass;
     }
@@ -208,6 +185,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getCanvasModelImage() {
         return canvasModelImageEClass;
     }
@@ -217,6 +195,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getCanvasModelConnection() {
         return canvasModelConnectionEClass;
     }
@@ -226,6 +205,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getHintProvider() {
         return hintProviderEClass;
     }
@@ -235,6 +215,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EAttribute getHintProvider_HintTitle() {
         return (EAttribute)hintProviderEClass.getEStructuralFeatures().get(0);
     }
@@ -244,6 +225,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EAttribute getHintProvider_HintContent() {
         return (EAttribute)hintProviderEClass.getEStructuralFeatures().get(1);
     }
@@ -253,6 +235,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getHelpHintProvider() {
         return helpHintProviderEClass;
     }
@@ -262,6 +245,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EClass getNotesContent() {
         return notesContentEClass;
     }
@@ -271,6 +255,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EAttribute getNotesContent_Notes() {
         return (EAttribute)notesContentEClass.getEStructuralFeatures().get(0);
     }
@@ -280,6 +265,7 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public ICanvasFactory getCanvasFactory() {
         return (ICanvasFactory)getEFactoryInstance();
     }
@@ -303,9 +289,6 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
         isCreated = true;
 
         // Create classes and their features
-        iconicEClass = createEClass(ICONIC);
-        createEAttribute(iconicEClass, ICONIC__IMAGE_POSITION);
-
         hintProviderEClass = createEClass(HINT_PROVIDER);
         createEAttribute(hintProviderEClass, HINT_PROVIDER__HINT_TITLE);
         createEAttribute(hintProviderEClass, HINT_PROVIDER__HINT_CONTENT);
@@ -357,18 +340,17 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
         // Set bounds for type parameters
 
         // Add supertypes to classes
-        iconicEClass.getESuperTypes().add(theArchimatePackage.getDiagramModelObject());
-        iconicEClass.getESuperTypes().add(theArchimatePackage.getDiagramModelImageProvider());
         canvasModelEClass.getESuperTypes().add(theArchimatePackage.getDiagramModel());
         canvasModelEClass.getESuperTypes().add(this.getHintProvider());
         canvasModelEClass.getESuperTypes().add(this.getHelpHintProvider());
-        canvasModelStickyEClass.getESuperTypes().add(this.getIconic());
+        canvasModelStickyEClass.getESuperTypes().add(theArchimatePackage.getIconic());
         canvasModelStickyEClass.getESuperTypes().add(theArchimatePackage.getTextContent());
         canvasModelStickyEClass.getESuperTypes().add(this.getNotesContent());
         canvasModelStickyEClass.getESuperTypes().add(theArchimatePackage.getProperties());
         canvasModelStickyEClass.getESuperTypes().add(theArchimatePackage.getLockable());
         canvasModelStickyEClass.getESuperTypes().add(theArchimatePackage.getBorderObject());
-        canvasModelBlockEClass.getESuperTypes().add(this.getIconic());
+        canvasModelStickyEClass.getESuperTypes().add(theArchimatePackage.getTextPosition());
+        canvasModelBlockEClass.getESuperTypes().add(theArchimatePackage.getIconic());
         canvasModelBlockEClass.getESuperTypes().add(theArchimatePackage.getDiagramModelContainer());
         canvasModelBlockEClass.getESuperTypes().add(theArchimatePackage.getProperties());
         canvasModelBlockEClass.getESuperTypes().add(theArchimatePackage.getLockable());
@@ -376,15 +358,13 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
         canvasModelBlockEClass.getESuperTypes().add(this.getHelpHintProvider());
         canvasModelBlockEClass.getESuperTypes().add(this.getHintProvider());
         canvasModelBlockEClass.getESuperTypes().add(theArchimatePackage.getTextContent());
+        canvasModelBlockEClass.getESuperTypes().add(theArchimatePackage.getTextPosition());
         canvasModelImageEClass.getESuperTypes().add(theArchimatePackage.getDiagramModelImage());
         canvasModelImageEClass.getESuperTypes().add(theArchimatePackage.getLockable());
         canvasModelConnectionEClass.getESuperTypes().add(theArchimatePackage.getDiagramModelConnection());
         canvasModelConnectionEClass.getESuperTypes().add(theArchimatePackage.getLockable());
 
         // Initialize classes and features; add operations and parameters
-        initEClass(iconicEClass, IIconic.class, "Iconic", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS); //$NON-NLS-1$
-        initEAttribute(getIconic_ImagePosition(), ecorePackage.getEInt(), "imagePosition", "2", 0, 1, IIconic.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED); //$NON-NLS-1$ //$NON-NLS-2$
-
         initEClass(hintProviderEClass, IHintProvider.class, "HintProvider", IS_ABSTRACT, IS_INTERFACE, IS_GENERATED_INSTANCE_CLASS); //$NON-NLS-1$
         initEAttribute(getHintProvider_HintTitle(), ecorePackage.getEString(), "hintTitle", "", 0, 1, IHintProvider.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED); //$NON-NLS-1$ //$NON-NLS-2$
         initEAttribute(getHintProvider_HintContent(), ecorePackage.getEString(), "hintContent", "", 0, 1, IHintProvider.class, !IS_TRANSIENT, !IS_VOLATILE, IS_CHANGEABLE, !IS_UNSETTABLE, !IS_ID, IS_UNIQUE, !IS_DERIVED, IS_ORDERED); //$NON-NLS-1$ //$NON-NLS-2$
@@ -419,18 +399,18 @@ public class CanvasPackage extends EPackageImpl implements ICanvasPackage {
      * @generated
      */
     protected void createExtendedMetaDataAnnotations() {
-        String source = "http:///org/eclipse/emf/ecore/util/ExtendedMetaData"; //$NON-NLS-1$		
+        String source = "http:///org/eclipse/emf/ecore/util/ExtendedMetaData"; //$NON-NLS-1$
         addAnnotation
-          (getHintProvider_HintContent(), 
-           source, 
+          (getHintProvider_HintContent(),
+           source,
            new String[] {
-             "kind", "element" //$NON-NLS-1$ //$NON-NLS-2$
-           });		
+               "kind", "element" //$NON-NLS-1$ //$NON-NLS-2$
+           });
         addAnnotation
-          (getNotesContent_Notes(), 
-           source, 
+          (getNotesContent_Notes(),
+           source,
            new String[] {
-             "kind", "element" //$NON-NLS-1$ //$NON-NLS-2$
+               "kind", "element" //$NON-NLS-1$ //$NON-NLS-2$
            });
     }
 

@@ -9,7 +9,7 @@ import org.eclipse.jface.resource.ImageDescriptor;
 import org.eclipse.ui.IEditorInput;
 import org.eclipse.ui.IPersistableElement;
 
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
 
 
 
@@ -37,24 +37,28 @@ implements IEditorInput {
         return fViewName;
     }
     
+    @Override
     public boolean exists() {
         return false;
     }
 
+    @Override
     public ImageDescriptor getImageDescriptor() {
-        return IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_DIAGRAM_16);
+        return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_DIAGRAM);
     }
 
+    @Override
     public String getName() {
         return getViewName() == null ? Messages.NullDiagramEditorInput_0 : Messages.NullDiagramEditorInput_1 + " - " + getViewName(); //$NON-NLS-1$
     }
 
+    @Override
     public String getToolTipText() {
         return getName();
     }
 
-    @SuppressWarnings("rawtypes")
-    public Object getAdapter(Class adapter) {
+    @Override
+    public <T> T getAdapter(Class<T> adapter) {
         return null;
     }
 
@@ -67,6 +71,7 @@ implements IEditorInput {
         return false;
     }
 
+    @Override
     public IPersistableElement getPersistable() {
         return null;
     }

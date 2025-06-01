@@ -8,7 +8,6 @@ package com.archimatetool.canvas.editparts;
 import java.util.List;
 
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.gef.EditPolicy;
 import org.eclipse.gef.Request;
 import org.eclipse.gef.RequestConstants;
@@ -21,18 +20,13 @@ import org.eclipse.gef.tools.DirectEditManager;
 
 import com.archimatetool.canvas.figures.CanvasBlockFigure;
 import com.archimatetool.canvas.model.ICanvasModelBlock;
-import com.archimatetool.canvas.model.ICanvasPackage;
 import com.archimatetool.canvas.policies.CanvasBlockLayoutPolicy;
 import com.archimatetool.canvas.policies.CanvasConnectionPolicy;
 import com.archimatetool.canvas.policies.CanvasDNDEditPolicy;
 import com.archimatetool.editor.diagram.directedit.MultiLineTextDirectEditManager;
 import com.archimatetool.editor.diagram.editparts.AbstractConnectedEditPart;
-import com.archimatetool.editor.diagram.editparts.IColoredEditPart;
-import com.archimatetool.editor.diagram.editparts.ITextAlignedEditPart;
-import com.archimatetool.editor.diagram.editparts.ITextPositionedEditPart;
 import com.archimatetool.editor.diagram.editparts.SnapEditPartAdapter;
 import com.archimatetool.editor.diagram.figures.IContainerFigure;
-import com.archimatetool.editor.diagram.figures.IDiagramModelObjectFigure;
 import com.archimatetool.editor.diagram.policies.BasicContainerEditPolicy;
 import com.archimatetool.editor.diagram.policies.ContainerHighlightEditPolicy;
 import com.archimatetool.editor.diagram.policies.PartComponentEditPolicy;
@@ -46,31 +40,8 @@ import com.archimatetool.model.IArchimatePackage;
  * 
  * @author Phillip Beauvoir
  */
-public class CanvasBlockEditPart extends AbstractConnectedEditPart
-implements IColoredEditPart, ITextAlignedEditPart, ITextPositionedEditPart {
+public class CanvasBlockEditPart extends AbstractConnectedEditPart {
     
-    @Override
-    protected void eCoreChanged(Notification msg) {
-        Object feature = msg.getFeature();
-        
-        switch(msg.getEventType()) {
-            case Notification.SET:
-                // Refresh Icon
-                if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL_IMAGE_PROVIDER__IMAGE_PATH
-                            || feature == ICanvasPackage.Literals.ICONIC__IMAGE_POSITION) {
-                    ((CanvasBlockFigure)getFigure()).updateImage();
-                }
-                else {
-                    super.eCoreChanged(msg);
-                }
-                
-                break;
-
-            default:
-                super.eCoreChanged(msg);
-        }
-    }
-
     @Override
     protected List<?> getModelChildren() {
         return getModel().getChildren();
@@ -127,14 +98,13 @@ implements IColoredEditPart, ITextAlignedEditPart, ITextPositionedEditPart {
     @Override
     protected void refreshFigure() {
         // Refresh the figure if necessary
-        ((IDiagramModelObjectFigure)getFigure()).refreshVisuals();
+        getFigure().refreshVisuals();
     }
 
-    @SuppressWarnings("rawtypes")
     @Override
-    public Object getAdapter(Class adapter) {
+    public <T> T getAdapter(Class<T> adapter) {
         if(adapter == SnapToHelper.class) {
-            return new SnapEditPartAdapter(this).getSnapToHelper();
+            return adapter.cast(new SnapEditPartAdapter(this).getSnapToHelper());
         }
         
         return super.getAdapter(adapter);

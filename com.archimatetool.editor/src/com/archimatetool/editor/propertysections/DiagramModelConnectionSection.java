@@ -5,11 +5,11 @@
  */
 package com.archimatetool.editor.propertysections;
 
-import org.eclipse.emf.common.notify.Adapter;
+import org.eclipse.core.runtime.IAdaptable;
 import org.eclipse.emf.common.notify.Notification;
-import org.eclipse.emf.common.notify.impl.AdapterImpl;
 import org.eclipse.emf.ecore.EObject;
-import org.eclipse.gef.EditPart;
+import org.eclipse.gef.commands.Command;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
@@ -22,6 +22,7 @@ import com.archimatetool.editor.diagram.actions.ConnectionRouterAction;
 import com.archimatetool.editor.diagram.commands.ConnectionRouterTypeCommand;
 import com.archimatetool.model.IArchimatePackage;
 import com.archimatetool.model.IDiagramModel;
+import com.archimatetool.model.IDiagramModelReference;
 
 
 
@@ -30,33 +31,43 @@ import com.archimatetool.model.IDiagramModel;
  * 
  * @author Phillip Beauvoir
  */
-public class DiagramModelConnectionSection extends AbstractArchimatePropertySection {
+public class DiagramModelConnectionSection extends AbstractECorePropertySection {
     
     private static final String HELP_ID = "com.archimatetool.help.diagramModelSection"; //$NON-NLS-1$
 
-    /*
-     * Adapter to listen to changes made elsewhere (including Undo/Redo commands)
+    /**
+     * Filter to show or reject this section depending on input value
      */
-    private Adapter eAdapter = new AdapterImpl() {
+    public static class Filter extends ObjectFilter {
         @Override
-        public void notifyChanged(Notification msg) {
-            Object feature = msg.getFeature();
-            // Change made from Menu Action
-            if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL__CONNECTION_ROUTER_TYPE) {
-                refreshControls();
+        public boolean select(Object object) {
+            // Don't show this section on a View Reference
+            if(object instanceof IAdaptable && ((IAdaptable)object).getAdapter(IDiagramModelReference.class) != null) {
+                return false;
             }
+            
+            return super.select(object);
         }
-    };
-    
+
+        @Override
+        public boolean isRequiredType(Object object) {
+            return object instanceof IDiagramModel;
+        }
+
+        @Override
+        public Class<?> getAdaptableType() {
+            return IDiagramModel.class;
+        }
+    }
+
     private Combo fComboRouterType;
     
     private String[] comboItems = {
             ConnectionRouterAction.CONNECTION_ROUTER_BENDPONT,
-            ConnectionRouterAction.CONNECTION_ROUTER_SHORTEST_PATH,
+            // Doesn't work with C2C
+            //ConnectionRouterAction.CONNECTION_ROUTER_SHORTEST_PATH,
             ConnectionRouterAction.CONNECTION_ROUTER_MANHATTAN
     };
-
-    private IDiagramModel fDiagramModel;
     
     @Override
     protected void createControls(Composite parent) {
@@ -68,19 +79,29 @@ public class DiagramModelConnectionSection extends AbstractArchimatePropertySect
     
     private void createRouterTypeControl(Composite parent) {
         // Label
-        createLabel(parent, Messages.DiagramModelConnectionSection_0, ITabbedLayoutConstants.BIG_LABEL_WIDTH, SWT.CENTER);
+        createLabel(parent, Messages.DiagramModelConnectionSection_0, ITabbedLayoutConstants.STANDARD_LABEL_WIDTH, SWT.CENTER);
         
         // Combo
         fComboRouterType = new Combo(parent, SWT.READ_ONLY);
+        getWidgetFactory().adapt(fComboRouterType, true, true);
         fComboRouterType.setItems(comboItems);
+        
         fComboRouterType.addSelectionListener(new SelectionAdapter() {
             @Override
             public void widgetSelected(SelectionEvent e) {
-                if(isAlive()) {
-                    fIsExecutingCommand = true;
-                    getCommandStack().execute(new ConnectionRouterTypeCommand(fDiagramModel, fComboRouterType.getSelectionIndex()));
-                    fIsExecutingCommand = false;
+                CompoundCommand result = new CompoundCommand();
+
+                for(EObject dm : getEObjects()) {
+                    if(isAlive(dm)) {
+                        Command cmd = new ConnectionRouterTypeCommand((IDiagramModel)dm,
+                                ConnectionRouterAction.CONNECTION_ROUTER_TYPES.get(fComboRouterType.getSelectionIndex()));
+                        if(cmd.canExecute()) {
+                            result.add(cmd);
+                        }
+                    }
                 }
+
+                executeCommand(result.unwrap());
             }
         });
         
@@ -90,35 +111,31 @@ public class DiagramModelConnectionSection extends AbstractArchimatePropertySect
     }
 
     @Override
-    protected void setElement(Object element) {
-        if(element instanceof EditPart) {
-            fDiagramModel = (IDiagramModel)((EditPart)element).getModel();
+    protected void notifyChanged(Notification msg) {
+        Object feature = msg.getFeature();
+
+        if(feature == IArchimatePackage.Literals.DIAGRAM_MODEL__CONNECTION_ROUTER_TYPE) {
+            update();
         }
-        else if(element instanceof IDiagramModel) {
-            fDiagramModel = (IDiagramModel)element;
-        }
-        else {
-            System.err.println("Section wants to display for " + element); //$NON-NLS-1$
-        }
-        
-        refreshControls();
     }
-    
-    protected void refreshControls() {
+
+    @Override
+    protected void update() {
         if(fIsExecutingCommand) {
             return; 
         }
         
-        fComboRouterType.select(fDiagramModel.getConnectionRouterType());
+        int type = ((IDiagramModel)getFirstSelectedObject()).getConnectionRouterType();
+        
+        if(ConnectionRouterAction.CONNECTION_ROUTER_TYPES.indexOf(type) == -1) {
+            type = 0;
+        }
+        
+        fComboRouterType.select(ConnectionRouterAction.CONNECTION_ROUTER_TYPES.indexOf(type));
     }
 
     @Override
-    protected Adapter getECoreAdapter() {
-        return eAdapter;
-    }
-
-    @Override
-    protected EObject getEObject() {
-        return fDiagramModel;
+    protected IObjectFilter getFilter() {
+        return new Filter();
     }
 }

@@ -6,11 +6,11 @@
 package com.archimatetool.model.impl;
 
 import java.util.Collection;
+
 import org.eclipse.emf.common.notify.Notification;
 import org.eclipse.emf.common.notify.NotificationChain;
 import org.eclipse.emf.common.util.EList;
 import org.eclipse.emf.ecore.EClass;
-
 import org.eclipse.emf.ecore.InternalEObject;
 import org.eclipse.emf.ecore.impl.ENotificationImpl;
 import org.eclipse.emf.ecore.util.EObjectContainmentEList;
@@ -28,11 +28,11 @@ import com.archimatetool.model.ISketchModelActor;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.SketchModelActor#getDocumentation <em>Documentation</em>}</li>
  *   <li>{@link com.archimatetool.model.impl.SketchModelActor#getProperties <em>Properties</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
@@ -90,6 +90,7 @@ public class SketchModelActor extends DiagramModelObject implements ISketchModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public String getDocumentation() {
         return documentation;
     }
@@ -99,6 +100,7 @@ public class SketchModelActor extends DiagramModelObject implements ISketchModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setDocumentation(String newDocumentation) {
         String oldDocumentation = documentation;
         documentation = newDocumentation;
@@ -111,13 +113,14 @@ public class SketchModelActor extends DiagramModelObject implements ISketchModel
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public EList<IProperty> getProperties() {
         if (properties == null) {
             properties = new EObjectContainmentEList<IProperty>(IProperty.class, this, IArchimatePackage.SKETCH_MODEL_ACTOR__PROPERTIES);
         }
         return properties;
     }
-
+    
     /**
      * <!-- begin-user-doc -->
      * <!-- end-user-doc -->
@@ -255,7 +258,7 @@ public class SketchModelActor extends DiagramModelObject implements ISketchModel
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (documentation: "); //$NON-NLS-1$
         result.append(documentation);
         result.append(')');

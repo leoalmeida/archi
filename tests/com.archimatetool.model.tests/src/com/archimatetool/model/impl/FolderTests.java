@@ -5,14 +5,12 @@
  */
 package com.archimatetool.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertSame;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateFactory;
@@ -23,14 +21,10 @@ import com.archimatetool.model.IFolder;
 
 public class FolderTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(FolderTests.class);
-    }
-    
     private IFolder folder;
     private IArchimateModel model;
 
-    @Before
+    @BeforeEach
     public void runBeforeEachTest() {
         folder = IArchimateFactory.eINSTANCE.createFolder();
         model = IArchimateFactory.eINSTANCE.createArchimateModel();
@@ -43,10 +37,7 @@ public class FolderTests {
 
     @Test
     public void testGetID() {
-        assertNull(folder.getId());
-        
-        model.getFolders().add(folder);
-        assertNotNull(folder.getId());
+        CommonTests.testGetID(folder);
     }
 
     @Test

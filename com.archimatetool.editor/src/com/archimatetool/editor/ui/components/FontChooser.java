@@ -13,6 +13,7 @@ import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.layout.GridDataFactory;
 import org.eclipse.jface.preference.PreferenceDialog;
 import org.eclipse.jface.util.IPropertyChangeListener;
 import org.eclipse.jface.util.PropertyChangeEvent;
@@ -32,11 +33,13 @@ import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.FontDialog;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.ui.dialogs.PreferencesUtil;
+import org.eclipse.ui.forms.widgets.FormToolkit;
 
-import com.archimatetool.editor.preferences.ColoursFontsPreferencePage;
+import com.archimatetool.editor.preferences.FontsPreferencePage;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.FontFactory;
-import com.archimatetool.editor.ui.IArchimateImages;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.UIUtils;
 import com.archimatetool.model.IFontAttribute;
 
 
@@ -69,6 +72,11 @@ public class FontChooser extends EventManager {
     private FontData fFontData;
     private RGB fFontRGB;
     
+    public FontChooser(Composite parent, FormToolkit toolkit) {
+        this(parent);
+        toolkit.adapt(fTextButton, true, true);
+        toolkit.adapt(fMenuButton, true, true);
+    }
 
     public FontChooser(Composite parent) {
         fComposite = new Composite(parent, SWT.NULL);
@@ -80,6 +88,8 @@ public class FontChooser extends EventManager {
         fComposite.setLayout(layout);
 
         fTextButton = new Button(fComposite, SWT.FLAT);
+        // Ensure button has initial height, especially on MacOS Big Sur
+        fTextButton.setText("Select"); //$NON-NLS-1$
         
         fTextButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -87,6 +97,8 @@ public class FontChooser extends EventManager {
                 chooseFont();
             }
         });
+        
+        GridDataFactory.create(SWT.NONE).hint(90, SWT.DEFAULT).applyTo(fTextButton);
         
         fComposite.getAccessible().addAccessibleListener(new AccessibleAdapter() {
             @Override
@@ -97,7 +109,7 @@ public class FontChooser extends EventManager {
         
         fMenuButton = new Button(fComposite, SWT.FLAT);
         fMenuButton.setLayoutData(new GridData(GridData.FILL_VERTICAL));
-        fMenuButton.setImage(IArchimateImages.ImageFactory.getImage(IArchimateImages.MENU_ARROW));
+        fMenuButton.setImage(IArchiImages.ImageFactory.getImage(IArchiImages.MENU_ARROW));
 
         fMenuButton.addSelectionListener(new SelectionAdapter() {
             @Override
@@ -182,10 +194,8 @@ public class FontChooser extends EventManager {
                 @Override
                 public void run() {
                     PreferenceDialog dialog = PreferencesUtil.createPreferenceDialogOn(getControl().getShell(),
-                            ColoursFontsPreferencePage.ID, null, null);
+                            FontsPreferencePage.ID, null, null);
                     if(dialog != null) {
-                        ColoursFontsPreferencePage page = (ColoursFontsPreferencePage)dialog.getSelectedPage();
-                        page.selectFontsTab();
                         dialog.open();
                     }
                 }
@@ -202,6 +212,8 @@ public class FontChooser extends EventManager {
      */
     public void setEnabled(boolean state) {
         getControl().setEnabled(state);
+        fTextButton.setEnabled(state);
+        fMenuButton.setEnabled(state);
     }
 
     /**
@@ -210,6 +222,7 @@ public class FontChooser extends EventManager {
      */
     public void chooseFont() {
         FontDialog dialog = new FontDialog(getControl().getShell());
+        dialog.setEffectsVisible(false); // Don't allow underline/strikeout on Windows. See https://github.com/archimatetool/archi/issues/851
         dialog.setText(Messages.FontChooser_3);
         dialog.setFontList(new FontData[] { fFontData } );        
         dialog.setRGB(fFontRGB);
@@ -246,14 +259,21 @@ public class FontChooser extends EventManager {
     }
     
     protected void updateButtonText() {
-        fTextButton.setText(fFontData.getName() + " " + //$NON-NLS-1$
+        String text = fFontData.getName() + " " + //$NON-NLS-1$
                 fFontData.getHeight() + " " + //$NON-NLS-1$
-                 ((fFontData.getStyle() & SWT.BOLD) == SWT.BOLD ? Messages.FontChooser_4 : "") + " " + //$NON-NLS-1$ //$NON-NLS-2$
-                 ((fFontData.getStyle() & SWT.ITALIC) == SWT.ITALIC ? Messages.FontChooser_7 : "")); //$NON-NLS-1$
-         
-        fComposite.getParent().layout();
+                ((fFontData.getStyle() & SWT.BOLD) == SWT.BOLD ? Messages.FontChooser_4 : "") + " " + //$NON-NLS-1$ //$NON-NLS-2$
+                ((fFontData.getStyle() & SWT.ITALIC) == SWT.ITALIC ? Messages.FontChooser_7 : "");  //$NON-NLS-1$
+        
+        // Async this as the button width is calculated later in the UI thread
+        fTextButton.getDisplay().asyncExec(() -> {
+            if(!fTextButton.isDisposed()) { // control can be disposed when more than one object is deleted in a view
+                fTextButton.setText(UIUtils.shortenText(text, fTextButton, 6));
+            }
+        });
+        
+        fTextButton.setToolTipText(text);
     }
-
+    
     /**
      * Adds a property change listener to this <code>ColorSelector</code>.
      * Events are fired when the color in the control changes via the user

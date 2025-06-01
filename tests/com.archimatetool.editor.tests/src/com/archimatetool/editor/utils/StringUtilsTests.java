@@ -5,15 +5,13 @@
  */
 package com.archimatetool.editor.utils;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.UUID;
 
-import junit.framework.JUnit4TestAdapter;
-
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
 
 /**
@@ -22,10 +20,6 @@ import org.junit.Test;
 @SuppressWarnings("nls")
 public class StringUtilsTests {
 
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(StringUtilsTests.class);
-    }
-    
     @Test
     public void safeStringNull() {
         String string = null;
@@ -159,6 +153,11 @@ public class StringUtilsTests {
     }
 
     @Test
+    public void testNormaliseNewLineCharacters() {
+        assertEquals("Hello World", StringUtils.normaliseNewLineCharacters("Hello\r\n\r\n\r\nWorld"));
+    }
+
+    @Test
     public void testCompareVersionNumbers() {
         assertEquals(-1, StringUtils.compareVersionNumbers("1", "2"));
         assertEquals(0, StringUtils.compareVersionNumbers("1", "1"));
@@ -179,13 +178,22 @@ public class StringUtilsTests {
         assertEquals(-1, StringUtils.compareVersionNumbers("1.1.1", "10.10.10"));
         assertEquals(0, StringUtils.compareVersionNumbers("10.10.10", "10.10.10"));
         assertEquals(1, StringUtils.compareVersionNumbers("10.10.10", "1.1.1"));
-    }
-    
-    @Test
-    public void testCompareVersionNumbers_WithBlankValue() {
-        assertEquals(-1, StringUtils.compareVersionNumbers("", "1.2"));
-        assertEquals(0, StringUtils.compareVersionNumbers("", ""));
-        assertEquals(1, StringUtils.compareVersionNumbers("1.2", ""));
+        
+        assertEquals(-1, StringUtils.compareVersionNumbers("10", "10.1"));
+        assertEquals(0, StringUtils.compareVersionNumbers("10", "10.0.0"));
+        assertEquals(0, StringUtils.compareVersionNumbers("10", "10.0"));
+        assertEquals(1, StringUtils.compareVersionNumbers("11", "10.15.7"));
+        assertEquals(1, StringUtils.compareVersionNumbers("11.0", "10.15.7"));
+        assertEquals(1, StringUtils.compareVersionNumbers("11.0.0", "10.15.7"));
     }
 
+    @Test
+    public void testVersionNumberAsInt() {
+        assertEquals(0, StringUtils.versionNumberAsInt(null));
+        assertEquals(0, StringUtils.versionNumberAsInt(""));
+        assertEquals(1 << 16, StringUtils.versionNumberAsInt("1"));
+        assertEquals(1 << 16, StringUtils.versionNumberAsInt("1.0"));
+        assertEquals((1 << 16) + (1 << 8), StringUtils.versionNumberAsInt("1.1"));
+        assertEquals((8 << 16) + (2 << 8) + 16, StringUtils.versionNumberAsInt("8.2.16"));
+    }
 }

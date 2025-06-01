@@ -7,13 +7,13 @@ package com.archimatetool.editor.utils;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
-import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
+import java.nio.charset.Charset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.zip.ZipEntry;
@@ -24,6 +24,8 @@ import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.graphics.ImageData;
 import org.eclipse.swt.graphics.ImageLoader;
+
+import com.archimatetool.editor.ui.ImageFactory;
 
 /**
  * Some useful Zip Utilities
@@ -192,32 +194,48 @@ public final class ZipUtils {
         }
         
         ImageLoader loader = new ImageLoader();
-        loader.data = new ImageData[] { image.getImageData() };
+        loader.data = new ImageData[] { image.getImageData(ImageFactory.getDeviceZoom()) };
         loader.save(zOut, format);
         zOut.closeEntry();
 	}
 
     /**
-	 * Adds a String as a field entry to an already opened ZipOutputStream
-	 * @param text
-	 * @param entryName
-	 * @param zOut
-	 * @throws IOException
-	 */
-	public static void addStringToZip(String text, String entryName, ZipOutputStream zOut) throws IOException {
-		BufferedReader reader = new BufferedReader(new StringReader(text));
-		
-		ZipEntry zipEntry = new ZipEntry(entryName);
-		
-		zOut.putNextEntry(zipEntry);
-		
-		int i;
-		while((i = reader.read()) != -1) {
-			zOut.write(i);
-		}
-		zOut.closeEntry();
-	}
-	
+     * Adds a String as a field entry to an already opened ZipOutputStream
+     * @param text
+     * @param entryName
+     * @param zOut
+     * @throws IOException
+     */
+    public static void addStringToZip(String text, String entryName, ZipOutputStream zOut) throws IOException {
+        addStringToZip(text, entryName, zOut, null);
+    }
+    
+    /**
+     * Adds a String as a field entry to an already opened ZipOutputStream
+     * @param text
+     * @param entryName
+     * @param zOut
+     * @param charset
+     * @throws IOException
+     */
+    public static void addStringToZip(String text, String entryName, ZipOutputStream zOut, Charset charset) throws IOException {
+        ZipEntry zipEntry = new ZipEntry(entryName);
+        zOut.putNextEntry(zipEntry);
+        
+        byte[] data;
+        
+        if(charset != null) {
+            data = text.getBytes(charset);
+        }
+        else {
+            data = text.getBytes();
+        }
+        
+        zOut.write(data);
+        
+        zOut.closeEntry();
+    }
+
 	/**
 	 * @param zipFile
 	 * @param entryName
@@ -247,22 +265,38 @@ public final class ZipUtils {
 		return foundEntry;
 	}
 
+    /**
+     * Extracts a named entry out of the zip file and returns the entry as a String
+     * Returns null if weirdness happens
+     * @param zipFile
+     * @param entryName
+     * @return
+     * @throws IOException
+     */
+    public static String extractZipEntry(File zipFile, String entryName) throws IOException {
+        return extractZipEntry(zipFile, entryName, (Charset)null);
+    }
+    
 	/**
 	 * Extracts a named entry out of the zip file and returns the entry as a String
 	 * Returns null if weirdness happens
 	 * @param zipFile
 	 * @param entryName
+	 * @param charset
 	 * @return
 	 * @throws IOException
 	 */
-	public static String extractZipEntry(File zipFile, String entryName) throws IOException {
+	public static String extractZipEntry(File zipFile, String entryName, Charset charset) throws IOException {
 		ZipEntry zipEntry;
 		ZipInputStream zIn;
-		int bit;
-		StringBuffer sb;
 		
 		BufferedInputStream in = new BufferedInputStream(new FileInputStream(zipFile));
-		zIn = new ZipInputStream(in);
+		if(charset != null) {
+		    zIn = new ZipInputStream(in, charset);
+		}
+		else {
+		    zIn = new ZipInputStream(in);
+		}
 		
 		// Get zip entry
 		while((zipEntry = zIn.getNextEntry()) != null) {
@@ -282,16 +316,25 @@ public final class ZipUtils {
 			return null;
 		}
 		
-		sb = new StringBuffer();
-		
-		// Extract it
-		while((bit = zIn.read()) != -1) {
-			sb.append((char)bit);
-		}
-		
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        byte[] buffer = new byte[1024];
+        int read = 0;
+        while((read = zIn.read(buffer, 0, buffer.length)) > 0) {
+            baos.write(buffer, 0, read);
+        }
+        
+        String content;
+        if(charset != null) {
+            content = baos.toString(charset.name());
+        }
+        else {
+            content = baos.toString();
+        }
+        
+        baos.close();
 		zIn.close();
 		
-		return sb.toString();
+		return content;
 	}
 	
     /**
@@ -450,22 +493,26 @@ public final class ZipUtils {
 	public static void unpackZip(File zipFile, File targetFolder, IProgressMonitor progressMonitor) throws IOException {
 	    targetFolder.mkdirs();
 		
-		BufferedInputStream in = null;
 		BufferedOutputStream out = null;
-		ZipInputStream zIn = null;
 		ZipEntry zipEntry;
 		int bytesRead;
 		final int bufSize = 1024;
 		byte buf[] = new byte[bufSize];
-		
-		in = new BufferedInputStream(new FileInputStream(zipFile), bufSize);
-		zIn = new ZipInputStream(in);
+		BufferedInputStream in = new BufferedInputStream(new FileInputStream(zipFile), bufSize);
+		ZipInputStream zIn = new ZipInputStream(in);
 		
 		try {
 			while((zipEntry = zIn.getNextEntry()) != null) {
 				// Don't add directories
 				if(!zipEntry.isDirectory()) {
 					File outFile = new File(targetFolder, zipEntry.getName());
+					
+					// Check that the path of the outfile is a sub-directory of targetFolder
+					// To ensure that it doesn't over-write something it shouldn't from entries like "../../entry"
+					if(!outFile.toPath().normalize().startsWith(targetFolder.toPath())) {
+					    zIn.close();
+					    throw new IOException("Attempt to write file outside of folder: " + outFile); //$NON-NLS-1$
+					}
 					
 					// Ensure that the parent Folder exists
 					if(!outFile.getParentFile().exists()) {

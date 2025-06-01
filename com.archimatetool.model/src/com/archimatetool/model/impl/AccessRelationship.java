@@ -19,14 +19,14 @@ import com.archimatetool.model.IArchimatePackage;
  * <!-- end-user-doc -->
  * <p>
  * The following features are implemented:
+ * </p>
  * <ul>
  *   <li>{@link com.archimatetool.model.impl.AccessRelationship#getAccessType <em>Access Type</em>}</li>
  * </ul>
- * </p>
  *
  * @generated
  */
-public class AccessRelationship extends Relationship implements IAccessRelationship {
+public class AccessRelationship extends ArchimateRelationship implements IAccessRelationship {
     /**
      * The default value of the '{@link #getAccessType() <em>Access Type</em>}' attribute.
      * <!-- begin-user-doc -->
@@ -70,6 +70,7 @@ public class AccessRelationship extends Relationship implements IAccessRelations
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public int getAccessType() {
         return accessType;
     }
@@ -79,6 +80,7 @@ public class AccessRelationship extends Relationship implements IAccessRelations
      * <!-- end-user-doc -->
      * @generated
      */
+    @Override
     public void setAccessType(int newAccessType) {
         int oldAccessType = accessType;
         accessType = newAccessType;
@@ -153,7 +155,7 @@ public class AccessRelationship extends Relationship implements IAccessRelations
     public String toString() {
         if (eIsProxy()) return super.toString();
 
-        StringBuffer result = new StringBuffer(super.toString());
+        StringBuilder result = new StringBuilder(super.toString());
         result.append(" (accessType: "); //$NON-NLS-1$
         result.append(accessType);
         result.append(')');

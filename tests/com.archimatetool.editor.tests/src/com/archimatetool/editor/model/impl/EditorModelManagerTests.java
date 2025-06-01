@@ -5,25 +5,25 @@
  */
 package com.archimatetool.editor.model.impl;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.File;
 
-import junit.framework.JUnit4TestAdapter;
-
-import org.eclipse.emf.common.notify.Adapter;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CommandStack;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.model.IArchiveManager;
 import com.archimatetool.editor.model.IEditorModelManager;
 import com.archimatetool.editor.model.commands.EObjectFeatureCommand;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateDiagramModel;
 import com.archimatetool.model.IArchimateFactory;
@@ -37,14 +37,9 @@ import com.archimatetool.tests.TestUtils;
 @SuppressWarnings("nls")
 public class EditorModelManagerTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(EditorModelManagerTests.class);
-    }
-    
-    
     private IEditorModelManager editorModelManager;
     
-    @Before
+    @BeforeEach
     public void runBeforeEachTest() {
         editorModelManager = new EditorModelManager();
     }
@@ -74,9 +69,6 @@ public class EditorModelManagerTests {
 
         // Has an Archive Manager
         assertTrue(model.getAdapter(IArchiveManager.class) instanceof IArchiveManager);
-        
-        // Has an ECore Adapter
-        assertTrue(hasECoreAdapter(model));
     }
     
     @Test
@@ -119,9 +111,6 @@ public class EditorModelManagerTests {
         // Has an Archive Manager
         assertTrue(model.getAdapter(IArchiveManager.class) instanceof IArchiveManager);
         
-        // Has an ECore Adapter
-        assertTrue(hasECoreAdapter(model));
-        
         // Is registered
         assertEquals(1, editorModelManager.getModels().size());
         assertTrue(editorModelManager.getModels().contains(model));
@@ -153,9 +142,6 @@ public class EditorModelManagerTests {
         // Has an Archive Manager
         assertTrue(model.getAdapter(IArchiveManager.class) instanceof IArchiveManager);
         
-        // Has an ECore Adapter
-        assertTrue(hasECoreAdapter(model));
-        
         // Is registered
         assertEquals(1, editorModelManager.getModels().size());
         assertTrue(editorModelManager.getModels().contains(model));
@@ -169,6 +155,31 @@ public class EditorModelManagerTests {
         assertEquals(1, editorModelManager.getModels().size());
     }
     
+    @Test
+    public void load() throws Exception {
+        File file = TestData.TEST_MODEL_FILE_ARCHISURANCE;
+        
+        IArchimateModel model = editorModelManager.load(file);
+        assertNotNull(model);
+        
+        // File
+        assertEquals(file, model.getFile());
+        
+        // Has a Command Stack
+        assertTrue(model.getAdapter(CommandStack.class) instanceof CommandStack);
+
+        // Has an Archive Manager
+        assertTrue(model.getAdapter(IArchiveManager.class) instanceof IArchiveManager);
+        
+        // Is *not* registered
+        assertEquals(0, editorModelManager.getModels().size());
+        assertFalse(editorModelManager.getModels().contains(model));
+        
+        // Do it again, should *not* be the same
+        IArchimateModel model2 = editorModelManager.loadModel(file);
+        assertNotEquals(model2, model);
+    }
+
     @Test
     public void isModelLoaded_File() {
         File file = TestData.TEST_MODEL_FILE_ARCHISURANCE;
@@ -204,19 +215,19 @@ public class EditorModelManagerTests {
         assertTrue(model.getAdapter(IArchiveManager.class) instanceof IArchiveManager);
     }
     
-    // ---------------------------------------------------------------------------------------------
-    
-    /**
-     * Determine if model has an ECoreAdapter added
-     */
-    private boolean hasECoreAdapter(IArchimateModel model) {
-        Class<?> clazz = TestUtils.getMemberClass(EditorModelManager.class, "com.archimatetool.editor.model.impl.EditorModelManager$ECoreAdapter");
-        for(Adapter a : model.eAdapters()) {
-            if(clazz.isInstance(a)) {
-                return true;
-            }
-        }
+    @Test
+    public void saveModel() throws Exception {
+        File file = TestData.TEST_MODEL_FILE_ARCHISURANCE;
         
-        return false;
+        IArchimateModel model = editorModelManager.loadModel(file);
+        assertNotNull(model);
+        
+        File tmpFile = TestUtils.createTempFile(".archimate");
+        model.setFile(tmpFile);
+        
+        ArchiPlugin.getInstance().getPreferenceStore().setValue(IPreferenceConstants.BACKUP_ON_SAVE, false);
+        
+        boolean result = editorModelManager.saveModel(model);
+        assertTrue(result);
     }
 }

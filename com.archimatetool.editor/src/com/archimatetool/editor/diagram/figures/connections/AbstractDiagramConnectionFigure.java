@@ -5,26 +5,28 @@
  */
 package com.archimatetool.editor.diagram.figures.connections;
 
+import java.util.Arrays;
+
 import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.ConnectionLocator;
+import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
-import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.Locator;
-import org.eclipse.draw2d.PolygonDecoration;
-// line-curves patch by Jean-Baptiste Sarrodie (aka Jaiguru)
-// Use alternate PolylineConnection
-//import org.eclipse.draw2d.PolylineConnection;
 import org.eclipse.draw2d.geometry.Point;
+import org.eclipse.draw2d.geometry.Rectangle;
+import org.eclipse.draw2d.text.FlowPage;
+import org.eclipse.draw2d.text.TextFlow;
 import org.eclipse.swt.graphics.Color;
-import org.eclipse.swt.graphics.Font;
+import org.eclipse.swt.graphics.Path;
 
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.diagram.figures.ToolTipFigure;
 import com.archimatetool.editor.diagram.util.AnimationUtil;
-import com.archimatetool.editor.model.viewpoints.ViewpointsManager;
-import com.archimatetool.editor.preferences.Preferences;
+import com.archimatetool.editor.preferences.IPreferenceConstants;
 import com.archimatetool.editor.ui.ColorFactory;
 import com.archimatetool.editor.ui.FontFactory;
-import com.archimatetool.editor.utils.PlatformUtils;
+import com.archimatetool.editor.ui.textrender.TextRenderer;
+import com.archimatetool.editor.utils.StringUtils;
 import com.archimatetool.model.IDiagramModelConnection;
 
 
@@ -36,38 +38,42 @@ import com.archimatetool.model.IDiagramModelConnection;
  */
 public abstract class AbstractDiagramConnectionFigure
 extends RoundedPolylineConnection implements IDiagramConnectionFigure {
-//extends PolylineConnection implements IDiagramConnectionFigure {
 
-    private Label fConnectionLabel;
-    
+    private TextFlow textFlow;
+    private IDiagramModelConnection diagramModelConnection;
+
     protected int fTextPosition = -1;
-    
-    private IDiagramModelConnection fDiagramModelConnection;
-
     protected Color fFontColor;
     protected Color fLineColor;
     
-	public AbstractDiagramConnectionFigure(IDiagramModelConnection connection) {
-	    fDiagramModelConnection = connection;
+    protected static Color highlightedColor = new Color(0, 0, 255);
 
-	    setFigureProperties();
+	protected boolean isSelected = false;
+	protected boolean showTargetFeedback = false;
+
+    @Override
+    public void setModelConnection(IDiagramModelConnection connection) {
+	    diagramModelConnection = connection;
 	    
-		// Have to add this if we want Animation to work!
-		AnimationUtil.addConnectionForRoutingAnimation(this);
-	}
-	
-	public IDiagramModelConnection getModelConnection() {
-	    return fDiagramModelConnection;
-	}
-	
-	protected void setFigureProperties() {
-		setTargetDecoration(new PolygonDecoration()); // arrow at target endpoint
-	}
-	
+	    setFigureProperties();
+        
+        // Have to add this if we want Animation to work!
+        AnimationUtil.addConnectionForRoutingAnimation(this);
+    }
+
+    @Override
+    public IDiagramModelConnection getModelConnection() {
+        return diagramModelConnection;
+    }
+
+    protected void setFigureProperties() {
+    }
+
+    @Override
     public void refreshVisuals() {
         // If the text position has been changed by user update it
-        if(fDiagramModelConnection.getTextPosition() != fTextPosition) {
-            fTextPosition = fDiagramModelConnection.getTextPosition();
+        if(getModelConnection().getTextPosition() != fTextPosition) {
+            fTextPosition = getModelConnection().getTextPosition();
             setLabelLocator(fTextPosition);
         }
         
@@ -77,38 +83,49 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
         
         setLineColor();
         
-        setConnectionText();
+        setText();
         
         setLineWidth();
         
-        // Set Enabled according to current Viewpoint
-        boolean enabled = ViewpointsManager.INSTANCE.isAllowedType(getModelConnection());
-        setEnabled(enabled);
-        if(getSourceDecoration() != null) {
-            getSourceDecoration().setEnabled(enabled);
-        }
-        if(getTargetDecoration() != null) {
-            getTargetDecoration().setEnabled(enabled);
-        }
-        getConnectionLabel().setEnabled(enabled);
+        setTextAlignment(getModelConnection().getTextAlignment());
+        
+        getFlowPage().setOpaque(ArchiPlugin.getInstance().getPreferenceStore().getInt(IPreferenceConstants.CONNECTION_LABEL_STRATEGY) == CONNECTION_LABEL_OPAQUE);
+        
+        repaint(); // repaint when figure changes
     }
 
     /**
      * @param copy
      * @return True if the user clicked on the Relationship edit label
      */
+    @Override
     public boolean didClickConnectionLabel(Point requestLoc) {
-        Label label = getConnectionLabel();
+        IFigure label = getConnectionLabel();
         label.translateToRelative(requestLoc);
         return label.containsPoint(requestLoc);
     }
 
-    public Label getConnectionLabel() {
-        if(fConnectionLabel == null) {
-            fConnectionLabel = new Label(""); //$NON-NLS-1$
-            add(fConnectionLabel);
+    @Override
+    public TextFlow getConnectionLabel() {
+        if(textFlow == null) {
+            textFlow = new TextFlow();
+            //fTextFlow.setLayoutManager(new ParagraphTextLayout(fTextFlow, ParagraphTextLayout.WORD_WRAP_HARD));
+            
+            FlowPage flowPage = new FlowPage();
+            flowPage.add(textFlow);
+            
+            add(flowPage);
         }
-        return fConnectionLabel;
+        
+        return textFlow;
+    }
+    
+    protected FlowPage getFlowPage() {
+        return (FlowPage)getConnectionLabel().getParent();
+    }
+    
+    protected void setTextAlignment(int alignment) {
+        getFlowPage().setHorizontalAligment(alignment);
     }
 
     private void setLabelLocator(int position) {
@@ -126,33 +143,35 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
                 break;
         }
         
-        setConstraint(getConnectionLabel(), locator);
+        setConstraint(getFlowPage(), locator);
     }
     
-    protected void setConnectionText() {
-        getConnectionLabel().setText(fDiagramModelConnection.getName());
+    @Override
+    public void setText() {
+        String text = ""; //$NON-NLS-1$
+        
+        // If we are showing the label name
+        if(getModelConnection().isNameVisible()) {
+            // Do we have any rendered text?
+            text = TextRenderer.getDefault().render(getModelConnection(),
+                                                    StringUtils.safeString(getModelConnection().getName().trim()));
+        }
+        
+        getConnectionLabel().setText(text);
     }
-
+    
     /**
      * Set the font in the label to that in the model, or failing that, as per user's default
      */
     protected void setLabelFont() {
-        String fontName = fDiagramModelConnection.getFont();
-        Font font = FontFactory.get(fontName);
-        
-        // Adjust for Windows DPI
-        if(PlatformUtils.isWindows()) {
-            font = FontFactory.getAdjustedWindowsFont(font);
-        }
-
-        getConnectionLabel().setFont(font);
+        getConnectionLabel().setFont(FontFactory.getScaledFont(getModelConnection().getFont()));
     }
 
     /**
      * Set the font color to that in the model, or failing that, as per default
      */
     protected void setLabelFontColor() {
-        String val = fDiagramModelConnection.getFontColor();
+        String val = getModelConnection().getFontColor();
         Color c = ColorFactory.get(val);
         if(c == null) {
             c = ColorConstants.black; // have to set default color otherwise it inherits line color
@@ -167,11 +186,11 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
      * Set the line color to that in the model, or failing that, as per default
      */
     protected void setLineColor() {
-        String val = fDiagramModelConnection.getLineColor();
+        String val = getModelConnection().getLineColor();
         Color color = ColorFactory.get(val);
         
         if(color == null) {
-            color = ColorFactory.getDefaultLineColor(fDiagramModelConnection);
+            color = ColorFactory.getDefaultLineColor(getModelConnection());
         }
         
         if(color != fLineColor) {
@@ -181,20 +200,110 @@ extends RoundedPolylineConnection implements IDiagramConnectionFigure {
     }
     
     protected void setLineWidth() {
-        setLineWidth(fDiagramModelConnection.getLineWidth());
-    }
-    
-    /**
-     * Highlight this connection
-     */
-    public void highlight(boolean set) {
+        setLineWidth(getModelConnection().getLineWidth());
     }
     
     @Override
     public IFigure getToolTip() {
-        if(super.getToolTip() == null && Preferences.doShowViewTooltips()) {
+        if(!ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.VIEW_TOOLTIPS)) {
+            return null;
+        }
+        
+        if(super.getToolTip() == null) {
             setToolTip(new ToolTipFigure());
         }
-        return Preferences.doShowViewTooltips() ? super.getToolTip() : null;
+        
+        return super.getToolTip();
+    }
+    
+    /**
+     * This is called when the parent scale is changed and set
+     * in the figure's ancestor ScalableFreeformLayeredPane#setScale()
+     * So we set the line dash information based on the current scale
+     */
+    @Override
+    protected void fireFigureMoved() {
+        // Get the connection's line dash information
+        float[] ld = getLineDashFloats();
+        // If we have some and there has been a change (i.e the scale has changed) then set the line dash to the new information
+        if(ld != null && !Arrays.equals(ld, getLineDash())) { 
+            setLineDash(ld);
+        }
+        
+        super.fireFigureMoved();
+    }
+    
+    /**
+     * @return line dash float information for connections with lines dashes, or null if the connection has no line dashes
+     */
+    protected float[] getLineDashFloats() {
+        return null;
+    }
+    
+    @Override
+    public void setSelected(boolean selected) {
+        isSelected = selected;
+    }
+    
+    @Override
+    public void showTargetFeedback(boolean show) {
+        showTargetFeedback = show;
+    }
+
+    @Override
+    public void paintFigure(Graphics graphics) {
+        if(showTargetFeedback || (isSelected && ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.SHOW_SELECTED_CONNECTIONS))) {
+            setLineWidth(getModelConnection().getLineWidth() + 1);
+            setForegroundColor(highlightedColor);
+        }
+        else {
+            setLineWidth();
+            setForegroundColor(fLineColor);
+        }
+
+        // Label strategy
+        if(StringUtils.isSet(getConnectionLabel().getText()) && 
+                ArchiPlugin.getInstance().getPreferenceStore().getInt(IPreferenceConstants.CONNECTION_LABEL_STRATEGY) == CONNECTION_LABEL_CLIPPED) {
+            clipTextLabel(graphics);
+        }
+        else {
+            super.paintFigure(graphics);
+        }
+    }
+    
+    /**
+     * Clip the text label so it doesn't draw on the connection
+     */
+    protected void clipTextLabel(Graphics graphics) {
+        // Margin around label
+        final int labelMargin = 1;
+        
+        // Save dimensions of original clipping area and label
+        Rectangle g = graphics.getClip(new Rectangle());
+        Rectangle l = getFlowPage().getBounds().getCopy();
+        
+        // Label margin
+        l.expand(labelMargin, labelMargin);
+        
+        // Create a Path that fills the clipping area minus the label
+        Path path = new Path(null);
+        
+        path.moveTo(g.x, g.y);
+        path.lineTo(l.x, l.y);
+        path.lineTo(l.x + l.width, l.y);
+        path.lineTo(l.x + l.width, l.y + l.height);
+        path.lineTo(l.x, l.y + l.height);
+        path.lineTo(l.x, l.y);
+        path.lineTo(g.x, g.y);
+        path.lineTo(g.x, g.y + g.height);
+        path.lineTo(g.x + g.width, g.y + g.height);
+        path.lineTo(g.x + g.width, g.y);
+        path.lineTo(g.x, g.y);
+        
+        graphics.clipPath(path);
+        
+        super.paintFigure(graphics);
+        
+        path.dispose();
     }
 }

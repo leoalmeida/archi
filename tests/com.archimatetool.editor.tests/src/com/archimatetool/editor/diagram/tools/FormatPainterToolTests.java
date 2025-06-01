@@ -5,38 +5,29 @@
  */
 package com.archimatetool.editor.diagram.tools;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import junit.framework.JUnit4TestAdapter;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-import com.archimatetool.editor.diagram.commands.FillColorCommand;
-import com.archimatetool.editor.diagram.tools.FormatPainterInfo.PaintFormat;
 import com.archimatetool.model.IArchimateFactory;
+import com.archimatetool.model.IDiagramModelArchimateConnection;
 import com.archimatetool.model.IDiagramModelArchimateObject;
-import com.archimatetool.model.IDiagramModelConnection;
 import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.ITextPosition;
 import com.archimatetool.testingtools.ArchimateTestModel;
-import com.archimatetool.tests.TestUtils;
 
 @SuppressWarnings("nls")
 public class FormatPainterToolTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(FormatPainterToolTests.class);
-    }
-    
-    
     // ---------------------------------------------------------------------------------------------
     // Tests
     // ---------------------------------------------------------------------------------------------
-
+    
     @Test
-    public void testCreateCommand() throws Exception {
+    public void testCreateCommandForDiagramModelArchimateObject() throws Exception {
         // Source component
         IDiagramModelArchimateObject sourceComponent =
                 ArchimateTestModel.createDiagramModelArchimateObject(IArchimateFactory.eINSTANCE.createBusinessActor());
@@ -46,53 +37,91 @@ public class FormatPainterToolTests {
                 ArchimateTestModel.createDiagramModelArchimateObject(IArchimateFactory.eINSTANCE.createBusinessActor());
         
         // Set FormatPainterInfo to Source component
-        FormatPainterInfo.INSTANCE.updatePaintFormat(sourceComponent);
-        PaintFormat pf = FormatPainterInfo.INSTANCE.getPaintFormat();
+        FormatPainterInfo.INSTANCE.updateWithSourceComponent(sourceComponent);
 
         // Execute command
         FormatPainterTool tool = new FormatPainterTool();
-        CompoundCommand compoundCmd = tool.createCommand(pf, targetComponent);
+        CompoundCommand compoundCmd = tool.createCommand(targetComponent);
         
-        // Source and Target have same properties except for fill color so only one command
-        assertEquals(1, compoundCmd.getCommands().size());
+        // Should be no commands
+        assertEquals(0, compoundCmd.getCommands().size());
         
-        // Fill Color should be set even if fill colour source is null (default)
-        Command cmd = (Command)compoundCmd.getCommands().get(0);
-        assertTrue(cmd instanceof FillColorCommand);
-        Object newValue = TestUtils.getPrivateField(cmd, "fNewValue");
-        assertEquals("#ffffb5", newValue);
+        // Set the source fill color to its default actual value.
+        // The fill color command will not be added because the target's fill color (null) is effectively the same.
+        sourceComponent.setFillColor("#ffffb5");
+        compoundCmd = tool.createCommand(targetComponent);
+        assertEquals(0, compoundCmd.getCommands().size());
+        
+        // Now change some attributes on the source component
+        sourceComponent.setFillColor("#eeeeee");
+        sourceComponent.setFont("Consolas");
+        sourceComponent.setFontColor("#eeeeee");
+        sourceComponent.setLineColor("#eeeeee");
+        sourceComponent.setLineWidth(3);
+        sourceComponent.setTextAlignment(1);
+        sourceComponent.setAlpha(100);
+        sourceComponent.setLineAlpha(100);
+        sourceComponent.setGradient(IDiagramModelObject.GRADIENT_NONE + 1);
+        sourceComponent.setIconColor("#ffeeee");
+        sourceComponent.setTextPosition(ITextPosition.TEXT_POSITION_BOTTOM);
+        sourceComponent.setDeriveElementLineColor(false);
+        
+        // But we have to reset the FormatPainterInfo with the source component because it makes a copy of it
+        FormatPainterInfo.INSTANCE.updateWithSourceComponent(sourceComponent);
+        
+        compoundCmd = tool.createCommand(targetComponent);
+        assertEquals(12, compoundCmd.getCommands().size());
+    }
+    
+    @Test
+    public void testCreateCommandForDiagramModelArchimateConnection() throws Exception {
+        // Source component
+        IDiagramModelArchimateConnection sourceComponent =
+                ArchimateTestModel.createDiagramModelArchimateConnection(IArchimateFactory.eINSTANCE.createAccessRelationship());
+        
+        // Target component
+        IDiagramModelArchimateConnection targetComponent =
+                ArchimateTestModel.createDiagramModelArchimateConnection(IArchimateFactory.eINSTANCE.createAccessRelationship());
+        
+        // Set FormatPainterInfo to Source component
+        FormatPainterInfo.INSTANCE.updateWithSourceComponent(sourceComponent);
+
+        // Execute command
+        FormatPainterTool tool = new FormatPainterTool();
+        CompoundCommand compoundCmd = tool.createCommand(targetComponent);
+        
+        // Should be no commands
+        assertEquals(0, compoundCmd.getCommands().size());
         
         // Now change some properties on the source component
         sourceComponent.setFont("Consolas");
         sourceComponent.setFontColor("#eeeeee");
         sourceComponent.setLineColor("#eeeeee");
         sourceComponent.setLineWidth(3);
-        sourceComponent.setTextAlignment(6);
-        sourceComponent.setTextPosition(6);
+        sourceComponent.setTextPosition(3);
         
-        compoundCmd = tool.createCommand(pf, targetComponent);
-        assertEquals(7, compoundCmd.getCommands().size());
+        // But we have to reset the FormatPainterInfo with the source component because it makes a copy of it
+        FormatPainterInfo.INSTANCE.updateWithSourceComponent(sourceComponent);
+        
+        compoundCmd = tool.createCommand(targetComponent);
+        assertEquals(5, compoundCmd.getCommands().size());
     }
-    
+
     @Test
     public void isPaintableObject() {
         FormatPainterTool tool = new FormatPainterTool();
         
-        IDiagramModelConnection dmc = IArchimateFactory.eINSTANCE.createDiagramModelConnection();
-        boolean result = tool.isPaintableObject(dmc);
-        assertTrue(result);
+        assertTrue(tool.isPaintableObject(IArchimateFactory.eINSTANCE.createDiagramModelConnection()));
+        assertTrue(tool.isPaintableObject(IArchimateFactory.eINSTANCE.createDiagramModelNote()));
+        assertTrue(tool.isPaintableObject(IArchimateFactory.eINSTANCE.createDiagramModelGroup()));
         
-        IDiagramModelObject dmo = IArchimateFactory.eINSTANCE.createDiagramModelNote();
-        result = tool.isPaintableObject(dmo);
-        assertTrue(result);
+        assertFalse(tool.isPaintableObject(IArchimateFactory.eINSTANCE.createDiagramModelImage()));
         
         IDiagramModelArchimateObject dmao =
                 ArchimateTestModel.createDiagramModelArchimateObject(IArchimateFactory.eINSTANCE.createBusinessActor());
-        result = tool.isPaintableObject(dmao);
-        assertTrue(result);
+        assertTrue(tool.isPaintableObject(dmao));
         
         dmao = ArchimateTestModel.createDiagramModelArchimateObject(IArchimateFactory.eINSTANCE.createJunction());
-        result = tool.isPaintableObject(dmao);
-        assertFalse(result);
+        assertFalse(tool.isPaintableObject(dmao));
     }
 }

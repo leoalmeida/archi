@@ -5,86 +5,111 @@
  */
 package com.archimatetool.jasperreports.data;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 
-import junit.framework.JUnit4TestAdapter;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JRField;
-
-import org.junit.Before;
-import org.junit.BeforeClass;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.IArchimateModel;
 import com.archimatetool.testingtools.ArchimateTestModel;
 import com.archimatetool.tests.TestData;
 
+import net.sf.jasperreports.engine.JRException;
+import net.sf.jasperreports.engine.JRField;
+
 
 @SuppressWarnings("nls")
 public class ViewModelDataSourceTests {
     
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(ViewModelDataSourceTests.class);
-    }
-
     private static IArchimateModel model;
     
     private ViewModelDataSource ds;
     
-    @BeforeClass
+    @BeforeAll
     public static void runOnceBeforeAllTests() throws IOException {
         // Load ArchiMate model
         ArchimateTestModel tm = new ArchimateTestModel(TestData.TEST_MODEL_FILE_ARCHISURANCE);
         model = tm.loadModel();
     }
     
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() {
         ds = new ViewModelDataSource(model);
     }
     
     @Test
-    public void testGetViewpointName() throws JRException {
+    public void getViewpointName() throws JRException {
         String name = ds.getViewpointName();
         assertNull(name);
         
         ds.next();
-        assertEquals("Actor Co-operation viewpoint", ds.getViewpointName());
+        assertEquals("No viewpoint", ds.getViewpointName());
         
         ds.next();
-        assertEquals("Application Behaviour viewpoint", ds.getViewpointName());
+        assertEquals("No viewpoint", ds.getViewpointName());
 
         ds.next();
-        assertEquals("Application Co-operation viewpoint", ds.getViewpointName());
+        assertEquals("Application Cooperation viewpoint", ds.getViewpointName());
+
+        ds.next();
+        assertEquals("Application Structure viewpoint", ds.getViewpointName());
+
+        ds.next();
+        assertEquals("No viewpoint", ds.getViewpointName());
+
+        ds.next();
+        assertEquals("No viewpoint", ds.getViewpointName());
+
+        ds.next();
+        assertEquals("Business Process Cooperation viewpoint", ds.getViewpointName());
     }
     
     @Test
-    public void testGetPropertiesDataSource() throws JRException {
+    public void getPropertiesDataSourceNotNull() throws JRException {
         ds.next();
         assertNotNull(ds.getPropertiesDataSource());
     }
     
     @Test
-    public void testGetChildElementsDataSource() throws JRException {
+    public void getChildElementsDataSourceNotNull() throws JRException {
         ds.next();
         assertNotNull(ds.getChildElementsDataSource());
     }
 
     @Test
-    public void testGetElement() {
+    public void getChildElementsDataSourceSortedByTypeNotNull() throws JRException {
+        ds.next();
+        assertNotNull(ds.getChildElementsDataSourceSortedByType(true));
+    }
+
+    @Test
+    public void getChildElementsDataSourceForTypesNotNull() throws JRException {
+        ds.next();
+        assertNotNull(ds.getChildElementsDataSourceForTypes("elements"));
+    }
+
+    @Test
+    public void getChildElementsDataSourceForTypesSortedByTypeNotNull() throws JRException {
+        ds.next();
+        assertNotNull(ds.getChildElementsDataSourceForTypesSortedByType("elements", true));
+    }
+
+    @Test
+    public void getElementNull() {
         assertNull(ds.getElement());
     }
 
     @Test
-    public void testNext() throws JRException {
+    public void next() throws JRException {
         for(int i = 0; i < 17; i++) {
             assertTrue(ds.next());
         }
@@ -92,7 +117,7 @@ public class ViewModelDataSourceTests {
     }
     
     @Test
-    public void testGetFieldValue() throws JRException {
+    public void getFieldValue() throws JRException {
         ds.next();
         
         JRField field = mock(JRField.class);
@@ -102,11 +127,11 @@ public class ViewModelDataSourceTests {
         assertEquals("/img/4165.png", ds.getFieldValue(field));
         
         when(field.getName()).thenReturn("viewpoint");
-        assertEquals("Actor Co-operation viewpoint", ds.getFieldValue(field));
+        assertEquals("No viewpoint", ds.getFieldValue(field));
     }
 
     @Test
-    public void testMoveFirst() throws JRException {
+    public void moveFirst() throws JRException {
         assertNull(ds.getElement());
         
         ds.next();

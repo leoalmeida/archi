@@ -1,13 +1,13 @@
 Manifest-Version: 1.0
 Bundle-ManifestVersion: 2
-Bundle-Name: %productName
+Bundle-Name: Archi Help
 Bundle-SymbolicName: com.archimatetool.help;singleton:=true
-Bundle-Version: 3.0.0.qualifier
-Bundle-Activator: com.archimatetool.help.ArchimateEditorHelpPlugin
-Bundle-Vendor: Phillip Beauvoir
+Bundle-Version: 5.6.0.qualifier
+Bundle-Activator: com.archimatetool.help.ArchiHelpPlugin
+Bundle-Vendor: Archi
 Bundle-Localization: plugin
+Eclipse-BundleShape: dir
 Require-Bundle: org.eclipse.core.runtime,
- org.eclipse.core.runtime.compatibility,
  org.eclipse.ui,
  org.eclipse.equinox.http.jetty,
  org.eclipse.help.ui,
@@ -16,5 +16,8 @@ Require-Bundle: org.eclipse.core.runtime,
  com.archimatetool.editor
 Bundle-ActivationPolicy: lazy
 Bundle-ClassPath: com.archimatetool.help.jar
-Bundle-RequiredExecutionEnvironment: JavaSE-1.7
-Export-Package: com.archimatetool.help.hints
+Bundle-RequiredExecutionEnvironment: JavaSE-21
+Export-Package: com.archimatetool.help,
+ com.archimatetool.help.cheatsheets,
+ com.archimatetool.help.hints
+Automatic-Module-Name: com.archimatetool.help

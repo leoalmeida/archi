@@ -16,11 +16,9 @@ import org.eclipse.gef.requests.CreateRequest;
 import org.eclipse.osgi.util.NLS;
 import org.eclipse.swt.widgets.Display;
 
-import com.archimatetool.editor.ArchimateEditorPlugin;
+import com.archimatetool.editor.ArchiPlugin;
 import com.archimatetool.editor.preferences.IPreferenceConstants;
-import com.archimatetool.editor.ui.ArchimateLabelProvider;
-import com.archimatetool.editor.ui.factory.ElementUIFactory;
-import com.archimatetool.editor.ui.factory.IElementUIProvider;
+import com.archimatetool.editor.ui.ArchiLabelProvider;
 import com.archimatetool.model.IDiagramModelContainer;
 import com.archimatetool.model.IDiagramModelObject;
 
@@ -48,37 +46,41 @@ public class CreateDiagramObjectCommand extends Command {
     
     @Override
     public String getLabel() {
-        return NLS.bind(Messages.CreateDiagramObjectCommand_0, ArchimateLabelProvider.INSTANCE.getLabel(fChild));
+        return NLS.bind(Messages.CreateDiagramObjectCommand_0, ArchiLabelProvider.INSTANCE.getLabel(fChild));
     }
 
     @Override
     public void execute() {
         addChild();
         
-        // Edit Name on thread
-        Display.getCurrent().asyncExec(new Runnable() {
-            @Override
-            public void run() {
-                editNameOfNewObject();
-            }
-        });
+        // Edit Name
+        editNameOfNewObject();
     }
     
     protected void addChild() {
+        // Create new object from the factory
         fChild = (IDiagramModelObject)fRequest.getNewObject();
         
-        // Default size
-        if(fBounds.width == -1 && fBounds.height == -1) {
-            IElementUIProvider provider = ElementUIFactory.INSTANCE.getProvider(fChild);
-            if(provider != null) {
-                Dimension defaultSize = provider.getDefaultSize();
-                fBounds.width = defaultSize.width;
-                fBounds.height = defaultSize.height;
-            }
-        }
+        // Set the location from the supplied bounds in the creation request
+        fChild.getBounds().setLocation(fBounds.x, fBounds.y);
         
-        fChild.setBounds(fBounds.x, fBounds.y, fBounds.width, fBounds.height);
+        // Sub-classes might have a preferred size...
+        Dimension preferredSize = getPreferredSize();
+        if(preferredSize != null) {
+            fChild.getBounds().setSize(preferredSize.width, preferredSize.height);
+        }
+        // Else the new width and height can come from the creation request
+        else if(fBounds.width != -1 && fBounds.height != -1) {
+            fChild.getBounds().setSize(fBounds.width, fBounds.height);
+        }
+        // Otherwise the width and height should already be set in the ICreationFactory
+
+        // Redo, so sub-classes can over-ride
         redo();
+    }
+    
+    protected Dimension getPreferredSize() {
+        return null;
     }
 
     @Override
@@ -95,13 +97,16 @@ public class CreateDiagramObjectCommand extends Command {
      * Edit name of new object if set in Preferences
      */
     protected void editNameOfNewObject() {
-        if(ArchimateEditorPlugin.INSTANCE.getPreferenceStore().getBoolean(IPreferenceConstants.EDIT_NAME_ON_NEW_OBJECT)) {
+        if(ArchiPlugin.getInstance().getPreferenceStore().getBoolean(IPreferenceConstants.EDIT_NAME_ON_NEW_OBJECT)) {
             EditPartViewer viewer = fParentEditPart.getViewer();
             if(viewer != null) {
                 EditPart editPart = (EditPart)viewer.getEditPartRegistry().get(fChild);
                 if(editPart != null) {
-                    Request directEditRequest = new Request(RequestConstants.REQ_DIRECT_EDIT);
-                    editPart.performRequest(directEditRequest);
+                    // Async this
+                    Display.getCurrent().asyncExec(() -> {
+                        Request directEditRequest = new Request(RequestConstants.REQ_DIRECT_EDIT);
+                        editPart.performRequest(directEditRequest);
+                    });
                 }
             }
         }

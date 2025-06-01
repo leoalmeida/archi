@@ -34,7 +34,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
     private Button fCanvasEditorEnabledButton;
     
 	public CanvasPreferencePage() {
-		setPreferenceStore(CanvasEditorPlugin.INSTANCE.getPreferenceStore());
+		setPreferenceStore(CanvasEditorPlugin.getInstance().getPreferenceStore());
 	}
 	
     @Override
@@ -43,7 +43,9 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         PlatformUI.getWorkbench().getHelpSystem().setHelp(parent, HELP_ID);
 
         Composite client = new Composite(parent, SWT.NULL);
-        client.setLayout(new GridLayout());
+        GridLayout layout = new GridLayout();
+        layout.marginWidth = layout.marginHeight = 0;
+        client.setLayout(layout);
         
         GridData gd;
         
@@ -79,6 +81,7 @@ implements IWorkbenchPreferencePage, IPreferenceConstants {
         super.performDefaults();
     }
     
+    @Override
     public void init(IWorkbench workbench) {
     }
 }

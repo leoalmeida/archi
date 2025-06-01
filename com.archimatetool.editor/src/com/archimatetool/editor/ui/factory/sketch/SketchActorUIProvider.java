@@ -14,9 +14,10 @@ import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 
 import com.archimatetool.editor.diagram.sketch.editparts.SketchActorEditPart;
-import com.archimatetool.editor.ui.IArchimateImages;
-import com.archimatetool.editor.ui.factory.AbstractElementUIProvider;
+import com.archimatetool.editor.ui.IArchiImages;
+import com.archimatetool.editor.ui.factory.AbstractGraphicalObjectUIProvider;
 import com.archimatetool.model.IArchimatePackage;
+import com.archimatetool.model.IDiagramModelObject;
 
 
 
@@ -25,8 +26,9 @@ import com.archimatetool.model.IArchimatePackage;
  * 
  * @author Phillip Beauvoir
  */
-public class SketchActorUIProvider extends AbstractElementUIProvider {
+public class SketchActorUIProvider extends AbstractGraphicalObjectUIProvider {
 
+    @Override
     public EClass providerFor() {
         return IArchimatePackage.eINSTANCE.getSketchModelActor();
     }
@@ -48,16 +50,31 @@ public class SketchActorUIProvider extends AbstractElementUIProvider {
 
     @Override
     public Image getImage() {
-        return IArchimateImages.ImageFactory.getImage(IArchimateImages.ICON_ACTOR_16);
+        return IArchiImages.ImageFactory.getImage(IArchiImages.ICON_ACTOR);
     }
 
     @Override
     public ImageDescriptor getImageDescriptor() {
-        return IArchimateImages.ImageFactory.getImageDescriptor(IArchimateImages.ICON_ACTOR_16);
+        return IArchiImages.ImageFactory.getImageDescriptor(IArchiImages.ICON_ACTOR);
     }
 
     @Override
     public Color getDefaultColor() {
         return ColorConstants.black;
+    }
+    
+    @Override
+    public boolean shouldExposeFeature(String featureName) {
+        if(featureName == IArchimatePackage.Literals.TEXT_ALIGNMENT__TEXT_ALIGNMENT.getName() ||
+                featureName == IArchimatePackage.Literals.LINE_OBJECT__LINE_COLOR.getName() ||
+                featureName == IDiagramModelObject.FEATURE_DERIVE_ELEMENT_LINE_COLOR ||
+                featureName == IDiagramModelObject.FEATURE_LINE_ALPHA ||
+                featureName == IArchimatePackage.Literals.DIAGRAM_MODEL_OBJECT__ALPHA.getName() ||
+                featureName == IDiagramModelObject.FEATURE_GRADIENT ||
+                featureName == IDiagramModelObject.FEATURE_LINE_STYLE) {
+            return false;
+        }
+        
+        return true;
     }
 }

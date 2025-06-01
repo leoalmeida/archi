@@ -5,8 +5,10 @@
  */
 package com.archimatetool.canvas;
 
+import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.emf.ecore.EClass;
-import org.eclipse.swt.graphics.Color;
+import org.eclipse.emf.ecore.EObject;
+import org.eclipse.swt.graphics.RGB;
 import org.eclipse.ui.IEditorPart;
 
 import com.archimatetool.canvas.model.ICanvasModelBlock;
@@ -15,7 +17,11 @@ import com.archimatetool.canvas.model.ICanvasModelImage;
 import com.archimatetool.canvas.model.ICanvasModelSticky;
 import com.archimatetool.editor.diagram.ICreationFactory;
 import com.archimatetool.editor.ui.ColorFactory;
-import com.archimatetool.model.IFontAttribute;
+import com.archimatetool.editor.ui.factory.IGraphicalObjectUIProvider;
+import com.archimatetool.editor.ui.factory.ObjectUIFactory;
+import com.archimatetool.model.IDiagramModelObject;
+import com.archimatetool.model.ITextAlignment;
+import com.archimatetool.model.ITextPosition;
 
 
 
@@ -24,6 +30,7 @@ import com.archimatetool.model.IFontAttribute;
  * 
  * @author Phillip Beauvoir
  */
+@SuppressWarnings("nls")
 public class CanvasModelFactory implements ICreationFactory {
     
     private EClass fTemplate;
@@ -43,49 +50,65 @@ public class CanvasModelFactory implements ICreationFactory {
         fParam = param;
     }
     
+    @Override
     public boolean isUsedFor(IEditorPart editor) {
         return editor instanceof ICanvasEditor;
     }
     
+    @Override
     public Object getNewObject() {
         // Create the instance from the registered factory in case of extensions
-        Object object = fTemplate.getEPackage().getEFactoryInstance().create(fTemplate);
+        EObject object = fTemplate.getEPackage().getEFactoryInstance().create(fTemplate);
         
+        IGraphicalObjectUIProvider provider = (IGraphicalObjectUIProvider)ObjectUIFactory.INSTANCE.getProvider(object);
+
         // Sticky
-        if(object instanceof ICanvasModelSticky) {
-            ICanvasModelSticky sticky = (ICanvasModelSticky)object;
-            sticky.setTextPosition(IFontAttribute.TEXT_POSITION_MIDDLE_CENTRE);
-            if(fParam instanceof Color) {
-                String color = ColorFactory.convertColorToString((Color)fParam);
-                sticky.setFillColor(color);
+        if(object instanceof ICanvasModelSticky sticky) {
+            if(fParam instanceof RGB rgb) {
+                // set fill color if not default
+                if(!rgb.equals(provider.getDefaultColor().getRGB())) {
+                    String color = ColorFactory.convertRGBToString(rgb);
+                    sticky.setFillColor(color);
+                }
             }
-            sticky.setBorderColor("#C0C0C0"); //$NON-NLS-1$
+            sticky.setBorderColor("#C0C0C0");
         }
         
         // Block
-        else if(object instanceof ICanvasModelBlock) {
-            ICanvasModelBlock block = (ICanvasModelBlock)object;
-            block.setTextPosition(IFontAttribute.TEXT_POSITION_TOP_LEFT);
-            block.setBorderColor("#000000"); //$NON-NLS-1$
+        else if(object instanceof ICanvasModelBlock block) {
+            block.setBorderColor("#000000");
         }
         
         // Image
-        else if(object instanceof ICanvasModelImage) {
-            ICanvasModelImage image = (ICanvasModelImage)object;
-            image.setBorderColor("#000000"); //$NON-NLS-1$
+        else if(object instanceof ICanvasModelImage image) {
+            image.setBorderColor("#000000");
         }
         
         // Canvas Connection
-        else if(object instanceof ICanvasModelConnection) {
-            ICanvasModelConnection connection = (ICanvasModelConnection)object;
-            if(fParam instanceof Integer) {
-                connection.setType((Integer)fParam);
+        else if(object instanceof ICanvasModelConnection connection) {
+            if(fParam instanceof Integer val) {
+                connection.setType(val);
             }
+        }
+        
+        if(object instanceof ITextAlignment textAlignment) {
+            textAlignment.setTextAlignment(provider.getDefaultTextAlignment());
+        }
+                
+        if(object instanceof ITextPosition textPosition) {
+            textPosition.setTextPosition(provider.getDefaultTextPosition());
+        }
+        
+        // Add new bounds with a default user size
+        if(object instanceof IDiagramModelObject dmo) {
+            Dimension size = provider.getDefaultSize();
+            dmo.setBounds(0, 0, size.width, size.height);
         }
         
         return object;
     }
 
+    @Override
     public Object getObjectType() {
         return fTemplate;
     }

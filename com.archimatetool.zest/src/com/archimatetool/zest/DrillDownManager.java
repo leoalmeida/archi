@@ -6,6 +6,7 @@
 package com.archimatetool.zest;
 
 import java.util.HashMap;
+import java.util.Map;
 import java.util.Stack;
 
 import org.eclipse.draw2d.geometry.Point;
@@ -14,14 +15,13 @@ import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.action.IMenuManager;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.resource.ImageDescriptor;
+import org.eclipse.jface.resource.ResourceLocator;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
-import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
-import org.eclipse.ui.plugin.AbstractUIPlugin;
 import org.eclipse.zest.core.widgets.GraphNode;
 
+import com.archimatetool.model.IArchimateConcept;
 import com.archimatetool.model.IArchimateElement;
-import com.archimatetool.model.IRelationship;
 
 
 
@@ -32,7 +32,7 @@ import com.archimatetool.model.IRelationship;
  */
 public class DrillDownManager implements ISelectionChangedListener {
 
-    private Stack<Object> fBackStack = new Stack<Object>();
+    private Stack<IArchimateConcept> fBackStack = new Stack<>();
 
     private IAction fActionHome;
     private IAction fActionBack;
@@ -41,10 +41,10 @@ public class DrillDownManager implements ISelectionChangedListener {
     private ZestView fView;
     private ZestGraphViewer fGraphViewer;
     
-    private IArchimateElement fHomeElement;
-    private IArchimateElement fCurrentElement;
+    private IArchimateConcept fHomeConcept;
+    private IArchimateConcept fCurrentConcept;
     
-    private HashMap<Object, NodePositions> fPositions = new HashMap<Object, NodePositions>();
+    private Map<Object, NodePositions> fPositions = new HashMap<>();
 
     DrillDownManager(ZestView view) {
         fView = view;
@@ -53,17 +53,17 @@ public class DrillDownManager implements ISelectionChangedListener {
         makeActions();
     }
     
-    void setNewInput(IArchimateElement element) {
-        if(element == fCurrentElement) {
+    void setNewInput(IArchimateConcept concept) {
+        if(concept == fCurrentConcept) {
             return;
         }
         
         saveCurrentState();
         
-        fHomeElement = element;
-        fCurrentElement = element;
+        fHomeConcept = concept;
+        fCurrentConcept = concept;
         
-        setGraphViewerInput(element);
+        setGraphViewerInput(concept);
         
         fBackStack.clear();
         restoreLastState();
@@ -75,8 +75,8 @@ public class DrillDownManager implements ISelectionChangedListener {
         fGraphViewer.setInput(object);
     }
     
-    IArchimateElement getCurrentElement() {
-        return fCurrentElement;
+    IArchimateConcept getCurrentConcept() {
+        return fCurrentConcept;
     }
     
     void reset() {
@@ -87,54 +87,56 @@ public class DrillDownManager implements ISelectionChangedListener {
     }
     
     void goHome() {
-        if(isDeletedObject(fHomeElement)) {
+        if(isDeletedObject(fHomeConcept)) {
             reset();
         }
         else {
-            setNewInput(fHomeElement);
+            setNewInput(fHomeConcept);
             fView.updateLabel();
         }
     }
     
     void goInto() {
-        IStructuredSelection sel = (IStructuredSelection)fGraphViewer.getSelection();
-        IArchimateElement element = (IArchimateElement)sel.getFirstElement();
-        
-        if(isValidObject(element)) {
-            saveCurrentState();
-
-            fBackStack.push(fCurrentElement);
-            fCurrentElement = element;
-            setGraphViewerInput(element);
-            
-            updateNavigationButtons();
-            
-            restoreLastState();
-            
-            fView.updateLabel();
+        IArchimateConcept concept = (IArchimateConcept)fGraphViewer.getStructuredSelection().getFirstElement();
+        if(!isValidObject(concept)) {
+            return;
         }
+        
+        saveCurrentState();
+
+        fBackStack.push(fCurrentConcept);
+        fCurrentConcept = concept;
+        setGraphViewerInput(concept);
+        
+        updateNavigationButtons();
+        
+        restoreLastState();
+        
+        fView.updateLabel();
     }
     
     void goBack() {
-        if(!fBackStack.isEmpty()) {
-            saveCurrentState();
-            
-            IArchimateElement element = (IArchimateElement)fBackStack.pop();
-            
-            if(isDeletedObject(element)) {
-                reset();
-                return;
-            }
-            
-            fCurrentElement = element;
-            setGraphViewerInput(element);
-            
-            updateNavigationButtons();
-            
-            restoreLastState();
-            
-            fView.updateLabel();
+        if(fBackStack.isEmpty()) {
+           return; 
         }
+        
+        saveCurrentState();
+
+        IArchimateConcept concept = fBackStack.pop();
+
+        if(isDeletedObject(concept)) {
+            reset();
+            return;
+        }
+
+        fCurrentConcept = concept;
+        setGraphViewerInput(concept);
+
+        updateNavigationButtons();
+
+        restoreLastState();
+
+        fView.updateLabel();
     }
 
     void addNavigationActions(IToolBarManager toolBar) {
@@ -150,24 +152,24 @@ public class DrillDownManager implements ISelectionChangedListener {
     }
 
     void saveCurrentState() {
-        if(fCurrentElement == null) {
+        if(fCurrentConcept == null) {
             return;
         }
         
-        NodePositions pos = fPositions.get(fCurrentElement);
+        NodePositions pos = fPositions.get(fCurrentConcept);
         if(pos == null) {
             pos = new NodePositions();
-            fPositions.put(fCurrentElement, pos);
+            fPositions.put(fCurrentConcept, pos);
         }
         pos.saveNodePositions();
     }
     
     void restoreLastState() {
-        if(fCurrentElement == null) {
+        if(fCurrentConcept == null) {
             return;
         }
         
-        NodePositions pos = fPositions.get(fCurrentElement);
+        NodePositions pos = fPositions.get(fCurrentConcept);
         if(pos != null) {
             // Restore positions
             pos.restoreNodePositions();
@@ -192,7 +194,7 @@ public class DrillDownManager implements ISelectionChangedListener {
 
             @Override
             public ImageDescriptor getImageDescriptor() {
-                return AbstractUIPlugin.imageDescriptorFromPlugin(ArchimateZestPlugin.PLUGIN_ID, "img/home_nav.gif"); //$NON-NLS-1$
+                return ResourceLocator.imageDescriptorFromBundle(ArchiZestPlugin.PLUGIN_ID, "img/home_nav.png").orElse(null); //$NON-NLS-1$
             }
         };
         
@@ -211,7 +213,7 @@ public class DrillDownManager implements ISelectionChangedListener {
 
             @Override
             public ImageDescriptor getImageDescriptor() {
-                return AbstractUIPlugin.imageDescriptorFromPlugin(ArchimateZestPlugin.PLUGIN_ID, "img/backward.gif"); //$NON-NLS-1$
+                return ResourceLocator.imageDescriptorFromBundle(ArchiZestPlugin.PLUGIN_ID, "img/backward_nav.png").orElse(null); //$NON-NLS-1$
             }
         };
         
@@ -230,7 +232,7 @@ public class DrillDownManager implements ISelectionChangedListener {
 
             @Override
             public ImageDescriptor getImageDescriptor() {
-                return AbstractUIPlugin.imageDescriptorFromPlugin(ArchimateZestPlugin.PLUGIN_ID, "img/forward.gif"); //$NON-NLS-1$
+                return ResourceLocator.imageDescriptorFromBundle(ArchiZestPlugin.PLUGIN_ID, "img/forward_nav.png").orElse(null); //$NON-NLS-1$
             }
         };
 
@@ -238,20 +240,18 @@ public class DrillDownManager implements ISelectionChangedListener {
     }
     
     private void updateNavigationButtons() {
-        IStructuredSelection selection = (IStructuredSelection)fGraphViewer.getSelection();
-        Object selected = selection.getFirstElement();
-        
-        fActionHome.setEnabled(fHomeElement != null && fHomeElement != fCurrentElement);
+        Object selected = fGraphViewer.getStructuredSelection().getFirstElement();
+        fActionHome.setEnabled(fHomeConcept != null && fHomeConcept != fCurrentConcept);
         fActionBack.setEnabled(!fBackStack.isEmpty());
         fActionGoInto.setEnabled(isValidObject(selected));
     }
     
     private boolean isValidObject(Object selected) {
-        return selected != null && selected != fCurrentElement && !(selected instanceof IRelationship);
+        return (selected != null) && (selected != fCurrentConcept) && (selected instanceof IArchimateElement);
     }
     
-    private boolean isDeletedObject(IArchimateElement element) {
-        return element != null && element.eContainer() == null;
+    private boolean isDeletedObject(IArchimateConcept concept) {
+        return concept != null && concept.eContainer() == null;
     }
 
     @Override
@@ -260,10 +260,10 @@ public class DrillDownManager implements ISelectionChangedListener {
     }
     
     /*
-     * Stores an Element's node positions
+     * Saves and restores Element node positions
      */
     private class NodePositions {
-        private HashMap<Object, Point> nodePositions = new HashMap<Object, Point>();
+        private Map<Object, Point> nodePositions = new HashMap<>();
         
         void saveNodePositions() {
             for(Object n : fGraphViewer.getGraphControl().getNodes()) {
@@ -274,18 +274,30 @@ public class DrillDownManager implements ISelectionChangedListener {
         }
         
         void restoreNodePositions() {
+            // It can happen when adding a new element and connecting it that some connected node positions are 0,0
+            // If this is so, then do a layout
+            boolean doLayout = false;
+            
             for(Object n : fGraphViewer.getGraphControl().getNodes()) {
                 GraphNode node = (GraphNode)n;
                 Object element = node.getData();
                 Point pt = nodePositions.get(element);
-                if(pt != null) {
+                if(pt != null && pt.x != 0 && pt.y != 0) {
                     node.setLocation(pt.x, pt.y);
                 }
                 else {
-                    nodePositions.put(element, node.getLocation());
+                    pt = node.getLocation();
+                    nodePositions.put(element, pt);
                 }
+                
+                if(pt.x == 0 && pt.y == 0) {
+                    doLayout = true;
+                }
+            }
+            
+            if(doLayout) {
+                fGraphViewer.doApplyLayout();
             }
         }
     }
-
 }

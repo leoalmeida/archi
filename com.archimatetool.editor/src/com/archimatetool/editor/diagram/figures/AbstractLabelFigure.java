@@ -21,11 +21,11 @@ import com.archimatetool.model.IDiagramModelObject;
  * 
  * @author Phillip Beauvoir
  */
-public abstract class AbstractLabelFigure extends AbstractDiagramModelObjectFigure {
+public abstract class AbstractLabelFigure extends AbstractDiagramModelObjectFigure implements ITextFigure { 
     
     private Label fLabel;
 
-    public AbstractLabelFigure(IDiagramModelObject diagramModelObject) {
+    protected AbstractLabelFigure(IDiagramModelObject diagramModelObject) {
         super(diagramModelObject);
     }
     
@@ -34,6 +34,7 @@ public abstract class AbstractLabelFigure extends AbstractDiagramModelObjectFigu
         setLayoutManager(new DelegatingLayout());
         
         Locator labelLocator = new Locator() {
+            @Override
             public void relocate(IFigure target) {
                 Rectangle bounds = calculateTextControlBounds();
                 if(bounds != null) {
@@ -46,6 +47,7 @@ public abstract class AbstractLabelFigure extends AbstractDiagramModelObjectFigu
         add(getLabel(), labelLocator);
     }
     
+    @Override
     public void refreshVisuals() {
         // Text
         setText();
@@ -58,9 +60,12 @@ public abstract class AbstractLabelFigure extends AbstractDiagramModelObjectFigu
         
         // Font Color
         setFontColor();
+        
+        repaint(); // repaint when figure changes
     }
     
-    protected void setText() {
+    @Override
+    public void setText() {
         String text = StringUtils.safeString(getDiagramModelObject().getName());
         getLabel().setText(text);
     }

@@ -12,21 +12,16 @@ import org.eclipse.gef.RequestConstants;
 import org.eclipse.gef.editpolicies.GraphicalEditPolicy;
 
 import com.archimatetool.editor.diagram.dnd.DiagramDropRequest;
-import com.archimatetool.editor.diagram.figures.IContainerFigure;
+import com.archimatetool.editor.diagram.figures.ITargetFeedbackFigure;
 
 
 /**
  * 
- * Highlights an Edit Part when you hover a mouse over it
+ * Highlights a parent Edit Part when a child edit part can be added to it
  * 
  * @author Phillip Beauvoir
  */
 public class ContainerHighlightEditPolicy extends GraphicalEditPolicy {
-
-    @Override
-    public void eraseTargetFeedback(Request request) {
-        getContainerFigure().eraseTargetFeedback();
-    }
 
     @Override
     public EditPart getTargetEditPart(Request request) {
@@ -41,19 +36,20 @@ public class ContainerHighlightEditPolicy extends GraphicalEditPolicy {
     public void showTargetFeedback(Request request) {
         if(request.getType().equals(RequestConstants.REQ_MOVE) 
                 || request.getType().equals(RequestConstants.REQ_ADD)
-                || request.getType().equals(RequestConstants.REQ_RECONNECT_SOURCE)
-                || request.getType().equals(RequestConstants.REQ_RECONNECT_TARGET)
-                || request.getType().equals(RequestConstants.REQ_CONNECTION_START)
-                || request.getType().equals(RequestConstants.REQ_CONNECTION_END)
                 || request.getType().equals(RequestConstants.REQ_CREATE)
                 || request.getType().equals(DiagramDropRequest.REQ_DIAGRAM_DROP)
                 ) {
             
-            getContainerFigure().showTargetFeedback();
+            if(((GraphicalEditPart)getHost()).getFigure() instanceof ITargetFeedbackFigure figure) {
+                figure.showTargetFeedback(true);
+            }
         }
     }
-
-    private IContainerFigure getContainerFigure() {
-        return (IContainerFigure)((GraphicalEditPart)getHost()).getFigure();
+    
+    @Override
+    public void eraseTargetFeedback(Request request) {
+        if(((GraphicalEditPart)getHost()).getFigure() instanceof ITargetFeedbackFigure figure) {
+            figure.showTargetFeedback(false);
+        }
     }
 }

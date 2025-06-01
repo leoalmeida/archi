@@ -19,26 +19,32 @@ public abstract class AbstractFindReplaceProvider implements IFindReplaceProvide
 
     private int parameter = 0;
     
+    @Override
     public boolean canFind(String toFind) {
         return StringUtils.isSet(toFind);
     }
     
+    @Override
     public boolean canFindAll(String toFind) {
         return StringUtils.isSet(toFind);
     }
     
+    @Override
     public boolean canReplace(String toFind, String toReplaceWith) {
         return canFind(toFind) && toReplaceWith != null;
     }
     
+    @Override
     public boolean canReplaceAll(String toFind, String toReplaceWith) {
         return canReplace(toFind, toReplaceWith);
     }
     
+    @Override
     public int getParameter() {
         return parameter;
     }
 
+    @Override
     public void setParameter(int op, boolean value) {
         if(value) {
             parameter |= op;
@@ -48,10 +54,12 @@ public abstract class AbstractFindReplaceProvider implements IFindReplaceProvide
         }
     }
 
+    @Override
     public void setParameter(int parameter) {
         this.parameter = parameter;
     }
     
+    @Override
     public boolean understandsParameter(int parameter) {
         return true;
     }
@@ -85,19 +93,19 @@ public abstract class AbstractFindReplaceProvider implements IFindReplaceProvide
     }
 
     /**
-     * @param oldName The old name
-     * @param toFind The string to find in the old name
+     * @param oldString The old string
+     * @param toFind The string to find in the old string
      * @param toReplaceWith The string to replace with
-     * @return A new name based on the old name, replacing the part toFind with toReplaceWith
+     * @return A new string based on the old string, replacing the part toFind with toReplaceWith
      */
-    protected String getNewName(String oldName, String toFind, String toReplaceWith) {
+    protected String getReplacedString(String oldString, String toFind, String toReplaceWith) {
         toFind = Pattern.quote(toFind);
 
         if(!isCaseSensitive()) {
-            toFind = "(?i:" + toFind + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+            toFind = "(?iu:" + toFind + ")"; //$NON-NLS-1$ //$NON-NLS-2$
         }
         
-        return oldName.replaceAll(toFind, toReplaceWith);
+        return oldString.replaceAll(toFind, toReplaceWith);
     }
     
     /**
@@ -115,9 +123,9 @@ public abstract class AbstractFindReplaceProvider implements IFindReplaceProvide
         // (?s) = Ignore line-breaks, .* = contain string
         searchString = "(?s).*" + searchString + ".*"; //$NON-NLS-1$ //$NON-NLS-2$
         
-        // Ignore case
+        // Ignore case and unicode
         if(!isCaseSensitive()) {
-            searchString = "(?i:" + searchString + ")"; //$NON-NLS-1$ //$NON-NLS-2$
+            searchString = "(?iu:" + searchString + ")"; //$NON-NLS-1$ //$NON-NLS-2$
         }
         
         return searchString;

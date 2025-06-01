@@ -5,16 +5,15 @@
  */
 package com.archimatetool.editor.views.tree;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNull;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Matchers.any;
-import static org.mockito.Matchers.eq;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import junit.framework.JUnit4TestAdapter;
 
 import org.eclipse.jface.util.LocalSelectionTransfer;
 import org.eclipse.jface.viewers.StructuredSelection;
@@ -24,11 +23,8 @@ import org.eclipse.swt.dnd.DragSourceListener;
 import org.eclipse.swt.dnd.DropTargetEvent;
 import org.eclipse.swt.dnd.DropTargetListener;
 import org.eclipse.swt.widgets.TreeItem;
-import org.junit.Before;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.Mock;
-import org.mockito.runners.MockitoJUnitRunner;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import com.archimatetool.model.FolderType;
 import com.archimatetool.model.IArchimateElement;
@@ -38,31 +34,21 @@ import com.archimatetool.model.IFolder;
 import com.archimatetool.testingtools.ArchimateTestModel;
 
 
-
-/**
- * This is an example of overkill in the world of Unit Tests.
- * It uses Mockito's mock objects
- */
-@RunWith(MockitoJUnitRunner.class)
 public class TreeModelViewerDragDropHandlerTests {
     
     private ArchimateTestModel tm;
     private IArchimateModel model;
     
+    private TreeViewer treeViewer;
+    
     // The real TreeModelViewerDragDropHandler to test
     private TreeModelViewerDragDropHandler dragHandler;
     
-    @Mock
-    private TreeViewer treeViewer; // Mock the TreeViewer
-    
-    public static junit.framework.Test suite() {
-        return new JUnit4TestAdapter(TreeModelViewerDragDropHandlerTests.class);
-    }
-    
-    @Before
+    @BeforeEach
     public void runOnceBeforeEachTest() {
         tm = new ArchimateTestModel();
         model = tm.createNewModel(); // We need a real model and Command Stack for some operations
+        treeViewer = mock(TreeViewer.class);
         dragHandler = new TreeModelViewerDragDropHandler(treeViewer);
     }
     
@@ -70,7 +56,7 @@ public class TreeModelViewerDragDropHandlerTests {
     public void verifyDragHandlerRegisteredDragSupport() {
         // Verify treeViewer added drag support
         verify(treeViewer).addDragSupport(
-                eq(DND.DROP_COPY | DND.DROP_MOVE | DND.DROP_LINK),
+                eq(DND.DROP_COPY | DND.DROP_MOVE),
                 eq(dragHandler.sourceTransferTypes),
                 any(DragSourceListener.class));
     }
